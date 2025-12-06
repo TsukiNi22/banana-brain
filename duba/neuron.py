@@ -11,21 +11,21 @@ Edition:
 ##  06/10/2025 by Tsukini
 
 File Name:
-##  duba.py
+##  neuron.py
 
 File Description:
-##  Duba class used for many things
+##  Neuron class used for many things
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 """ Class """
-class Duba:
+class Neuron:
     """
-        Class to handle the different neuron
+        Class to handle a single neuron
     """
 
     def __init__(self):
         """
-            Main intialisation of the default settings and hyperparameters
+            Main intialisation of the default settings
         """
-        print("Duba created...")
+        print("Neuron created...")
 

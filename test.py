@@ -11,21 +11,11 @@ Edition:
 ##  06/10/2025 by Tsukini
 
 File Name:
-##  duba.py
+##  test.py
 
 File Description:
-##  Duba class used for many things
+##  Testing file
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-""" Class """
-class Duba:
-    """
-        Class to handle the different neuron
-    """
-
-    def __init__(self):
-        """
-            Main intialisation of the default settings and hyperparameters
-        """
-        print("Duba created...")
-
+from duba import Duba
+Duba()
