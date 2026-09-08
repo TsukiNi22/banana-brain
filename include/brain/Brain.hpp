@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 06/09/2026 by @author Tsukini
+##  @date 08/09/2026 by @author Tsukini
 
 File Name:
 ##  @file Brain.hpp
@@ -37,8 +37,7 @@ class Brain {
 
     public:
         // ---------- Pre-Function -------- //
-        void init(const int argc, const char *const argv[]);
-        void run(void);
+        void none(void);
 
         // ------------ Function ---------- //
 

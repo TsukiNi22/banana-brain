@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-set(TARGET brain)
+set(TARGET banana-brain)
 project(${TARGET} VERSION 1.0.0 LANGUAGES CXX)
 
 # =========================
@@ -9,7 +9,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}) # TARGET destination
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) # Moderne compilation -fPIE
 
 # =========================
@@ -40,14 +39,10 @@ add_compile_options(
 # Sources
 # =========================
 set(SRC
-    # Entry
-    src/brain/main.cpp
-    src/brain/Brain-init.cpp
-
     # Main
     src/brain/Brain.cpp
 )
-add_executable(${TARGET} ${SRC})
+add_library(${TARGET} ${SRC})
 
 # =========================
 # Special Targets
@@ -75,9 +70,23 @@ add_custom_target(generated_external_exception_header
 # Release (build Optimized)
 # =========================
 add_custom_target(release
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Debug
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --parallel
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Asan
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --parallel
     COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Optimized
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --parallel
-    COMMENT "Release version: Optimized"
+    COMMENT "Building both debug versions Debug & Asan (libbanana-brain_debug.a, libbanana-brain_asan.a) and Optimized (libbanana-brain.a) one"
+    VERBATIM
+)
+add_custom_target(install_release
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Debug
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target install --parallel
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Asan
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target install --parallel
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Optimized
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target install --parallel
+    COMMENT "installing both debug versions Debug & Asan (libbanana-brain_debug.a, libbanana-brain_asan.a) and Optimized (libbanana-brain.a) one"
     VERBATIM
 )
 
@@ -91,6 +100,10 @@ add_dependencies(${TARGET} generated_external_exception_header)
 # =========================
 # Modes
 # =========================
+set_target_properties(${TARGET} PROPERTIES
+    OUTPUT_NAME "${TARGET}$<$<CONFIG:Debug>:_debug>$<$<CONFIG:Asan>:_asan>"
+)
+
 target_compile_options(${TARGET} PRIVATE
     $<$<CONFIG:Debug>:-g -ggdb3>
     $<$<CONFIG:Asan>:-fsanitize=address -fno-omit-frame-pointer -g -ggdb3>

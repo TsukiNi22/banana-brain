@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 16/07/2026 by @author Tsukini
+##  @date 08/09/2026 by @author Tsukini
 
 File Name:
 ##  @file Brain.cpp
@@ -20,7 +20,7 @@ File Description:
 
 #include "brain/Brain.hpp"
 
-void brain::Brain::run(void)
+void brain::Brain::none(void)
 {
     /* nothing... */
 }
