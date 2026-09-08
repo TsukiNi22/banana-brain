@@ -1,25 +1,28 @@
-# === Python ===
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
+## Compilation
+*.o
+*.a
+!cmake/libs/*.a
 *.so
-*.egg
-*.egg-info/
-dist/
-build/
-.eggs/
-*.log
+a.out
+include/exception/generated_external_exception_header.hpp
 
-# === Neovim / nvim ===
-# Swap, backup et undo files
-*.swp
-*.swo
-*.un~
-*.bak
-*.tmp
+## Vim
+*.sw*
+\#*#
+*~
+:*
+q
+vg
+z
 
-# Neovim-specific state (si utilisé)
-.nv/
-.nvim/
-session.vim
+## Doxygen
+/html
+/latex
+
+## CMake
+/build
+__pycache__
+
+## Other
+/runner
+#.info

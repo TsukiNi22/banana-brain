@@ -1,3 +1,3 @@
-# banana_brain
+# brain
 
-Attempt of a neuron netwwork with the base of the real neuron
+Project brain, look for future update...
