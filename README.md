@@ -1,3 +1,0 @@
-# banana-brain
-
-Project banana-brain, look for future update...

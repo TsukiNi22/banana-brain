@@ -1,0 +1,131 @@
+stored:
+    QKV/token
+    neuron-weigths/neuron/layer
+
+Q -> used to compare with or token's K
+K -> used to be matched against Q
+V -> value of the token that will be use
+
+generating-token:
+    
+
+training:
+    generating-token
+    compute the distance of the error
+    find the weights responsible for the error Q/K/V/neuron-weigths and slighlty edit them
+    retry/switch to new context or next token
+
+// neuron network type
+enum NetworkType {
+    Layered,
+    Brain,
+    Banana
+}
+
+enum ActivationFunction {
+    none,
+    sigmoid,
+    softmax,
+    lineair,
+    relu,
+}
+
+enum LossFunction {
+    MSE,
+    cross-entropy
+}
+
+using IType = int64;
+using UIType = size_t;
+using FType = float; // replace any neuron/coef values type in the class/other
+static_assert(Type is floating type) // float/double/any other floating type
+
+/* tools */
+std::vector<float> text_to_input; // can be not what you want
+std::vector<float> input_to_text; // doesn't ensure the validity of the output
+// seed == 0 -> random seed
+void shuffle(vector<std::vector<float>>& inputs, seed = 0) // shuffle input order
+pair<vector<std::vector<float>>, vector<std::vector<float>>> rand_separator(vector<std::vector<float>>& inputs, float percentage, seed = 0) // setup a testing and cheking set using randomness <training, testing> (percentage == percentage of the training data from the whole data)
+
+/* randomness call every where to change it rapidly */
+extarn/global generator;
+inline rand(seed) // setup the seed
+inline size_t randUnsignedInterer(void)
+inline float randFloating(void)
+
+INetwork:
+    // not defined for now
+
+// handle all neurons
+NeuralNetwork -> Freable: (in freezed mode only allow the exec usage)
+    priv:
+        int64 _seed = 0; // 0 = auto setup random at start (won't be the same each time)
+        pair<pair<float, float>, function> _rand; // <<min, max>, giving him the seed to get the value> used to setup random bias/wight at start (witch on the function if fn is set)
+        pair<ActivationFunction, function> _activationFunction = {none, nullptr}; // first at none swith to fn and if !fn no activation just raw values
+        pair<LossFunction, function> _lossFunction = {none, nullptr}; // first at none swith to fn and if !fn no activation just raw values
+        pair<size_t, size_t> _size; // <input, output>
+        float _leaningRate = 1.0; // not edited during training
+        size_t _decay = 0;
+        pair<bool, float> _decayCoef;
+
+        /* training */
+        float _leaningRateDecayed = 1.0; // edited during training
+        size_t _steps = 0;
+
+        /* Network/Neurons storage */
+        std::unique_ptr<INetwork> _network;
+
+    pub:
+        /* init */
+        // init a new neural network (clear any exiting one in the class)
+        void init<Layer>(size_t layer, size_t neuron-per-layer) // normal usage with layer and other
+        void init<Brain>(size_t neurons) // my own custom network (more like a brain) 
+        void init<Banana>(void) // a pre made layer/nuron number to shape it like a bana (don't ask why...)
+        // fallback is the value used on resultet that fall on 0
+        void weightInit(float fallback = 0.01) // at 1.0 by default (if not init might cause probleme for the training -> dead network)
+        void biasInit(float fallback = 0.01) // at 0.0 by default
+
+        /* setter */ -> same but without parameter (void) == getter
+        void rand(float min, float max) // setup via min/max the range for the generation of the weights/bias
+        void rand(fn) // setup the function that might be used the generation of the weights/bias
+        void seed(seed) // used for the random generator
+        void size(size_t input, size_t output) // setup the number of input and output (named from 0 to n - 1)
+        void input(size_t input)
+        void output(size_t output)
+        void learningRate(float learning_rate, size_t learning_rate_decay = 0, <bool, float> coef = {true, 1.0}); // 0 = none, otherwhise learningRate multipled by coef every each n deacay step or smooth decay <smooth, coef>
+        void activationFunction(fn) // by default none
+        void internalActivationFunction(activation-function) // internal more optimized than the external activation function
+        void lossFunction(fn) // by default none
+        void internallossFunction(loss-function) // internal more optimized than the external activation function
+
+        /* getter */
+        int64 seed(void)
+        pair<size_t, size_t> size(void)
+        size_t input(void)
+        size_t output(void)
+        float learningRate(void)
+        pair<ActivationFunction, function> activationFunction(void)
+        pair<LossFunction, function> lossFunction(void)
+        pair<pair<float, float>, function> rand(void)
+
+        /* training (auto) */
+        void start(size_t round, cosnt vector<vector<float>>& inputs, cosnt vector<vector<float>>& expected_outputs, fn backpropagation) // the backpropagation function take 2 vector of float (output and the expected one [can be empty and the backpropagation function should ignore these]) and return (coef or coefs -> polymorphise of the start / 2 version)
+        void start(float loss, cosnt vector<vector<float>>& inputs, cosnt vector<vector<float>>& expected_outputs, fn backpropagation) // same has above but stop if the loss is under this rate and the first stop only after n round
+
+        /* training (manual) */
+        void load(void); // load the network into memory on gpu if not already done (failsage)
+        void unload(void); // unload the network memory if not larady done (failsage)
+        void inputs(const std::vector<float>& inputs); // load the inputs into the network
+        std::vector<float> apply(void); // execute the network wiht the given input
+        void backpropagation(float coef); // coef between -1 <-> 1 representing 100% == perfect or -100% == totaly false (can be above or under for massive change)
+        void backpropagation(const std::vector<float>& coefs); // same has above but a special coef value for each output
+        float loss(const float output, const float expected) // compute the loss
+        float loss(const std::vector<float>& outputs, const std::vector<float>& expected) // compute the mean loss
+
+        /* usage */
+        std::vector<float> exec(const std::vector<float>& inputs) const; // doesn't touch att all the content
+
+        /* misscelianous */
+        void load(path) // load network from a file
+        void save(path) // save actual netwwokr in a file
+        void clear(void)
