@@ -1,0 +1,6 @@
+[banana-brain]
+name=banana-brain repository
+baseurl=https://tsukini22.github.io/banana-brain/fedora/$releasever/$basearch
+enabled=1
+gpgcheck=1
+gpgkey=https://tsukini22.github.io/banana-brain/RPM-GPG-KEY-tsukini
