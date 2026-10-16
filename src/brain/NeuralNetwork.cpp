@@ -20,11 +20,30 @@ File Description:
 
 #define _Attribute
 #include <utils/utils.hpp>
+#include "brain/network/Network.hpp"
 #include "brain/NeuralNetwork.hpp"
 #include <filesystem>
 #include <utility>
 
 /* init */
+template<>
+_cold void brain::NeuralNetwork::init<brain::NetworkType::Layered>(const brain::UIType layer, const brain::UIType neuron_per_layer)
+{
+    /* Nothing */
+}
+
+template<>
+_cold void brain::NeuralNetwork::init<brain::NetworkType::Brain>(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size)
+{
+    /* Nothing */
+}
+
+template<>
+_cold void brain::NeuralNetwork::init<brain::NetworkType::Banana>(void)
+{
+    /* Nothing */
+}
+
 _cold void brain::NeuralNetwork::weightInit(const brain::FType fallback)
 {
     /* Nothing */

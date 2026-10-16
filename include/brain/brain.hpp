@@ -31,8 +31,8 @@ File Description:
     #include "tools/dataset.hpp"     // brain::tools::text_to_input, brain::tools::input_to_text, brain::tools::shuffle, brain::tools::rand_sets
     #include "tools/random.hpp"      // brain::tools::generator, brain::tools::rand, brain::tools::rand_unsigned_integer, brain::tools::rand_floating
 
-    /* network */
-    #include "network/Network.hpp"   // brain::INetwork, brain::ANetwork, brain::LayerNetwork, brain::BrainNetwork
+    /* network (the networks are internal, created by brain::NeuralNetwork::init<...>: include "network/Network.hpp" only when the network classes are needed) */
+    //#include "network/Network.hpp"   // brain::INetwork, brain::ANetwork, brain::LayerNetwork, brain::BrainNetwork
     #include "NeuralNetwork.hpp"     // brain::NeuralNetwork
 
     /* version */

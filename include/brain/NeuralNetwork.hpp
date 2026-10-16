@@ -27,7 +27,7 @@ File Description:
     #define _Attribute
     #define _CustomType
     #include <utils/utils.hpp>        // _hot, _cold, _nodiscard, utils::type::Freezable
-    #include "network/Network.hpp"    // brain::INetwork
+    #include "network/INetwork.hpp"   // brain::INetwork
     #include "NetworkDefine.hpp"      // brain::NetworkType, brain::ActivationFunction, brain::LossFunction
     #include "NetworkType.hpp"        // brain::IType, brain::UIType, brain::FType, brain::Values, brain::Dataset, brain::*Fn
     #include <filesystem>             // std::filesystem::path
@@ -61,7 +61,13 @@ class NeuralNetwork: public utils::type::Freezable {
 
     public:
         // ---------- Pre-Function -------- //
-        /* init */
+        /* init (clear any existing network, specialized in the .cpp where the network classes are known) */
+        template<brain::NetworkType type> requires (type == brain::NetworkType::Layered)
+        void init(const brain::UIType layer, const brain::UIType neuron_per_layer);                                         // normal usage with layers
+        template<brain::NetworkType type> requires (type == brain::NetworkType::Brain)
+        void init(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0});           // custom network (more like a brain), size = 2d space of the neurons
+        template<brain::NetworkType type> requires (type == brain::NetworkType::Banana)
+        void init(void);                                                                                                   // pre made layer / neuron numbers shaped like a banana (don't ask why...)
         void weightInit(const brain::FType fallback = 0.01); // weights at 1.0 by default (not init -> dead network), fallback used on a result that falls on 0
         void biasInit(const brain::FType fallback = 0.01);   // bias at 0.0 by default, fallback used on a result that falls on 0
 
@@ -96,14 +102,6 @@ class NeuralNetwork: public utils::type::Freezable {
         void clear(void);                                   // remove the network and reset the training state
 
         // ------------ Function ---------- //
-        /* init (clear any existing network) */
-        template<brain::NetworkType type> requires (type == brain::NetworkType::Layered)
-        _cold void init(const brain::UIType layer, const brain::UIType neuron_per_layer)                                        {/* Nothing */}; // normal usage with layers
-        template<brain::NetworkType type> requires (type == brain::NetworkType::Brain) // xstyle: ignore CPP-CLASS-BLOCK (false positive: the default argument {1.0, 1.0} of the next line)
-        _cold void init(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}) {/* Nothing */}; // custom network (more like a brain), size = 2d space of the neurons
-        template<brain::NetworkType type> requires (type == brain::NetworkType::Banana)
-        _cold void init(void)                                                                                          {/* Nothing */}; // pre made layer / neuron numbers shaped like a banana (don't ask why...)
-
         /* training (auto): the round / loss must be exactly a brain::UIType / brain::FType (no implicit conversion) */
         template<typename T, typename Fn> requires (!std::same_as<T, brain::UIType> && !std::same_as<T, brain::FType>)
         void train(const T round_or_loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const Fn& backpropagation) = delete;
