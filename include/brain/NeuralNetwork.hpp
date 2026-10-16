@@ -98,25 +98,14 @@ class NeuralNetwork: public utils::type::Freezable {
         // ------------ Function ---------- //
         /* init (clear any existing network) */
         template<brain::NetworkType type> requires (type == brain::NetworkType::Layered)
-        _cold void init(const brain::UIType layer, const brain::UIType neuron_per_layer) // normal usage with layers
-        {
-            /* Nothing */
-        };
-
+        _cold void init(const brain::UIType layer, const brain::UIType neuron_per_layer)                                        {/* Nothing */}; // normal usage with layers
         template<brain::NetworkType type> requires (type == brain::NetworkType::Brain)
-        _cold void init(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}) // custom network (more like a brain), size = 2d space of the neurons
-        {
-            /* Nothing */
-        };
-
+        _cold void init(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}) {/* Nothing */}; // custom network (more like a brain), size = 2d space of the neurons
         template<brain::NetworkType type> requires (type == brain::NetworkType::Banana)
-        _cold void init(void) // pre made layer / neuron numbers shaped like a banana (don't ask why...)
-        {
-            /* Nothing */
-        };
+        _cold void init(void)                                                                                          {/* Nothing */}; // pre made layer / neuron numbers shaped like a banana (don't ask why...)
 
-        /* training (auto): the round / loss must be exactly a brain::UIType / brain::FType (no implicit conversion), deleted = no body anywhere */
-        template<typename T, typename Fn> requires (!std::same_as<T, brain::UIType> && !std::same_as<T, brain::FType>) // xstyle: ignore CPP-CLASS-BLOCK
+        /* training (auto): the round / loss must be exactly a brain::UIType / brain::FType (no implicit conversion) */
+        template<typename T, typename Fn> requires (!std::same_as<T, brain::UIType> && !std::same_as<T, brain::FType>)
         void train(const T round_or_loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const Fn& backpropagation) = delete;
 
         /* setter */
