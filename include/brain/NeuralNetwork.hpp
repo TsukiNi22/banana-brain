@@ -107,16 +107,16 @@ class NeuralNetwork: public utils::type::Freezable {
         void train(const T round_or_loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const Fn& backpropagation) = delete;
 
         /* setter */
-        _cold inline void rand(const brain::FType min, const brain::FType max)                 {this->_rand.first = {min, max};};                                       // range of the random weights / bias generation
-        _cold inline void rand(const brain::RandFn& fn)                                        {this->_rand.second = fn;};                                              // function used for the weights / bias generation (wins over the range)
-        _cold inline void seed(const brain::IType seed)                                        {this->_seed = seed;};                                                   // seed of the random generator (0 = random)
-        _cold inline void size(const brain::UIType input, const brain::UIType output)          {this->_size = {input, output};};                                        // number of inputs and outputs (named from 0 to n - 1)
-        _cold inline void input(const brain::UIType input)                                     {this->_size.first = input;};
-        _cold inline void output(const brain::UIType output)                                   {this->_size.second = output;};
-        _cold inline void activationFunction(const brain::ActivationFn& fn)                    {this->_activationFunction = {brain::ActivationFunction::None, fn};};    // external activation function (none by default)
-        _cold inline void internalActivationFunction(const brain::ActivationFunction fn)       {this->_activationFunction = {fn, nullptr};};                            // internal, more optimized than an external one
-        _cold inline void lossFunction(const brain::LossFn& fn)                                {this->_lossFunction = {brain::LossFunction::None, fn};};                // external loss function (none by default)
-        _cold inline void internalLossFunction(const brain::LossFunction fn)                   {this->_lossFunction = {fn, nullptr};};                                  // internal, more optimized than an external one
+        _cold inline void rand(const brain::FType min, const brain::FType max)           {this->_rand.first = {min, max};};                                       // range of the random weights / bias generation
+        _cold inline void rand(const brain::RandFn& fn)                                  {this->_rand.second = fn;};                                              // function used for the weights / bias generation (wins over the range)
+        _cold inline void seed(const brain::IType seed)                                  {this->_seed = seed;};                                                   // seed of the random generator (0 = random)
+        _cold inline void size(const brain::UIType input, const brain::UIType output)    {this->_size = {input, output};};                                        // number of inputs and outputs (named from 0 to n - 1)
+        _cold inline void input(const brain::UIType input)                               {this->_size.first = input;};
+        _cold inline void output(const brain::UIType output)                             {this->_size.second = output;};
+        _cold inline void activationFunction(const brain::ActivationFn& fn)              {this->_activationFunction = {brain::ActivationFunction::None, fn};};    // external activation function (none by default)
+        _cold inline void internalActivationFunction(const brain::ActivationFunction fn) {this->_activationFunction = {fn, nullptr};};                            // internal, more optimized than an external one
+        _cold inline void lossFunction(const brain::LossFn& fn)                          {this->_lossFunction = {brain::LossFunction::None, fn};};                // external loss function (none by default)
+        _cold inline void internalLossFunction(const brain::LossFunction fn)             {this->_lossFunction = {fn, nullptr};};                                  // internal, more optimized than an external one
 
         /* getter */
         _cold _nodiscard inline brain::IType seed(void) const                                                                  {return this->_seed;};
