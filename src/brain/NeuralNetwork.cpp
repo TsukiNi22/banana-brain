@@ -25,7 +25,6 @@ File Description:
 #include <filesystem>
 #include <utility>
 
-/* init */
 template<>
 _cold void brain::NeuralNetwork::init<brain::NetworkType::Layered>(const brain::UIType layer, const brain::UIType neuron_per_layer)
 {
@@ -54,20 +53,17 @@ _cold void brain::NeuralNetwork::biasInit(const brain::FType fallback)
     /* Nothing */
 }
 
-/* setter */
 _cold void brain::NeuralNetwork::learningRate(const brain::FType learning_rate, const brain::UIType learning_rate_decay, const std::pair<bool, brain::FType>& coef)
 {
     /* Nothing */
 }
 
-/* getter */
 _cold std::pair<brain::UIType, brain::UIType> brain::NeuralNetwork::neurons(void) const
 {
     /* Nothing */
     return {};
 }
 
-/* training (auto) */
 _hot void brain::NeuralNetwork::train(const brain::UIType round, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const brain::BackpropagationFn& backpropagation)
 {
     /* Nothing */
@@ -88,7 +84,6 @@ _hot void brain::NeuralNetwork::train(const brain::FType loss, const brain::Data
     /* Nothing */
 }
 
-/* training (manual) */
 _cold void brain::NeuralNetwork::load(void)
 {
     /* Nothing */
@@ -132,14 +127,12 @@ _hot brain::FType brain::NeuralNetwork::loss(const brain::Values& outputs, const
     return {};
 }
 
-/* usage */
 _hot brain::Values brain::NeuralNetwork::exec(const brain::Values& inputs) const
 {
     /* Nothing */
     return {};
 }
 
-/* miscellaneous */
 _cold void brain::NeuralNetwork::load(const std::filesystem::path& path)
 {
     /* Nothing */

@@ -35,9 +35,9 @@ namespace brain { // namespace start
 
 class BrainNetwork: public brain::ANetwork {
     private:
-        std::vector<brain::BrainNeuron> _neurons;                 // every neuron of the 2d space
+        std::vector<brain::BrainNeuron> _neurons; // every neuron of the 2d space
         std::pair<brain::FType, brain::FType> _size = {1.0, 1.0}; // <width, height> of the 2d space (could be applied in 3d in the future)
-        brain::UIType _neuron = 0;                                // number of neurons
+        brain::UIType _neuron = 0; // number of neurons
 
         // ---------- Pre-Function -------- //
         void init_(void) final; // place _neuron neurons in the _size space

@@ -23,7 +23,6 @@ File Description:
 #include "brain/tools/neuron.hpp"
 #include <vector>
 
-/* brain neuron */
 _cold void brain::tools::sort(brain::BrainNeuron& neuron, std::vector<brain::BrainNeuron>& neurons)
 {
     /* Nothing */

@@ -1,4 +1,10 @@
 #!/bin/bash
+# Usage: setup.sh [--no-sudo] [--pre] [--no-install]
+# Options:
+#   --no-sudo      Run without sudo (requires the script to be run as root already)
+#   --pre          Install the pre-release/unstable package (libbanana-brain-pre)
+#   --no-install   Only setup the mirror & gpg key, don't install the package
+#   -h, --help     Display this usage
 set -euo pipefail
 
 BASE_URL="https://tsukini22.github.io/banana-brain"
@@ -11,10 +17,7 @@ INSTALL=true
 # Parse arguments
 # =========================
 usage() {
-    echo "Usage: $0 [--no-sudo] [--pre] [--no-install]"
-    echo "  --no-sudo      Run without sudo (requires the script to be run as root already)"
-    echo "  --pre          Install the pre-release/unstable package (libbanana-brain-pre)"
-    echo "  --no-install   Only setup the mirror & gpg key, don't install the package"
+    sed -n '2,7s/^# \{0,1\}//p' "$0" # the usage block of the header
     exit 1
 }
 

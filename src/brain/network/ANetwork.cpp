@@ -27,7 +27,6 @@ _cold void brain::ANetwork::init_(void)
     /* Nothing */
 }
 
-/* memory */
 _cold void brain::ANetwork::load(void)
 {
     /* Nothing */

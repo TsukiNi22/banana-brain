@@ -34,7 +34,6 @@ _cold void brain::LayerNetwork::init_(void)
     /* Nothing */
 }
 
-/* execution */
 _hot brain::Values brain::LayerNetwork::apply(void)
 {
     /* Nothing */
@@ -51,7 +50,6 @@ _hot void brain::LayerNetwork::backpropagation(const brain::Values& coefs)
     /* Nothing */
 }
 
-/* setup */
 _cold void brain::LayerNetwork::weightInit(const brain::FType fallback)
 {
     /* Nothing */
@@ -62,7 +60,6 @@ _cold void brain::LayerNetwork::biasInit(const brain::FType fallback)
     /* Nothing */
 }
 
-/* getter */
 _cold std::pair<brain::UIType, brain::UIType> brain::LayerNetwork::neurons(void) const
 {
     /* Nothing */

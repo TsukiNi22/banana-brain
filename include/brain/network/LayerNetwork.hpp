@@ -36,8 +36,8 @@ namespace brain { // namespace start
 class LayerNetwork: public brain::ANetwork {
     private:
         std::vector<std::vector<brain::LayerNeuron>> _neurons; // [layer][neuron]
-        brain::UIType _neuronPerLayer = 0;                     // neurons of each layer
-        brain::UIType _layer = 0;                              // number of layers
+        brain::UIType _neuronPerLayer = 0; // neurons of each layer
+        brain::UIType _layer = 0; // number of layers
 
         // ---------- Pre-Function -------- //
         void init_(void) final; // create layer * neuron_per_layer neurons

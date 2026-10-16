@@ -27,8 +27,8 @@ namespace brain { // namespace start
 // Kind of network stored behind a brain::NeuralNetwork
 enum class NetworkType {
     Layered, // classic layers of neurons (brain::LayerNetwork)
-    Brain,   // neurons placed in a 2d space (brain::BrainNetwork)
-    Banana,  // pre made layer / neuron numbers shaped like a banana (don't ask why...)
+    Brain, // neurons placed in a 2d space (brain::BrainNetwork)
+    Banana, // pre made layer / neuron numbers shaped like a banana (don't ask why...)
 };
 
 // Internal activation functions (more optimized than an external one)
@@ -43,7 +43,7 @@ enum class ActivationFunction {
 // Internal loss functions (more optimized than an external one)
 enum class LossFunction {
     None, // no loss computed
-    MSE,  // mean squared error
+    MSE, // mean squared error
     CrossEntropy,
 };
 

@@ -36,7 +36,7 @@ namespace brain { // namespace start
 class ANetwork: public brain::INetwork {
     protected:
         brain::Values _inputs; // last inputs given to the network
-        bool _loaded = false;  // true: in memory (gpu) | false: unloaded
+        bool _loaded = false; // true: in memory (gpu) | false: unloaded
 
         // ---------- Pre-Function -------- //
         void init_(void) override; // default: nothing (fallthrough), a child inits its neurons
@@ -44,7 +44,7 @@ class ANetwork: public brain::INetwork {
     public:
         // ---------- Pre-Function -------- //
         /* memory */
-        void load(void) override;   // failsafe: nothing when already loaded
+        void load(void) override; // failsafe: nothing when already loaded
         void unload(void) override; // failsafe: nothing when already unloaded
 
         // ------------ Function ---------- //

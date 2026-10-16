@@ -24,7 +24,6 @@ File Description:
 #include <utility>
 #include <string>
 
-/* conversion */
 _hot brain::Values brain::tools::text_to_input(const std::string& text)
 {
     /* Nothing */
@@ -37,7 +36,6 @@ _hot std::string brain::tools::input_to_text(const brain::Values& input)
     return {};
 }
 
-/* dataset */
 _cold void brain::tools::shuffle(brain::Dataset& inputs, const brain::IType seed)
 {
     /* Nothing */
