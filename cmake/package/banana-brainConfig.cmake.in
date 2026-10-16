@@ -1,0 +1,47 @@
+@PACKAGE_INIT@
+
+# Dependencies
+include(CMakeFindDependencyMacro)
+find_dependency(utils @UTILS_MIN_VERSION@ CONFIG REQUIRED) # the public headers include <utils/utils.hpp>
+
+# Custom error message if the require file doesn't exist
+set(_banana_brain_libdir "${CMAKE_CURRENT_LIST_DIR}/../../")
+if(WIN32)
+    set(_banana_brain_package "mingw64-libbanana-brain") # Windows packages (MinGW sysroot)
+else()
+    set(_banana_brain_package "libbanana-brain")
+endif()
+if(CMAKE_BUILD_TYPE STREQUAL "Asan" AND WIN32 AND NOT EXISTS "${_banana_brain_libdir}/libbanana-brain_asan.a")
+    message(FATAL_ERROR
+        "No Asan version of libbanana-brain with MinGW (no AddressSanitizer).\n"
+        "Please build in Debug with the package '${_banana_brain_package}-db'.\n"
+    )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Asan")
+    if(NOT EXISTS "${_banana_brain_libdir}/libbanana-brain_asan.a")
+        message(FATAL_ERROR
+            "The Asan version of libbanana-brain is not installed.\n"
+            "Please install the package '${_banana_brain_package}-as'.\n"
+        )
+    endif()
+
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(NOT EXISTS "${_banana_brain_libdir}/libbanana-brain_debug.a")
+        message(FATAL_ERROR
+            "The Debug version of libbanana-brain is not installed.\n"
+            "Please install the package '${_banana_brain_package}-db'.\n"
+        )
+    endif()
+
+#elseif(CMAKE_BUILD_TYPE STREQUAL "Optimized")
+else() # Default selection for noconfig
+    if(NOT EXISTS "${_banana_brain_libdir}/libbanana-brain.a")
+        message(FATAL_ERROR
+            "The Optimized version of libbanana-brain is not installed.\n"
+            "Please install the package '${_banana_brain_package}-op'.\n"
+        )
+    endif()
+endif()
+
+# Load and check tools
+include("${CMAKE_CURRENT_LIST_DIR}/banana-brainTargets.cmake")
+check_required_components(banana-brain)

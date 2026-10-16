@@ -1,0 +1,61 @@
+{
+    "errors": [
+        {
+            "code": "NoNetwork",
+            "message": "No network initialized, call init<NetworkType>() first",
+            "restrictions": ["Fatal", "Error"]
+        },
+        {
+            "code": "NetworkNotLoaded",
+            "message": "The network is not loaded in memory",
+            "info": "Call load() before using the network",
+            "restrictions": ["Fatal", "Error", "Warning"]
+        },
+        {
+            "code": "NetworkAlreadyLoaded",
+            "message": "The network is already loaded in memory",
+            "restrictions": ["Error", "Warning"]
+        },
+        {
+            "code": "FrozenNetwork",
+            "message": "The network is frozen, only exec() is allowed",
+            "restrictions": ["Fatal", "Error"]
+        },
+        {
+            "code": "DeadNetwork",
+            "message": "Every weight is at 0, the network can't learn",
+            "info": "Call weightInit() before the training",
+            "restrictions": ["Error", "Warning"]
+        },
+        {
+            "code": "InvalidInputSize",
+            "message": "The number of inputs doesn't match the network input size",
+            "restrictions": ["Fatal", "Error"]
+        },
+        {
+            "code": "InvalidOutputSize",
+            "message": "The number of outputs doesn't match the network output size",
+            "restrictions": ["Fatal", "Error"]
+        },
+        {
+            "code": "InvalidCoefficient",
+            "message": "Backpropagation coefficient out of the expected range (-1 <-> 1)",
+            "restrictions": ["Error", "Warning"]
+        },
+        {
+            "code": "InvalidLearningRate",
+            "message": "Invalid learning rate or decay configuration",
+            "restrictions": ["Fatal", "Error"]
+        },
+        {
+            "code": "InvalidPercentage",
+            "message": "The percentage must be between 0 and 1",
+            "restrictions": ["Fatal", "Error"]
+        },
+        {
+            "code": "InvalidNetworkFile",
+            "message": "Invalid or unreadable network file",
+            "restrictions": ["Fatal", "Error", "Warning"]
+        }
+    ]
+}
