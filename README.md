@@ -176,8 +176,18 @@ A missing package stops the configuration with the name of the package to instal
 | `brain/NetworkDefine.hpp` | `brain::NetworkType` (`Layered`, `Brain`, `Banana`), `brain::ActivationFunction`, `brain::LossFunction` |
 | `brain/NetworkType.hpp` | `brain::IType` / `UIType` / `FType`, `brain::Values` / `Dataset`, the hooks `ActivationFn` / `LossFn` / `RandFn` / `BackpropagationFn` / `BackpropagationsFn`, `brain::LayerNeuron` / `BrainNeuron` (cache line aligned) |
 | `brain/network/Network.hpp` | `brain::INetwork` -> `brain::ANetwork` -> `brain::LayerNetwork(layer, neuron_per_layer)` / `brain::BrainNetwork(neuron, size)` |
-| `brain/tools/random.hpp` | `brain::tools::generator` (`std::mt19937_64`), `rand(seed)`, `rand_unsigned_integer()`, `rand_floating()` |
+| `brain/tools/random.hpp` | `brain::tools::generator` (`std::mt19937_64`, scope chosen by `BRAIN_SEED_GLOBAL` / `BRAIN_SEED_LOCAL`), `rand(seed)`, `rand_unsigned_integer()`, `rand_floating()` |
 | `brain/tools/dataset.hpp` | `brain::tools::shuffle`, `rand_sets`, `text_to_input`, `input_to_text` |
+
+The random generator of the library (`brain::tools::generator`, used by every randomness call) has a scope chosen at compile time, with a define set **before** the include (`-DBRAIN_SEED_LOCAL` in the CMake, or `#define` on the line before):
+
+| Define | Generator |
+| ------ | --------- |
+| `BRAIN_SEED_GLOBAL` (default when nothing is defined) | One single generator shared by the whole program (`extern`, defined once in the library) |
+| `BRAIN_SEED_LOCAL` | One generator per translation unit including `brain/tools/random.hpp` (`static`): each file has its own independent sequence |
+
+> [!WARNING]
+> Defining both at once is a compile error (`#error`). The helpers `rand(seed)`, `rand_unsigned_integer()` and `rand_floating()` stay the same and use whichever generator is active.
 
 > [!IMPORTANT]
 > The `train` overloads only accept a `brain::UIType` (number of rounds) or a `brain::FType` (loss to reach): any other type (`int`, `double`...) is refused at compile time, no implicit conversion.

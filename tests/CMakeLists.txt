@@ -39,6 +39,7 @@ set(SRC
 
     # Brain (sub-part: tools)
     tools/Random.cpp
+    tools/RandomScope.cpp
     tools/Dataset.cpp
 )
 add_executable(${TARGET} ${SRC})
