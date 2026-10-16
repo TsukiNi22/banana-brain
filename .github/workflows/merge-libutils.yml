@@ -1,0 +1,20 @@
+name: Merge - libutils (CD)
+
+# Reserved for the future automatic merge of banana-brain into libutils (TsukiNi22/libutils):
+# nothing is done for now, the job only runs by hand and succeeds.
+
+on:
+  workflow_dispatch: # Manual only until the merge is written
+
+jobs:
+  merge-libutils:
+    runs-on: ${{ vars.RUNNER }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Nothing to do yet
+        run: |
+          set -euo pipefail
+          echo "Reserved for the automatic merge into libutils: nothing to do yet."
