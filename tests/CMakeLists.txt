@@ -41,6 +41,7 @@ set(SRC
     tools/Random.cpp
     tools/RandomScope.cpp
     tools/Dataset.cpp
+    tools/Neuron.cpp
 )
 add_executable(${TARGET} ${SRC})
 

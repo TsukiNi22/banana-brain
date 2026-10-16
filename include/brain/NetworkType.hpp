@@ -26,7 +26,7 @@ File Description:
     /* type */
     #define _Attribute
     #define _CustomType
-    #include <utils/utils.hpp>   // _alignas, utils::type::OVector2, std::hardware_destructive_interference_size
+    #include <utils/utils.hpp>   // _alignas, _hot, _nodiscard, utils::type::OVector2, std::hardware_destructive_interference_size
     #include <type_traits>       // std::is_floating_point_v, std::is_integral_v, std::is_signed_v, std::is_unsigned_v
     #include <functional>        // std::function
     #include <cstdint>           // std::int64_t
@@ -69,8 +69,18 @@ struct _alignas(std::hardware_destructive_interference_size) LayerNeuron {
 // Neuron of a brain network (2d space), same alignment as brain::LayerNeuron
 struct _alignas(std::hardware_destructive_interference_size) BrainNeuron {
     std::vector<std::pair<brain::FType, brain::UIType>> incoming; // <weight, id of the incoming neuron linked to this weight>
-    utils::type::OVector2<brain::FType> pos; // position in the 2d space of the network
+    std::vector<std::pair<brain::UIType, brain::FType>> ordered;  // every other neuron as <id, squared distance>, closest first once set up (brain::tools::sort)
+    utils::type::OVector2<brain::FType> pos;                      // position in the 2d space of the network
+    brain::UIType id = 0;                                         // identifier of the neuron (unique in its network)
     brain::FType bias = 0.0;
+
+    _hot _nodiscard brain::FType distance2(const BrainNeuron& other) const // squared distance between the positions (no sqrt: only the order matters, every distance stays squared and comparable)
+    {
+        /* Nothing */
+        return {};
+    };
+    _hot _nodiscard inline brain::FType operator|(const BrainNeuron& other) const {return this->distance2(other);}; // squared distance (same as distance2)
+    _hot _nodiscard inline bool operator==(const BrainNeuron& other) const        {return this->id == other.id;};   // same neuron: ids only
 };
 
 } // namespace end

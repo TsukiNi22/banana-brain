@@ -174,10 +174,11 @@ A missing package stops the configuration with the name of the package to instal
 | `brain/brain.hpp` | Global include of the library (+ `brain::version`), without the network classes: they are internal, created by `NeuralNetwork::init<...>` |
 | `brain/NeuralNetwork.hpp` | `brain::NeuralNetwork` (`utils::type::Freezable`): `init<NetworkType>(...)`, `weightInit`, `biasInit`, setters / getters (`seed`, `size`, `rand`, `learningRate`, `activationFunction`, `lossFunction`...), `train(round | loss, inputs, expected, backpropagation)`, manual training (`load`, `inputs`, `apply`, `backpropagation`, `loss`), `exec`, `load(path)` / `save(path)`, `clear` |
 | `brain/NetworkDefine.hpp` | `brain::NetworkType` (`Layered`, `Brain`, `Banana`), `brain::ActivationFunction`, `brain::LossFunction` |
-| `brain/NetworkType.hpp` | `brain::IType` / `UIType` / `FType`, `brain::Values` / `Dataset`, the hooks `ActivationFn` / `LossFn` / `RandFn` / `BackpropagationFn` / `BackpropagationsFn`, `brain::LayerNeuron` / `BrainNeuron` (cache line aligned) |
+| `brain/NetworkType.hpp` | `brain::IType` / `UIType` / `FType`, `brain::Values` / `Dataset`, the hooks `ActivationFn` / `LossFn` / `RandFn` / `BackpropagationFn` / `BackpropagationsFn`, `brain::LayerNeuron` / `BrainNeuron` (cache line aligned; `BrainNeuron`: `id`, `ordered` <id, squared distance> list, `operator==` on the ids, `distance2()` / `operator|` squared distance) |
 | `brain/network/Network.hpp` | `brain::INetwork` -> `brain::ANetwork` -> `brain::LayerNetwork(layer, neuron_per_layer)` / `brain::BrainNetwork(neuron, size)` (not in `brain.hpp`: include it only when the network classes are needed) |
 | `brain/tools/random.hpp` | `brain::tools::generator` (`std::mt19937_64`, scope chosen by `BRAIN_SEED_GLOBAL` / `BRAIN_SEED_LOCAL`), `rand(seed)`, `rand_unsigned_integer()`, `rand_floating()` |
 | `brain/tools/dataset.hpp` | `brain::tools::shuffle`, `rand_sets`, `text_to_input`, `input_to_text` |
+| `brain/tools/neuron.hpp` | `brain::tools::sort(neuron, neurons)`: fills `neuron.ordered` with every other neuron sorted from the closest (squared distances, stored in both neurons) |
 
 The random generator of the library (`brain::tools::generator`, used by every randomness call) has a scope chosen at compile time, with a define set **before** the include (`-DBRAIN_SEED_LOCAL` in the CMake, or `#define` on the line before):
 

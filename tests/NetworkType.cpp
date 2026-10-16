@@ -21,6 +21,7 @@ File Description:
 #include "brain/NetworkType.hpp"
 #include <gtest/gtest.h>
 #include <type_traits>
+#include <utility>
 #include <new>
 
 /* ------------------------------- Types ------------------------------- */
@@ -56,7 +57,31 @@ TEST(LayerNeuron, CacheLineAligned) {
 TEST(BrainNeuron, DefaultState) {
     brain::BrainNeuron neuron;
     EXPECT_TRUE(neuron.incoming.empty());
+    EXPECT_TRUE(neuron.ordered.empty());
+    EXPECT_EQ(neuron.id, 0u);
     EXPECT_EQ(neuron.bias, 0.0);
+}
+
+TEST(BrainNeuron, EqualityOnIdsOnly) {
+    brain::BrainNeuron a;
+    brain::BrainNeuron b;
+    a.id = 1; a.pos = {0.0, 0.0};
+    b.id = 1; b.pos = {1.0, 1.0}; b.bias = 0.5;
+    EXPECT_TRUE(a == b); // same id, different position / bias
+    b.id = 2;
+    EXPECT_FALSE(a == b);
+}
+
+// The squared distance is exposed by distance2() and by operator| (same result, an FType)
+static_assert(std::is_same_v<decltype(std::declval<const brain::BrainNeuron&>() | std::declval<const brain::BrainNeuron&>()), brain::FType>);
+static_assert(std::is_same_v<decltype(std::declval<const brain::BrainNeuron&>().distance2(std::declval<const brain::BrainNeuron&>())), brain::FType>);
+
+TEST(BrainNeuron, SquaredDistanceOperator) {
+    brain::BrainNeuron a;
+    brain::BrainNeuron b;
+    a.pos = {0.0, 0.0};
+    b.pos = {3.0, 4.0};
+    EXPECT_EQ(a | b, a.distance2(b)); // the operator forwards to distance2 (squared: 25 once implemented, never 5)
 }
 
 TEST(BrainNeuron, CacheLineAligned) {

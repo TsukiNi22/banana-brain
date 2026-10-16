@@ -60,6 +60,7 @@ set(SRC
     ## Brain (sub-part: tools)
     src/brain/tools/dataset.cpp
     src/brain/tools/random.cpp
+    src/brain/tools/neuron.cpp
 )
 add_library(${TARGET} STATIC ${SRC})
 #add_library(${TARGET} SHARED ${SRC})
