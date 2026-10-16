@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en" data-page="technical" data-storage-key="banana-brain" data-repo="TsukiNi22/banana-brain">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>banana-brain · Technical documentation</title>
+<style>
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --text: #1d1f23;
+  --muted: #5d636e;
+  --border: #dfe1e5;
+  --accent: #2f5bd3;
+  --accent-soft: #e6ecfb;
+  --warn: #a8540a;
+  --warn-soft: #fbefe3;
+  --ok: #1f7a4a;
+  --ok-soft: #e3f4ea;
+  --code-bg: #f1f2f4;
+  --node: #ffffff;
+  --node-alt: #eef1f8;
+  --line: #8a909b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b;
+    --surface: #1d2025;
+    --text: #e6e7ea;
+    --muted: #9aa0ab;
+    --border: #30343b;
+    --accent: #7d9cf0;
+    --accent-soft: #232c45;
+    --warn: #f0a868;
+    --warn-soft: #3a2a1b;
+    --ok: #6fcf97;
+    --ok-soft: #1b3326;
+    --code-bg: #24272d;
+    --node: #23262c;
+    --node-alt: #283043;
+    --line: #747a85;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b;
+  --surface: #1d2025;
+  --text: #e6e7ea;
+  --muted: #9aa0ab;
+  --border: #30343b;
+  --accent: #7d9cf0;
+  --accent-soft: #232c45;
+  --warn: #f0a868;
+  --warn-soft: #3a2a1b;
+  --ok: #6fcf97;
+  --ok-soft: #1b3326;
+  --code-bg: #24272d;
+  --node: #23262c;
+  --node-alt: #283043;
+  --line: #747a85;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+main { min-width: 0; }
+header h1 { font-size: 34px; line-height: 1.2; margin: 0 0 8px; }
+header p { color: var(--muted); margin: 0 0 32px; max-width: 70ch; }
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  scroll-margin-top: 72px;
+}
+h2 { font-size: 22px; margin: 0 0 16px; }
+h3 { font-size: 17px; margin: 28px 0 10px; }
+p, li { max-width: 75ch; }
+a { color: var(--accent); }
+code {
+  font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font: 13.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+pre code { background: none; padding: 0; }
+.table-wrap { overflow-x: auto; margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+.callout {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+  margin: 16px 0;
+}
+.callout.warn { background: var(--warn-soft); border-left-color: var(--warn); }
+.callout.ok { background: var(--ok-soft); border-left-color: var(--ok); }
+.callout > :first-child { margin-top: 0; }
+.callout > :last-child { margin-bottom: 0; }
+figure { margin: 20px 0; }
+figure svg { width: 100%; height: auto; display: block; }
+figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+svg .box { fill: var(--node); stroke: var(--line); stroke-width: 1.2; }
+svg .box-alt { fill: var(--node-alt); stroke: var(--accent); stroke-width: 1.2; }
+svg .group { fill: none; stroke: var(--border); stroke-width: 1.5; stroke-dasharray: 5 4; }
+svg .lbl { fill: var(--text); font: 13px system-ui, sans-serif; }
+svg .small { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+svg .title { fill: var(--muted); font: 600 12px system-ui, sans-serif; letter-spacing: .05em; }
+svg .edge { stroke: var(--line); stroke-width: 1.4; fill: none; }
+svg .edge-accent { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+svg .dash { stroke-dasharray: 4 4; }
+svg .arrow { fill: var(--line); }
+svg .arrow-accent { fill: var(--accent); }
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 18px;
+  height: 56px; padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.tabs { display: flex; gap: 4px; margin-left: 8px; overflow-x: auto; }
+.tabs[hidden] { display: none; }
+.tabs a {
+  padding: 6px 12px; border-radius: 6px;
+  color: var(--muted); text-decoration: none; font-size: 14px; white-space: nowrap;
+}
+.tabs a:hover { color: var(--text); background: var(--code-bg); }
+.tabs a.current { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.topbar .spacer { flex: 1; }
+.icon-btn {
+  display: grid; place-items: center;
+  width: 36px; height: 36px; padding: 0;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 50%;
+  cursor: pointer; text-decoration: none;
+  transition: border-color .15s, color .15s;
+}
+.icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon-btn svg { width: 18px; height: 18px; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; padding: 24px 16px 60px; gap: 16px; }
+  .topbar { gap: 10px; padding: 0 12px; }
+  .brand .ver { display: none; }
+  .menu-btn { display: grid; }
+  .sidebar { position: fixed; top: 56px; left: 0; bottom: 0; z-index: 25; width: min(300px, 85vw); max-height: none; padding: 16px 10px; background: var(--bg); border-right: 1px solid var(--border); transform: translateX(-105%); transition: transform .2s; }
+  .sidebar.open { transform: none; box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
+  section { padding: 20px 16px; }
+  header h1 { font-size: 27px; }
+}
+/* Language switch (EN / FR pill) */
+.lang-switch {
+  display: inline-flex; align-items: center; gap: 2px; padding: 3px;
+  border: 1.5px solid var(--border); border-radius: 999px; background: var(--surface);
+}
+.lang-switch button {
+  border: 0; background: none; color: var(--text); cursor: pointer;
+  font: 600 12.5px system-ui, sans-serif; letter-spacing: .03em;
+  padding: 4px 11px; border-radius: 999px; transition: background .2s, color .2s;
+}
+.lang-switch button.on { background: var(--accent); color: var(--surface); }
+.lang-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Theme switch: blue track + sun (light), black track + moon and stars (dark) */
+.theme-switch {
+  position: relative; width: 58px; height: 30px; flex: none; padding: 0; border: 0; border-radius: 999px;
+  background: #2196f3; cursor: pointer; transition: background .3s;
+}
+.theme-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-switch .knob {
+  position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; transition: transform .3s, background .3s;
+}
+.theme-switch .knob svg { width: 22px; height: 22px; }
+.theme-switch .sun { display: block; }
+.theme-switch .moon, .theme-switch .stars { display: none; }
+.theme-switch .stars { position: absolute; inset: 0; }
+.theme-switch .stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; }
+.theme-switch .stars i:nth-child(1) { left: 9px; top: 9px; }
+.theme-switch .stars i:nth-child(2) { left: 16px; top: 18px; width: 1.5px; height: 1.5px; }
+.theme-switch .stars i:nth-child(3) { left: 21px; top: 8px; width: 1.5px; height: 1.5px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-switch { background: #0b0b0d; box-shadow: inset 0 0 0 1px #2a2c31; }
+  :root:not([data-theme="light"]) .theme-switch .knob { transform: translateX(28px); background: #ffffff; }
+  :root:not([data-theme="light"]) .theme-switch .sun { display: none; }
+  :root:not([data-theme="light"]) .theme-switch .moon, :root:not([data-theme="light"]) .theme-switch .stars { display: block; }
+}
+:root[data-theme="dark"] .theme-switch { background: #0b0b0d; box-shadow: inset 0 0 0 1px #2a2c31; }
+:root[data-theme="dark"] .theme-switch .knob { transform: translateX(28px); background: #ffffff; }
+:root[data-theme="dark"] .theme-switch .sun { display: none; }
+:root[data-theme="dark"] .theme-switch .moon, :root[data-theme="dark"] .theme-switch .stars { display: block; }
+/* Bilingual content: only the active language is shown */
+:root[lang="en"] [data-lang="fr"], :root[lang="fr"] [data-lang="en"] { display: none !important; }
+/* ---------- Header: logo + version badge, mobile menu ---------- */
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; white-space: nowrap; }
+.brand .logo { width: 26px; height: 26px; flex: none; color: var(--accent); object-fit: contain; }
+.brand .ver { font-size: 12px; color: var(--muted); font-weight: 500; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; }
+.brand .ver:empty { display: none; } /* no version: the name alone */
+.menu-btn { display: none; }
+/* ---------- Sidebar tree (pages > sections of the current page) ---------- */
+.sidebar { position: sticky; top: 80px; align-self: start; max-height: calc(100vh - 100px); overflow-y: auto; font-size: 14px; }
+@media (max-width: 860px) { .sidebar { position: fixed; top: 56px; max-height: none; } } /* off-canvas menu: out of the flow */
+.sidebar p { margin: 0 0 8px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; }
+.sidebar a { display: block; padding: 5px 10px; color: var(--muted); text-decoration: none; border-left: 2px solid var(--border); }
+.sidebar a:hover, .sidebar a.active { color: var(--accent); border-left-color: var(--accent); }
+/* ---------- Page header: eyebrow + title + lead ---------- */
+.page-eyebrow { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); margin-bottom: 6px; }
+header .lead { font-size: 17px; color: var(--muted); margin: 0 0 32px; max-width: 70ch; }
+/* ---------- Heading anchors ---------- */
+h2 .anchor, h3 .anchor { margin-left: 8px; color: var(--muted); font-weight: 400; text-decoration: none; opacity: 0; transition: opacity .15s; }
+h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity: 1; }
+/* ---------- Code blocks: title bar + copy button ---------- */
+pre { position: relative; }
+pre[data-title]::before {
+  content: attr(data-title); display: block; margin: -14px -16px 12px; padding: 6px 16px;
+  font: 12px system-ui, sans-serif; color: var(--muted); border-bottom: 1px solid var(--border);
+  background: var(--surface); border-radius: 7px 7px 0 0;
+}
+pre .copy {
+  position: absolute; top: 8px; right: 8px; font: 12px system-ui, sans-serif; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  border-radius: 6px; padding: 3px 8px; opacity: 0; transition: opacity .15s;
+}
+pre[data-title] .copy { top: 5px; }
+pre:hover .copy, pre .copy:focus { opacity: 1; }
+pre .copy:hover { color: var(--text); }
+/* ---------- Content tabs ---------- */
+.ctabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin: 12px 0; }
+.ctabs button { background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 8px 12px; cursor: pointer; color: var(--muted); font: 500 14px system-ui, sans-serif; }
+.ctabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.ctab-panel { display: none; }
+.ctab-panel.active { display: block; }
+/* ---------- Previous / next page ---------- */
+.pager { display: flex; justify-content: space-between; gap: 16px; margin-top: 32px; }
+.pager a { flex: 1; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); text-decoration: none; }
+.pager a:hover { border-color: var(--accent); }
+.pager a span { display: block; font-size: 12px; color: var(--muted); }
+.pager a.next { text-align: right; }
+.pager:empty { display: none; }
+/* ---------- Footer ---------- */
+footer.site { max-width: 1180px; margin: 0 auto; padding: 22px 24px 30px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+footer.site a { color: var(--accent); }
+@media (max-width: 860px) {
+  .menu-btn { display: grid; }
+  footer.site { padding: 20px 16px; }
+  .topbar .tabs { display: none; } /* the sidebar (menu) gives the navigation on mobile */
+}
+.topbar .icon-btn, .topbar .lang-switch, .topbar .theme-switch { flex: none; }
+.topbar .tabs { min-width: 0; }
+@media (max-width: 860px) {
+  .topbar .spacer { display: none; }
+  .topbar .tabs { flex: 1 1 auto; }
+  .topbar .icon-btn { width: 32px; height: 32px; }
+}
+@media (max-width: 480px) {
+  .topbar { gap: 8px; padding: 0 10px; }
+  .topbar a.icon-btn[href] { display: none; } /* GitHub link: also in the footer / graph panel */
+  .lang-switch button { padding: 4px 9px; }
+}
+@media (min-width: 1340px) {
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 880px) minmax(0, 1fr); max-width: none; }
+  .layout > .sidebar { grid-column: 1; justify-self: end; width: 230px; }
+  .layout > main { grid-column: 2; }
+  footer.site { max-width: 880px; }
+}
+/* ---------- No scroll beyond the page ---------- */
+html, body { overscroll-behavior: none; }
+/* ---------- Top right actions: same height, grouped, divider ---------- */
+.top-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.top-actions .divider { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+.top-actions .icon-btn { width: 34px; height: 34px; }
+.top-actions .lang-switch { height: 34px; padding: 3px; background: var(--code-bg); border: 1px solid var(--border); }
+.top-actions .lang-switch button { height: 26px; padding: 0 10px; font-size: 12px; }
+.top-actions .theme-switch { width: 56px; height: 30px; border: 1px solid transparent; }
+.top-actions .theme-switch .knob { top: 2px; left: 2px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .top-actions .theme-switch { border-color: var(--border); box-shadow: none; }
+  :root:not([data-theme="light"]) .top-actions .theme-switch .knob { transform: translateX(26px); }
+}
+:root[data-theme="dark"] .top-actions .theme-switch { border-color: var(--border); box-shadow: none; }
+:root[data-theme="dark"] .top-actions .theme-switch .knob { transform: translateX(26px); }
+@media (max-width: 480px) { .top-actions .divider { display: none; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="icon-btn menu-btn" type="button" id="menuBtn" aria-label="Open the navigation" data-i18n-aria-label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <a class="brand" href="index.html"><svg class="logo" viewBox="0 0 32 32" fill="none" aria-hidden="true"><!-- default logo: replace with the project logo (inline SVG, currentColor) --><rect x="4" y="4" width="18" height="22" rx="3" fill="currentColor" opacity=".35"/><rect x="9" y="7" width="18" height="22" rx="3" fill="currentColor"/><path d="M13 14h10M13 18h10M13 22h6" stroke="var(--surface)" stroke-width="2" stroke-linecap="round"/></svg><span class="repo-name">banana-brain</span><span class="ver repo-version">v1.0.0</span></a>
+  <nav class="tabs" aria-label="Pages">
+    <a href="index.html" class="current" aria-current="page" data-i18n>Technical</a>
+    <a href="graph.html" data-i18n>Graph</a>
+  </nav>
+  <span class="spacer"></span>
+  <div class="top-actions">
+  <a class="icon-btn repo-link" href="https://github.com/TsukiNi22/banana-brain" title="GitHub repository" data-i18n-title aria-label="GitHub repository" data-i18n-aria-label>
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.71 1.23 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+  </a>
+  <span class="divider" aria-hidden="true"></span>
+  <div class="lang-switch" role="group" aria-label="Language">
+    <button type="button" data-set-lang="en" class="on">EN</button>
+    <button type="button" data-set-lang="fr">FR</button>
+  </div>
+  <button class="theme-switch" type="button" id="themeToggle" role="switch" aria-checked="false" aria-label="Toggle theme" data-i18n-aria-label title="Toggle theme" data-i18n-title>
+    <span class="stars" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="knob" aria-hidden="true">
+      <svg class="sun" viewBox="0 0 24 24" fill="#ffffff"><circle cx="12" cy="12" r="5.2"/><g stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"><path d="M12 1.8v2.6M12 19.6v2.6M1.8 12h2.6M19.6 12h2.6M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M4.8 19.2l1.8-1.8M17.4 6.6l1.8-1.8"/></g></svg>
+      <svg class="moon" viewBox="0 0 24 24"><path d="M15.6 4.2a8 8 0 1 0 4.2 11.6A7 7 0 0 1 15.6 4.2z" fill="#f6c343"/></svg>
+    </span>
+  </button>
+  </div>
+</header>
+<div class="layout">
+<aside class="sidebar" id="sidebar" aria-label="Contents" data-i18n-aria-label>
+  <p data-i18n>Contents</p>
+  <a href="#overview"><span data-lang="en">1. Overview</span><span data-lang="fr">1. Vue d'ensemble</span></a>
+  <a href="#install"><span data-lang="en">2. Install & integrate</span><span data-lang="fr">2. Installer & intégrer</span></a>
+  <a href="#types"><span data-lang="en">3. Types & enums</span><span data-lang="fr">3. Types & énumérations</span></a>
+  <a href="#networks"><span data-lang="en">4. Networks</span><span data-lang="fr">4. Réseaux</span></a>
+  <a href="#neuralnetwork"><span data-lang="en">5. NeuralNetwork</span><span data-lang="fr">5. NeuralNetwork</span></a>
+  <a href="#tools"><span data-lang="en">6. Tools</span><span data-lang="fr">6. Outils</span></a>
+  <a href="#errors"><span data-lang="en">7. Errors</span><span data-lang="fr">7. Erreurs</span></a>
+  <a href="#build"><span data-lang="en">8. Build, tests & CI</span><span data-lang="fr">8. Build, tests & CI</span></a>
+  <a href="#license"><span data-lang="en">9. License</span><span data-lang="fr">9. Licence</span></a>
+</aside>
+
+<main>
+<header>
+  <div class="page-eyebrow" data-i18n>Technical documentation</div>
+  <h1><span data-lang="en">banana-brain technical documentation</span><span data-lang="fr">Documentation technique de banana-brain</span></h1>
+  <p class="lead"><span data-lang="en">C++20 neural network library on top of libutils: one <code>NeuralNetwork</code> for several kinds of networks (layered, brain, banana), their training and the dataset tools. Version v1.0.0 is the architecture only: every signature exists, the logic comes next.</span><span data-lang="fr">Bibliothèque C++20 de réseaux de neurones basée sur libutils : un <code>NeuralNetwork</code> pour plusieurs types de réseaux (par couches, cerveau, banane), leur entraînement et les outils de jeux de données. La version v1.0.0 est l'architecture seule : chaque signature existe, la logique vient ensuite.</span></p>
+</header>
+
+<!-- 1 -->
+<section id="overview">
+  <h2><span data-lang="en">1. Overview</span><span data-lang="fr">1. Vue d'ensemble</span></h2>
+  <p><span data-lang="en"><code>banana-brain</code> is a static C++20 library (<code>libbanana-brain.a</code>) built on <a href='https://github.com/TsukiNi22/libutils'>libutils</a>. Everything is in the namespace <code>brain::</code> (tools in <code>brain::tools::</code>). A <code>brain::NeuralNetwork</code> owns one network (<code>brain::INetwork</code>) created by <code>init&lt;NetworkType&gt;()</code>, configures it (seed, size, activation / loss functions, learning rate), trains it (automatic rounds or a manual loop) and runs it (<code>exec</code>).</span><span data-lang="fr"><code>banana-brain</code> est une bibliothèque statique C++20 (<code>libbanana-brain.a</code>) basée sur <a href='https://github.com/TsukiNi22/libutils'>libutils</a>. Tout est dans le namespace <code>brain::</code> (les outils dans <code>brain::tools::</code>). Un <code>brain::NeuralNetwork</code> possède un réseau (<code>brain::INetwork</code>) créé par <code>init&lt;NetworkType&gt;()</code>, le configure (graine, taille, fonctions d'activation / de perte, taux d'apprentissage), l'entraîne (tours automatiques ou boucle manuelle) et l'exécute (<code>exec</code>).</span></p>
+  <div class="callout warn"><p><span data-lang="en"><strong>Status (v1.0.0): architecture only.</strong> Every class, function and exception code exists with its final signature and an empty body (<code>/* Nothing */</code>); the logic is planned for the next versions. The behaviors described below are the intended ones.</span><span data-lang="fr"><strong>État (v1.0.0) : architecture seule.</strong> Chaque classe, fonction et code d'erreur existe avec sa signature finale et un corps vide (<code>/* Nothing */</code>) ; la logique est prévue pour les versions suivantes. Les comportements décrits ci-dessous sont ceux attendus.</span></p></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Element</span><span data-lang="fr">Élément</span></th><th><span data-lang="en">Header</span><span data-lang="fr">En-tête</span></th><th><span data-lang="en">Role</span><span data-lang="fr">Rôle</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>brain::NeuralNetwork</code></td><td><code>brain/NeuralNetwork.hpp</code></td><td><span data-lang="en">Front class: configuration, training, usage, save / load; frozen (<code>utils::type::Freezable</code>) only <code>exec()</code> is allowed</span><span data-lang="fr">Classe principale : configuration, entraînement, usage, sauvegarde / chargement ; gelée (<code>utils::type::Freezable</code>) seul <code>exec()</code> est permis</span></td></tr>
+      <tr><td><code>brain::INetwork</code> → <code>ANetwork</code> → <code>LayerNetwork</code> / <code>BrainNetwork</code></td><td><code>brain/network/Network.hpp</code></td><td><span data-lang="en">The networks: interface, shared abstract part, layered implementation and 2d space implementation</span><span data-lang="fr">Les réseaux : interface, partie abstraite commune, implémentation par couches et implémentation en espace 2d</span></td></tr>
+      <tr><td><code>NetworkType</code>, <code>ActivationFunction</code>, <code>LossFunction</code></td><td><code>brain/NetworkDefine.hpp</code></td><td><span data-lang="en">Kind of network, internal activation and loss functions</span><span data-lang="fr">Type de réseau, fonctions internes d'activation et de perte</span></td></tr>
+      <tr><td><code>IType</code>, <code>UIType</code>, <code>FType</code>, <code>Values</code>, <code>Dataset</code>, <code>*Fn</code>, <code>LayerNeuron</code>, <code>BrainNeuron</code></td><td><code>brain/NetworkType.hpp</code></td><td><span data-lang="en">Value types, data aliases, hooks and the neuron structs</span><span data-lang="fr">Types de valeurs, alias de données, hooks et structs de neurones</span></td></tr>
+      <tr><td><code>brain::tools::</code></td><td><code>brain/tools/random.hpp</code>, <code>brain/tools/dataset.hpp</code></td><td><span data-lang="en">Global random generator, shuffle, random training / testing sets, text conversion</span><span data-lang="fr">Générateur aléatoire global, mélange, jeux d'entraînement / de test aléatoires, conversion de texte</span></td></tr>
+      <tr><td><code>brain/brain.hpp</code></td><td></td><td><span data-lang="en">Global include (+ <code>brain::version</code>)</span><span data-lang="fr">Include global (+ <code>brain::version</code>)</span></td></tr>
+    </tbody>
+  </table></div>
+  <figure>
+    <svg viewBox="0 0 760 250" role="img" aria-label="NeuralNetwork owns one INetwork implemented by LayerNetwork or BrainNetwork, the tools are used by both">
+      <defs><marker id="arr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker><marker id="arr1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-accent" d="M0 0L10 5L0 10z"/></marker></defs>
+      <rect id="f1-nn" class="box-alt" x="30" y="95" width="190" height="60" rx="8"/>
+      <text class="lbl" x="125" y="121" text-anchor="middle">NeuralNetwork</text>
+      <text class="small" x="125" y="139" text-anchor="middle">Freezable</text>
+
+      <rect id="f1-in" class="box" x="300" y="95" width="160" height="60" rx="8"/>
+      <text class="lbl" x="380" y="121" text-anchor="middle">INetwork</text>
+      <text class="small" x="380" y="139" text-anchor="middle">unique_ptr</text>
+
+      <rect id="f1-layer" class="box" x="560" y="30" width="170" height="50" rx="8"/>
+      <text class="lbl" x="645" y="60" text-anchor="middle">LayerNetwork</text>
+
+      <rect id="f1-brain" class="box" x="560" y="170" width="170" height="50" rx="8"/>
+      <text class="lbl" x="645" y="200" text-anchor="middle">BrainNetwork</text>
+
+      <rect id="f1-tools" class="box" x="30" y="190" width="190" height="40" rx="8"/>
+      <text class="lbl" x="125" y="215" text-anchor="middle">brain::tools</text>
+
+      <path class="edge" data-from="f1-nn:right" data-to="f1-in:left" marker-end="url(#arr1)"/>
+      <path class="edge dash" data-from="f1-layer:left" data-to="f1-in:right" marker-end="url(#arr1)"/>
+      <path class="edge dash" data-from="f1-brain:left" data-to="f1-in:right" marker-end="url(#arr1)"/>
+      <path class="edge-accent" data-from="f1-tools:top" data-to="f1-nn:bottom" marker-end="url(#arr1a)"/>
+      <text class="small" x="260" y="115" text-anchor="middle">init&lt;T&gt;</text>
+      <text class="small" x="500" y="70" text-anchor="middle">Layered / Banana</text>
+      <text class="small" x="500" y="195" text-anchor="middle">Brain</text>
+    </svg>
+    <figcaption><span data-lang="en">Figure 1: the front class, the network it owns and the two implementations; the tools (randomness, datasets) serve the training.</span><span data-lang="fr">Figure 1 : la classe principale, le réseau qu'elle possède et les deux implémentations ; les outils (aléatoire, jeux de données) servent l'entraînement.</span></figcaption>
+  </figure>
+  <p><span data-lang="en">The full dependency view (files, classes, methods, tests, calls) is on the <a href='graph.html'>graph page</a>.</span><span data-lang="fr">La vue complète des dépendances (fichiers, classes, méthodes, tests, appels) est sur la <a href='graph.html'>page du graphe</a>.</span></p>
+</section>
+
+<!-- 2 -->
+<section id="install">
+  <h2><span data-lang="en">2. Install & integrate</span><span data-lang="fr">2. Installer & intégrer</span></h2>
+  <h3><span data-lang="en">2.1 Packages</span><span data-lang="fr">2.1 Paquets</span></h3>
+  <p><span data-lang="en">The packages follow the libutils layout: a global package pulling the headers and the optimized library, one library package per build mode (<code>-op</code>, <code>-db</code>, <code>-as</code>) and the matching CMake configuration (<code>-dev-op</code>, <code>-dev-db</code>, <code>-dev-as</code>). Each library package requires the libutils package of the same mode. The <code>-pre</code> suffix is the unstable channel. <code>setup.sh</code> registers the package repository (<code>tsukini22.github.io/banana-brain</code>) and installs the global package.</span><span data-lang="fr">Les paquets suivent l'organisation de libutils : un paquet global qui tire les en-têtes et la bibliothèque optimisée, un paquet de bibliothèque par mode de build (<code>-op</code>, <code>-db</code>, <code>-as</code>) et la configuration CMake correspondante (<code>-dev-op</code>, <code>-dev-db</code>, <code>-dev-as</code>). Chaque paquet de bibliothèque requiert le paquet libutils du même mode. Le suffixe <code>-pre</code> est le canal instable. <code>setup.sh</code> enregistre le dépôt de paquets (<code>tsukini22.github.io/banana-brain</code>) et installe le paquet global.</span></p>
+  <div class="ctabs" data-tabs="install">
+    <button type="button" data-tab="script">setup.sh</button>
+    <button type="button" data-tab="rpm">Fedora / RPM</button>
+    <button type="button" data-tab="deb">Debian / Ubuntu</button>
+    <button type="button" data-tab="src"><span data-lang="en">Sources</span><span data-lang="fr">Sources</span></button>
+  </div>
+  <div class="ctab-panel" data-tabs="install" data-tab="script">
+<pre data-title="Install"><code>curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s          # --pre, --no-install, --no-sudo</code></pre>
+  </div>
+  <div class="ctab-panel" data-tabs="install" data-tab="rpm">
+<pre data-title="Install"><code>sudo dnf install libbanana-brain                 # libbanana-brain-dev + libbanana-brain-op
+sudo dnf install libbanana-brain-db libbanana-brain-as   # Debug / Asan modes (+ libutils-db / libutils-as)
+sudo dnf install mingw64-libbanana-brain         # Windows (MinGW sysroot)</code></pre>
+  </div>
+  <div class="ctab-panel" data-tabs="install" data-tab="deb">
+<pre data-title="Install"><code>sudo apt install libbanana-brain
+sudo apt install libbanana-brain-db libbanana-brain-as</code></pre>
+  </div>
+  <div class="ctab-panel" data-tabs="install" data-tab="src">
+<pre data-title="Build & install (/usr/local)"><code>cmake -S . -B build
+sudo cmake --build build --target install_release --parallel $(nproc)   # Debug, Asan & Optimized (install: Optimized only)</code></pre>
+  </div>
+  <h3><span data-lang="en">2.2 CMake</span><span data-lang="fr">2.2 CMake</span></h3>
+<pre data-title="CMakeLists.txt"><code>find_package(banana-brain 1.0.0 CONFIG REQUIRED)                    # finds libutils (utils::utils) too
+target_link_libraries(${TARGET} PRIVATE banana-brain::banana-brain)</code></pre>
+  <p><span data-lang="en">The library follows the <code>CMAKE_BUILD_TYPE</code> of the project: <code>Debug</code> → <code>libbanana-brain_debug.a</code>, <code>Asan</code> → <code>libbanana-brain_asan.a</code>, anything else → <code>libbanana-brain.a</code>. The installed configuration stops with the name of the missing package. On Windows the same CMake works with a MinGW toolchain (<code>cmake/toolchain/mingw-w64.cmake</code>, or <code>mingw64-cmake</code> on Fedora) and the <code>mingw64-libbanana-brain*</code> packages of the MinGW sysroot (no Asan with MinGW).</span><span data-lang="fr">La bibliothèque suit le <code>CMAKE_BUILD_TYPE</code> du projet : <code>Debug</code> → <code>libbanana-brain_debug.a</code>, <code>Asan</code> → <code>libbanana-brain_asan.a</code>, autre → <code>libbanana-brain.a</code>. La configuration installée s'arrête avec le nom du paquet manquant. Sous Windows le même CMake fonctionne avec une toolchain MinGW (<code>cmake/toolchain/mingw-w64.cmake</code>, ou <code>mingw64-cmake</code> sur Fedora) et les paquets <code>mingw64-libbanana-brain*</code> du sysroot MinGW (pas d'Asan avec MinGW).</span></p>
+<pre data-title="main.cpp"><code>#define _Exception
+#include &lt;utils/utils.hpp&gt;
+#include &lt;brain/brain.hpp&gt;
+
+brain::NeuralNetwork network;
+network.init&lt;brain::NetworkType::Layered&gt;(3, 8);   // 3 layers of 8 neurons
+network.size(2, 1);                                   // 2 inputs, 1 output
+network.seed(42);
+network.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+network.internalLossFunction(brain::LossFunction::MSE);
+network.weightInit();
+network.train(brain::UIType{100}, inputs, expected, [](const brain::Values&amp; out, const brain::Values&amp; want) { return brain::FType{0.0}; });
+network.freeze();
+brain::Values outputs = network.exec({0.0, 1.0});</code></pre>
+</section>
+
+<!-- 3 -->
+<section id="types">
+  <h2><span data-lang="en">3. Types & enums</span><span data-lang="fr">3. Types & énumérations</span></h2>
+  <p><span data-lang="en">The value types are aliases checked by <code>static_assert</code>: changing <code>FType</code> to <code>double</code> changes every neuron / coefficient value of the library.</span><span data-lang="fr">Les types de valeurs sont des alias vérifiés par <code>static_assert</code> : passer <code>FType</code> en <code>double</code> change toutes les valeurs de neurones / coefficients de la bibliothèque.</span></p>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Name</span><span data-lang="fr">Nom</span></th><th><span data-lang="en">Definition</span><span data-lang="fr">Définition</span></th><th><span data-lang="en">Use</span><span data-lang="fr">Usage</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>brain::IType</code></td><td><code>std::int64_t</code></td><td><span data-lang="en">Signed integer (seeds)</span><span data-lang="fr">Entier signé (graines)</span></td></tr>
+      <tr><td><code>brain::UIType</code></td><td><code>std::size_t</code></td><td><span data-lang="en">Unsigned integer (sizes, counts, ids)</span><span data-lang="fr">Entier non signé (tailles, comptes, ids)</span></td></tr>
+      <tr><td><code>brain::FType</code></td><td><code>float</code></td><td><span data-lang="en">Floating value of every neuron / coefficient</span><span data-lang="fr">Valeur flottante de chaque neurone / coefficient</span></td></tr>
+      <tr><td><code>brain::Values</code></td><td><code>std::vector&lt;FType&gt;</code></td><td><span data-lang="en">Inputs / outputs / coefficients of one sample</span><span data-lang="fr">Entrées / sorties / coefficients d'un échantillon</span></td></tr>
+      <tr><td><code>brain::Dataset</code></td><td><code>std::vector&lt;Values&gt;</code></td><td><span data-lang="en">Several samples</span><span data-lang="fr">Plusieurs échantillons</span></td></tr>
+      <tr><td><code>ActivationFn</code>, <code>LossFn</code>, <code>RandFn</code></td><td><code>std::function&lt;FType(...)&gt;</code></td><td><span data-lang="en">External activation / loss functions, weight generator from the seed</span><span data-lang="fr">Fonctions externes d'activation / de perte, générateur de poids depuis la graine</span></td></tr>
+      <tr><td><code>BackpropagationFn</code> / <code>BackpropagationsFn</code></td><td><code>std::function&lt;FType | Values(const Values&amp; outputs, const Values&amp; expected)&gt;</code></td><td><span data-lang="en">Training hook returning one coefficient for the whole output, or one per output (<code>expected</code> can be empty: ignore it)</span><span data-lang="fr">Hook d'entraînement renvoyant un coefficient pour toute la sortie, ou un par sortie (<code>expected</code> peut être vide : l'ignorer)</span></td></tr>
+    </tbody>
+  </table></div>
+  <h3><span data-lang="en">3.1 Enums</span><span data-lang="fr">3.1 Énumérations</span></h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Enum</span><span data-lang="fr">Énumération</span></th><th><span data-lang="en">Values</span><span data-lang="fr">Valeurs</span></th><th><span data-lang="en">Meaning</span><span data-lang="fr">Sens</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>brain::NetworkType</code></td><td><code>Layered</code>, <code>Brain</code>, <code>Banana</code></td><td><span data-lang="en">Kind of network created by <code>init&lt;type&gt;()</code>: layers, 2d space, pre made banana shape</span><span data-lang="fr">Type de réseau créé par <code>init&lt;type&gt;()</code> : couches, espace 2d, forme banane pré définie</span></td></tr>
+      <tr><td><code>brain::ActivationFunction</code></td><td><code>None</code>, <code>Sigmoid</code>, <code>Softmax</code>, <code>Linear</code>, <code>ReLU</code></td><td><span data-lang="en">Internal activation functions (more optimized than an external <code>ActivationFn</code>); <code>None</code> = raw values</span><span data-lang="fr">Fonctions d'activation internes (plus optimisées qu'une <code>ActivationFn</code> externe) ; <code>None</code> = valeurs brutes</span></td></tr>
+      <tr><td><code>brain::LossFunction</code></td><td><code>None</code>, <code>MSE</code>, <code>CrossEntropy</code></td><td><span data-lang="en">Internal loss functions; <code>None</code> = no loss computed</span><span data-lang="fr">Fonctions de perte internes ; <code>None</code> = pas de perte calculée</span></td></tr>
+    </tbody>
+  </table></div>
+  <h3><span data-lang="en">3.2 Neurons</span><span data-lang="fr">3.2 Neurones</span></h3>
+  <p><span data-lang="en">Both structs are aligned on <code>std::hardware_destructive_interference_size</code> (<code>_alignas</code> of libutils): no false sharing when the neurons are edited concurrently (CPU / GPU) during the backpropagation. The members are ordered from the biggest to the smallest.</span><span data-lang="fr">Les deux structs sont alignées sur <code>std::hardware_destructive_interference_size</code> (<code>_alignas</code> de libutils) : pas de false sharing quand les neurones sont modifiés en parallèle (CPU / GPU) pendant la rétropropagation. Les membres sont ordonnés du plus grand au plus petit.</span></p>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Struct</span><span data-lang="fr">Struct</span></th><th><span data-lang="en">Members</span><span data-lang="fr">Membres</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>brain::LayerNeuron</code></td><td><span data-lang="en"><code>incoming</code> (weight of each input, one per neuron of the previous layer), <code>bias</code> (0.0)</span><span data-lang="fr"><code>incoming</code> (poids de chaque entrée, un par neurone de la couche précédente), <code>bias</code> (0.0)</span></td></tr>
+      <tr><td><code>brain::BrainNeuron</code></td><td><span data-lang="en"><code>incoming</code> (<code>&lt;weight, id of the incoming neuron&gt;</code> pairs), <code>pos</code> (<code>utils::type::OVector2&lt;FType&gt;</code>, position in the 2d space), <code>bias</code> (0.0)</span><span data-lang="fr"><code>incoming</code> (paires <code>&lt;poids, id du neurone entrant&gt;</code>), <code>pos</code> (<code>utils::type::OVector2&lt;FType&gt;</code>, position dans l'espace 2d), <code>bias</code> (0.0)</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 4 -->
+<section id="networks">
+  <h2><span data-lang="en">4. Networks</span><span data-lang="fr">4. Réseaux</span></h2>
+  <p><span data-lang="en"><code>brain::INetwork</code> is the interface used by <code>NeuralNetwork</code>: memory (<code>load</code> / <code>unload</code>, failsafe), execution (<code>inputs</code>, <code>apply</code>, <code>backpropagation(coef)</code> / <code>backpropagation(coefs)</code>), setup (<code>weightInit</code>, <code>biasInit</code>) and <code>neurons()</code> (<code>&lt;layers, neurons&gt;</code>). <code>brain::ANetwork</code> holds the shared state (last inputs, loaded flag) and a default empty <code>init_()</code>; every constructor calls <code>init_()</code> at its end to create the neurons.</span><span data-lang="fr"><code>brain::INetwork</code> est l'interface utilisée par <code>NeuralNetwork</code> : mémoire (<code>load</code> / <code>unload</code>, failsafe), exécution (<code>inputs</code>, <code>apply</code>, <code>backpropagation(coef)</code> / <code>backpropagation(coefs)</code>), mise en place (<code>weightInit</code>, <code>biasInit</code>) et <code>neurons()</code> (<code>&lt;couches, neurones&gt;</code>). <code>brain::ANetwork</code> porte l'état commun (dernières entrées, drapeau chargé) et un <code>init_()</code> vide par défaut ; chaque constructeur appelle <code>init_()</code> à sa fin pour créer les neurones.</span></p>
+  <figure>
+    <svg viewBox="0 0 760 230" role="img" aria-label="LayerNetwork and BrainNetwork inherit ANetwork, which implements INetwork">
+      <defs><marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker></defs>
+      <rect id="f4-i" class="box-alt" x="285" y="20" width="190" height="50" rx="8"/>
+      <text class="lbl" x="380" y="41" text-anchor="middle">INetwork</text>
+      <text class="small" x="380" y="59" text-anchor="middle">interface</text>
+
+      <rect id="f4-a" class="box" x="285" y="100" width="190" height="50" rx="8"/>
+      <text class="lbl" x="380" y="121" text-anchor="middle">ANetwork</text>
+      <text class="small" x="380" y="139" text-anchor="middle">_inputs, _loaded, init_</text>
+
+      <rect id="f4-l" class="box" x="60" y="170" width="240" height="50" rx="8"/>
+      <text class="lbl" x="180" y="191" text-anchor="middle">LayerNetwork</text>
+      <text class="small" x="180" y="209" text-anchor="middle">[layer][neuron] LayerNeuron</text>
+
+      <rect id="f4-b" class="box" x="460" y="170" width="240" height="50" rx="8"/>
+      <text class="lbl" x="580" y="191" text-anchor="middle">BrainNetwork</text>
+      <text class="small" x="580" y="209" text-anchor="middle">BrainNeuron in a 2d space</text>
+
+      <path class="edge" data-from="f4-a:top" data-to="f4-i:bottom" marker-end="url(#arr4)"/>
+      <path class="edge" data-from="f4-l:top" data-to="f4-a:bottom" marker-end="url(#arr4)"/>
+      <path class="edge" data-from="f4-b:top" data-to="f4-a:bottom" marker-end="url(#arr4)"/>
+    </svg>
+    <figcaption><span data-lang="en">Figure 2: the network family (arrows = inherits).</span><span data-lang="fr">Figure 2 : la famille des réseaux (flèches = hérite de).</span></figcaption>
+  </figure>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Class</span><span data-lang="fr">Classe</span></th><th><span data-lang="en">Constructor</span><span data-lang="fr">Constructeur</span></th><th><span data-lang="en">Storage</span><span data-lang="fr">Stockage</span></th><th><span data-lang="en">neurons()</span><span data-lang="fr">neurons()</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>brain::LayerNetwork</code></td><td><code>LayerNetwork(layer, neuron_per_layer)</code></td><td><span data-lang="en"><code>std::vector&lt;std::vector&lt;LayerNeuron&gt;&gt;</code> indexed <code>[layer][neuron]</code></span><span data-lang="fr"><code>std::vector&lt;std::vector&lt;LayerNeuron&gt;&gt;</code> indexé <code>[couche][neurone]</code></span></td><td><code>&lt;layers, total&gt;</code></td></tr>
+      <tr><td><code>brain::BrainNetwork</code></td><td><code>BrainNetwork(neuron, size = {{1.0, 1.0}})</code></td><td><span data-lang="en"><code>std::vector&lt;BrainNeuron&gt;</code> placed in a <code>&lt;width, height&gt;</code> space, linked by ids (3d planned)</span><span data-lang="fr"><code>std::vector&lt;BrainNeuron&gt;</code> placés dans un espace <code>&lt;largeur, hauteur&gt;</code>, liés par ids (3d prévu)</span></td><td><code>&lt;0, total&gt;</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><p><span data-lang="en">The <code>Banana</code> kind of <code>init&lt;&gt;()</code> is a <code>LayerNetwork</code> with pre made layer / neuron numbers shaped like a banana.</span><span data-lang="fr">Le type <code>Banana</code> de <code>init&lt;&gt;()</code> est un <code>LayerNetwork</code> avec des nombres de couches / neurones pré définis en forme de banane.</span></p></div>
+</section>
+
+<!-- 5 -->
+<section id="neuralnetwork">
+  <h2><span data-lang="en">5. NeuralNetwork</span><span data-lang="fr">5. NeuralNetwork</span></h2>
+  <h3><span data-lang="en">5.1 Configuration</span><span data-lang="fr">5.1 Configuration</span></h3>
+  <p><span data-lang="en">Each setter has a getter of the same name without parameter (<code>seed(42)</code> / <code>seed()</code>). An external function resets the internal one and the other way round: the pair <code>&lt;enum, function&gt;</code> returned by <code>activationFunction()</code> / <code>lossFunction()</code> tells which one is active (<code>None</code> + <code>nullptr</code> = raw values / no loss).</span><span data-lang="fr">Chaque setter a un getter du même nom sans paramètre (<code>seed(42)</code> / <code>seed()</code>). Une fonction externe remet l'interne à zéro et inversement : la paire <code>&lt;enum, fonction&gt;</code> renvoyée par <code>activationFunction()</code> / <code>lossFunction()</code> dit laquelle est active (<code>None</code> + <code>nullptr</code> = valeurs brutes / pas de perte).</span></p>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Method</span><span data-lang="fr">Méthode</span></th><th><span data-lang="en">Default</span><span data-lang="fr">Défaut</span></th><th><span data-lang="en">Role</span><span data-lang="fr">Rôle</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>init&lt;Layered&gt;(layer, neuron_per_layer)</code>, <code>init&lt;Brain&gt;(neurons, size)</code>, <code>init&lt;Banana&gt;()</code></td><td>—</td><td><span data-lang="en">Create the network (clears any existing one)</span><span data-lang="fr">Crée le réseau (efface l'existant)</span></td></tr>
+      <tr><td><code>weightInit(fallback = 0.01)</code>, <code>biasInit(fallback = 0.01)</code></td><td><span data-lang="en">weights 1.0, bias 0.0</span><span data-lang="fr">poids 1.0, biais 0.0</span></td><td><span data-lang="en">Random init from <code>rand()</code>; <code>fallback</code> replaces a result falling on 0 (a network never initialized is dead: it can't learn)</span><span data-lang="fr">Init aléatoire depuis <code>rand()</code> ; <code>fallback</code> remplace un résultat tombant à 0 (un réseau jamais initialisé est mort : il ne peut pas apprendre)</span></td></tr>
+      <tr><td><code>seed(seed)</code></td><td><code>0</code></td><td><span data-lang="en">Seed of the random generator, 0 = random at start</span><span data-lang="fr">Graine du générateur aléatoire, 0 = aléatoire au démarrage</span></td></tr>
+      <tr><td><code>rand(min, max)</code> / <code>rand(fn)</code></td><td><code>{{-1.0, 1.0}}</code>, <code>nullptr</code></td><td><span data-lang="en">Range or function (<code>RandFn</code>, wins when set) of the random weights / bias</span><span data-lang="fr">Plage ou fonction (<code>RandFn</code>, prioritaire quand définie) des poids / biais aléatoires</span></td></tr>
+      <tr><td><code>size(input, output)</code>, <code>input(n)</code>, <code>output(n)</code></td><td><code>{{0, 0}}</code></td><td><span data-lang="en">Number of inputs and outputs (named from 0 to n - 1)</span><span data-lang="fr">Nombre d'entrées et de sorties (nommées de 0 à n - 1)</span></td></tr>
+      <tr><td><code>learningRate(rate, decay = 0, coef = {{true, 1.0}})</code></td><td><code>1.0</code></td><td><span data-lang="en"><code>decay</code> 0 = none, otherwise the rate is multiplied by <code>coef</code> every n steps (<code>&lt;smooth, coef&gt;</code>: smooth or by step); <code>_learningRateDecayed</code> is the value edited during the training</span><span data-lang="fr"><code>decay</code> 0 = aucun, sinon le taux est multiplié par <code>coef</code> tous les n pas (<code>&lt;lissé, coef&gt;</code> : lissé ou par palier) ; <code>_learningRateDecayed</code> est la valeur modifiée pendant l'entraînement</span></td></tr>
+      <tr><td><code>activationFunction(fn)</code> / <code>internalActivationFunction(enum)</code></td><td><code>None</code></td><td><span data-lang="en">External / internal activation</span><span data-lang="fr">Activation externe / interne</span></td></tr>
+      <tr><td><code>lossFunction(fn)</code> / <code>internalLossFunction(enum)</code></td><td><code>None</code></td><td><span data-lang="en">External / internal loss</span><span data-lang="fr">Perte externe / interne</span></td></tr>
+      <tr><td><code>neurons()</code></td><td>—</td><td><span data-lang="en"><code>&lt;layers, neurons&gt;</code> of the network (<code>NoNetwork</code> error without one)</span><span data-lang="fr"><code>&lt;couches, neurones&gt;</code> du réseau (erreur <code>NoNetwork</code> sans réseau)</span></td></tr>
+    </tbody>
+  </table></div>
+  <h3><span data-lang="en">5.2 Training</span><span data-lang="fr">5.2 Entraînement</span></h3>
+  <p><span data-lang="en"><code>train(round, inputs, expected_outputs, backpropagation)</code> runs n rounds over the dataset; <code>train(loss, ...)</code> runs until the mean loss is under the given rate (checked after each round). The hook receives the outputs and the expected ones and returns one coefficient (<code>BackpropagationFn</code>) or one per output (<code>BackpropagationsFn</code>), between -1 and 1: 1 = perfect, -1 = totally false, above / under for a massive change. <strong>The first argument must be exactly a <code>brain::UIType</code> (rounds) or a <code>brain::FType</code> (loss)</strong>: a deleted template refuses any other type (<code>train(10, ...)</code> doesn't compile, <code>train(brain::UIType{{10}}, ...)</code> does).</span><span data-lang="fr"><code>train(round, inputs, expected_outputs, backpropagation)</code> fait n tours sur le jeu de données ; <code>train(loss, ...)</code> tourne jusqu'à ce que la perte moyenne passe sous le taux donné (vérifié après chaque tour). Le hook reçoit les sorties et celles attendues et renvoie un coefficient (<code>BackpropagationFn</code>) ou un par sortie (<code>BackpropagationsFn</code>), entre -1 et 1 : 1 = parfait, -1 = totalement faux, au-delà pour un changement massif. <strong>Le premier argument doit être exactement un <code>brain::UIType</code> (tours) ou un <code>brain::FType</code> (perte)</strong> : un template supprimé refuse tout autre type (<code>train(10, ...)</code> ne compile pas, <code>train(brain::UIType{{10}}, ...)</code> oui).</span></p>
+  <p><span data-lang="en">The manual loop exposes each step: <code>load()</code> (memory, GPU planned), <code>inputs(values)</code>, <code>apply()</code>, <code>loss(output, expected)</code> / <code>loss(outputs, expected)</code> (mean), <code>backpropagation(coef)</code> / <code>backpropagation(coefs)</code>, <code>unload()</code>.</span><span data-lang="fr">La boucle manuelle expose chaque étape : <code>load()</code> (mémoire, GPU prévu), <code>inputs(values)</code>, <code>apply()</code>, <code>loss(output, expected)</code> / <code>loss(outputs, expected)</code> (moyenne), <code>backpropagation(coef)</code> / <code>backpropagation(coefs)</code>, <code>unload()</code>.</span></p>
+  <figure>
+    <svg viewBox="0 0 760 240" role="img" aria-label="Training loop: inputs, apply, outputs compared to the expected ones by the hook, backpropagation of the coefficient into the network">
+      <defs><marker id="arr5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker><marker id="arr5a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-accent" d="M0 0L10 5L0 10z"/></marker></defs>
+      <rect class="group" x="20" y="15" width="720" height="210" rx="10"/>
+      <text class="title" x="36" y="38">train(round | loss, inputs, expected, hook)</text>
+      <rect id="f5-in" class="box" x="40" y="60" width="150" height="50" rx="8"/>
+      <text class="lbl" x="115" y="90" text-anchor="middle">inputs(values)</text>
+
+      <rect id="f5-apply" class="box" x="250" y="60" width="150" height="50" rx="8"/>
+      <text class="lbl" x="325" y="90" text-anchor="middle">apply()</text>
+
+      <rect id="f5-hook" class="box-alt" x="470" y="60" width="250" height="50" rx="8"/>
+      <text class="lbl" x="595" y="81" text-anchor="middle">hook(outputs, expected)</text>
+      <text class="small" x="595" y="99" text-anchor="middle">or loss(outputs, expected)</text>
+
+      <rect id="f5-bp" class="box" x="250" y="150" width="220" height="50" rx="8"/>
+      <text class="lbl" x="360" y="180" text-anchor="middle">backpropagation(coef[s])</text>
+
+      <rect id="f5-lr" class="box" x="520" y="150" width="200" height="50" rx="8"/>
+      <text class="lbl" x="620" y="171" text-anchor="middle">learning rate decay</text>
+      <text class="small" x="620" y="189" text-anchor="middle">every n steps</text>
+
+      <path class="edge" data-from="f5-in:right" data-to="f5-apply:left" marker-end="url(#arr5)"/>
+      <path class="edge" data-from="f5-apply:right" data-to="f5-hook:left" marker-end="url(#arr5)"/>
+      <text class="small" x="435" y="78" text-anchor="middle">outputs</text>
+      <path class="edge-accent" data-from="f5-hook:bottom" data-to="f5-bp:right" marker-end="url(#arr5a)"/>
+      <path class="edge dash" data-from="f5-bp:top" data-to="f5-apply:bottom" marker-end="url(#arr5)"/>
+      <text class="small" x="330" y="136" text-anchor="middle">next sample</text>
+      <path class="edge dash" data-from="f5-bp:right" data-to="f5-lr:left" marker-end="url(#arr5)"/>
+    </svg>
+    <figcaption><span data-lang="en">Figure 3: one training step; the loop stops after n rounds or once the mean loss is under the target.</span><span data-lang="fr">Figure 3 : un pas d'entraînement ; la boucle s'arrête après n tours ou dès que la perte moyenne passe sous la cible.</span></figcaption>
+  </figure>
+  <h3><span data-lang="en">5.3 Usage, freeze, files</span><span data-lang="fr">5.3 Usage, gel, fichiers</span></h3>
+  <p><span data-lang="en"><code>exec(inputs)</code> runs the network without touching its content: it is the only call allowed once the network is frozen (<code>freeze()</code> of <code>utils::type::Freezable</code>, <code>FrozenNetwork</code> error for the others). <code>save(path)</code> / <code>load(path)</code> store and restore a network, <code>clear()</code> removes it and resets the training state.</span><span data-lang="fr"><code>exec(inputs)</code> exécute le réseau sans toucher à son contenu : c'est le seul appel permis une fois le réseau gelé (<code>freeze()</code> de <code>utils::type::Freezable</code>, erreur <code>FrozenNetwork</code> pour les autres). <code>save(path)</code> / <code>load(path)</code> stockent et restaurent un réseau, <code>clear()</code> le supprime et remet l'état d'entraînement à zéro.</span></p>
+</section>
+
+<!-- 6 -->
+<section id="tools">
+  <h2><span data-lang="en">6. Tools</span><span data-lang="fr">6. Outils</span></h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Function (<code>brain::tools::</code>)</span><span data-lang="fr">Fonction (<code>brain::tools::</code>)</span></th><th><span data-lang="en">Header</span><span data-lang="fr">En-tête</span></th><th><span data-lang="en">Role</span><span data-lang="fr">Rôle</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>generator</code></td><td><code>tools/random.hpp</code></td><td><span data-lang="en">Global <code>std::mt19937_64</code> used by every randomness call: change it here to change the randomness everywhere</span><span data-lang="fr"><code>std::mt19937_64</code> global utilisé par chaque appel aléatoire : le changer ici change l'aléatoire partout</span></td></tr>
+      <tr><td><code>rand(seed)</code>, <code>rand_unsigned_integer()</code>, <code>rand_floating()</code></td><td><code>tools/random.hpp</code></td><td><span data-lang="en">Seed the generator (0 = random seed), next unsigned integer / floating value (inline)</span><span data-lang="fr">Initialise la graine (0 = graine aléatoire), prochain entier non signé / flottant (inline)</span></td></tr>
+      <tr><td><code>shuffle(dataset, seed = 0)</code></td><td><code>tools/dataset.hpp</code></td><td><span data-lang="en">Shuffle the samples order</span><span data-lang="fr">Mélange l'ordre des échantillons</span></td></tr>
+      <tr><td><code>rand_sets(dataset, percentage, seed = 0)</code></td><td><code>tools/dataset.hpp</code></td><td><span data-lang="en"><code>&lt;training, testing&gt;</code> sets picked randomly, <code>percentage</code> = part of the data kept for the training</span><span data-lang="fr">Jeux <code>&lt;entraînement, test&gt;</code> tirés au hasard, <code>percentage</code> = part des données gardée pour l'entraînement</span></td></tr>
+      <tr><td><code>text_to_input(text)</code>, <code>input_to_text(values)</code></td><td><code>tools/dataset.hpp</code></td><td><span data-lang="en">Text ↔ values conversion (the result can be not what you want, the validity of the text is not ensured)</span><span data-lang="fr">Conversion texte ↔ valeurs (le résultat peut ne pas être ce que vous voulez, la validité du texte n'est pas garantie)</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 7 -->
+<section id="errors">
+  <h2><span data-lang="en">7. Errors</span><span data-lang="fr">7. Erreurs</span></h2>
+  <p><span data-lang="en">The errors are libutils exceptions (<code>utils::exception::ErrorException</code>, <code>WarningException</code>...) with the codes of the library, <code>utils::exception::ExternalCode::&lt;code&gt;</code>, generated at the build from <code>cmake/config/exceptions/brain.json</code> into <code>include/brain/exception/generated_external_exception_header.hpp</code> and installed with the headers. Catch <code>utils::exception::IException</code> and print <code>formated()</code>.</span><span data-lang="fr">Les erreurs sont des exceptions libutils (<code>utils::exception::ErrorException</code>, <code>WarningException</code>...) avec les codes de la bibliothèque, <code>utils::exception::ExternalCode::&lt;code&gt;</code>, générés au build depuis <code>cmake/config/exceptions/brain.json</code> dans <code>include/brain/exception/generated_external_exception_header.hpp</code> et installés avec les en-têtes. Attraper <code>utils::exception::IException</code> et afficher <code>formated()</code>.</span></p>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Code</span><span data-lang="fr">Code</span></th><th><span data-lang="en">Message</span><span data-lang="fr">Message</span></th><th><span data-lang="en">Allowed types</span><span data-lang="fr">Types permis</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>NoNetwork</code></td><td>No network initialized, call init&lt;NetworkType&gt;() first</td><td><code>Fatal, Error</code></td></tr>
+      <tr><td><code>NetworkNotLoaded</code></td><td>The network is not loaded in memory</td><td><code>Fatal, Error, Warning</code></td></tr>
+      <tr><td><code>NetworkAlreadyLoaded</code></td><td>The network is already loaded in memory</td><td><code>Error, Warning</code></td></tr>
+      <tr><td><code>FrozenNetwork</code></td><td>The network is frozen, only exec() is allowed</td><td><code>Fatal, Error</code></td></tr>
+      <tr><td><code>DeadNetwork</code></td><td>Every weight is at 0, the network can't learn</td><td><code>Error, Warning</code></td></tr>
+      <tr><td><code>InvalidInputSize</code></td><td>The number of inputs doesn't match the network input size</td><td><code>Fatal, Error</code></td></tr>
+      <tr><td><code>InvalidOutputSize</code></td><td>The number of outputs doesn't match the network output size</td><td><code>Fatal, Error</code></td></tr>
+      <tr><td><code>InvalidCoefficient</code></td><td>Backpropagation coefficient out of the expected range (-1 &lt;-&gt; 1)</td><td><code>Error, Warning</code></td></tr>
+      <tr><td><code>InvalidLearningRate</code></td><td>Invalid learning rate or decay configuration</td><td><code>Fatal, Error</code></td></tr>
+      <tr><td><code>InvalidPercentage</code></td><td>The percentage must be between 0 and 1</td><td><code>Fatal, Error</code></td></tr>
+      <tr><td><code>InvalidNetworkFile</code></td><td>Invalid or unreadable network file</td><td><code>Fatal, Error, Warning</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><p><span data-lang="en">libutils finds the generated header with <code>__has_include(&lt;generated_external_exception_header.hpp&gt;)</code>: a program defining its own external codes has two headers of that name, only the first one of the include path is used (limitation of libutils).</span><span data-lang="fr">libutils trouve l'en-tête généré par <code>__has_include(&lt;generated_external_exception_header.hpp&gt;)</code> : un programme définissant ses propres codes externes a deux en-têtes de ce nom, seul le premier du chemin d'inclusion est utilisé (limite de libutils).</span></p></div>
+</section>
+
+<!-- 8 -->
+<section id="build">
+  <h2><span data-lang="en">8. Build, tests & CI</span><span data-lang="fr">8. Build, tests & CI</span></h2>
+  <p><span data-lang="en">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (exception header). Modes: <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code>); the <code>release</code> target builds the three libraries, <code>install_release</code> installs them, <code>package_release</code> builds every RPM/DEB package (<code>BANANA_BRAIN_STABLE_RELEASE=ON</code> for the stable channel).</span><span data-lang="fr">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (en-tête d'exceptions). Modes : <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code>) ; la cible <code>release</code> construit les trois bibliothèques, <code>install_release</code> les installe, <code>package_release</code> construit tous les paquets RPM/DEB (<code>BANANA_BRAIN_STABLE_RELEASE=ON</code> pour le canal stable).</span></p>
+<pre data-title="Unit tests (GoogleTest)"><code>cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
+cmake --build build --parallel $(nproc)
+ctest --test-dir build --output-on-failure --timeout 30     # or ./unit_tests</code></pre>
+  <p><span data-lang="en">The tests (<code>tests/</code>, one file per module) cover the default states, the types (alignment of the neurons, value type constraints) and the compile time checks of <code>train</code>; the behavior tests come with the logic.</span><span data-lang="fr">Les tests (<code>tests/</code>, un fichier par module) couvrent les états par défaut, les types (alignement des neurones, contraintes des types de valeurs) et les vérifications à la compilation de <code>train</code> ; les tests de comportement viennent avec la logique.</span></p>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Workflow</span><span data-lang="fr">Workflow</span></th><th><span data-lang="en">Trigger</span><span data-lang="fr">Déclencheur</span></th><th><span data-lang="en">Role</span><span data-lang="fr">Rôle</span></th></tr></thead>
+    <tbody>
+      <tr><td><code>Dispatch (CI/CD)</code></td><td><span data-lang="en">push on <code>main</code> / tag <code>v*</code></span><span data-lang="fr">push sur <code>main</code> / tag <code>v*</code></span></td><td><span data-lang="en">Decides from the ref / message: <code>[build]</code> or tag <code>vX.Y.Z-pre</code> = pre-release packages, tag <code>vX.Y.Z</code> = stable, <code>[ignore]</code> = nothing; notifies <code>docker-image</code> (<code>banana-brain-released</code>)</span><span data-lang="fr">Décide depuis la ref / le message : <code>[build]</code> ou tag <code>vX.Y.Z-pre</code> = paquets pré-release, tag <code>vX.Y.Z</code> = stable, <code>[ignore]</code> = rien ; notifie <code>docker-image</code> (<code>banana-brain-released</code>)</span></td></tr>
+      <tr><td><code>Unit Tests - Libraries (CI)</code></td><td><span data-lang="en">dispatched first</span><span data-lang="fr">lancé en premier</span></td><td><span data-lang="en">Linux (<code>unit-tests</code> image) and Windows (<code>mingw64-unit-tests</code>, <code>wine</code>)</span><span data-lang="fr">Linux (image <code>unit-tests</code>) et Windows (<code>mingw64-unit-tests</code>, <code>wine</code>)</span></td></tr>
+      <tr><td><code>Build - Libraries (CI)</code></td><td><span data-lang="en">no package build</span><span data-lang="fr">pas de build de paquets</span></td><td><span data-lang="en">Compilation check of the three libraries</span><span data-lang="fr">Vérification de la compilation des trois bibliothèques</span></td></tr>
+      <tr><td><code>Build - Packages (CI/CD)</code></td><td><span data-lang="en"><code>[build]</code> / tags</span><span data-lang="fr"><code>[build]</code> / tags</span></td><td><span data-lang="en">Linux and <code>mingw64-*</code> packages, GPG signed, published on the <code>gh-pages</code> repository (5 last <code>-pre</code> kept)</span><span data-lang="fr">Paquets Linux et <code>mingw64-*</code>, signés GPG, publiés sur le dépôt <code>gh-pages</code> (5 derniers <code>-pre</code> gardés)</span></td></tr>
+      <tr><td><code>Style - xstyle (CI)</code></td><td><span data-lang="en">push / pull request</span><span data-lang="fr">push / pull request</span></td><td><span data-lang="en">Coding style check, fails on a major issue</span><span data-lang="fr">Vérification du style, échoue sur un problème majeur</span></td></tr>
+      <tr><td><code>Merge - libutils (CD)</code></td><td><span data-lang="en">manual</span><span data-lang="fr">manuel</span></td><td><span data-lang="en">Reserved for the future automatic merge into libutils, does nothing yet</span><span data-lang="fr">Réservé au futur merge automatique dans libutils, ne fait rien pour l'instant</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 9 -->
+<section id="license">
+  <h2><span data-lang="en">9. License</span><span data-lang="fr">9. Licence</span></h2>
+  <p><span data-lang="en"><code>banana-brain</code> is licensed under <a href='https://github.com/TsukiNi22/banana-brain/blob/main/LICENSE.md'>CC BY-NC-SA 4.0</a>: free for personal and educational use, modification and sharing with credit to Tsukini, adapted works under the same license, no commercial use without the author's agreement. libutils (MIT) keeps its own license.</span><span data-lang="fr"><code>banana-brain</code> est sous licence <a href='https://github.com/TsukiNi22/banana-brain/blob/main/LICENSE.md'>CC BY-NC-SA 4.0</a> : libre pour un usage personnel et éducatif, modification et partage avec crédit à Tsukini, œuvres dérivées sous la même licence, pas d'usage commercial sans l'accord de l'auteur. libutils (MIT) garde sa propre licence.</span></p>
+</section>
+
+<nav class="pager" aria-label="Pages">
+  <a class="next" href="graph.html"><span data-i18n>Next</span><b data-i18n>Graph</b></a>
+</nav>
+</main>
+</div>
+<footer class="site"><span data-lang="en"><span class="repo-name">banana-brain</span> documentation · generated from the <a class="repo-link" href="https://github.com/TsukiNi22/banana-brain">repository</a> (<span class="repo-version">v1.0.0</span>, <span class="repo-license">CC-BY-NC-SA-4.0</span>)</span><span data-lang="fr">Documentation de <span class="repo-name">banana-brain</span> · générée depuis le <a class="repo-link" href="https://github.com/TsukiNi22/banana-brain">dépôt</a> (<span class="repo-version">v1.0.0</span>, <span class="repo-license">CC-BY-NC-SA-4.0</span>)</span></footer>
+<script>
+// French texts of the page (English text -> French text), extend it with the page content
+window.DOC_FR = {
+  "Guide": "Guide",
+  "Technical": "Technique",
+  "Graph": "Graphe",
+  "GitHub repository": "Dépôt GitHub",
+  "Toggle theme": "Changer de thème",
+  "Contents": "Sommaire",
+  "Language": "Langue",
+  "Pages": "Pages",
+  "Copy": "Copier",
+  "Copied": "Copié",
+  "Select & copy": "Sélectionner et copier",
+  "Link to this section": "Lien vers cette section",
+  "Navigation": "Navigation",
+  "Open the navigation": "Ouvrir la navigation",
+  "User guide": "Guide utilisateur",
+  "Developer guide": "Guide développeur",
+  "Technical documentation": "Documentation technique",
+  "Previous": "Précédent",
+  "Next": "Suivant"
+};
+</script>
+<script>
+// Language (English by default, French on demand): [data-i18n] elements and [data-i18n-<attr>] attributes are
+// translated with window.DOC_FR (English text -> French text), [data-lang] blocks are shown for their language only.
+(function () {
+  var root = document.documentElement;
+  var key = (root.getAttribute('data-storage-key') || 'doc') + '-lang';
+  var FR = window.DOC_FR || {};
+  var listeners = [];
+  function tr(s) { return root.lang === 'fr' && Object.prototype.hasOwnProperty.call(FR, s) ? FR[s] : s; }
+  function apply() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      if (el.dataset.i18nEn === undefined) el.dataset.i18nEn = el.innerHTML.trim();
+      el.innerHTML = tr(el.dataset.i18nEn);
+    });
+    ['aria-label', 'title', 'placeholder'].forEach(function (attr) {
+      document.querySelectorAll('[data-i18n-' + attr + ']').forEach(function (el) {
+        var store = 'i18nEn' + attr.replace(/-(\w)/g, function (m, c) { return c.toUpperCase(); });
+        if (el.dataset[store] === undefined) el.dataset[store] = el.getAttribute(attr) || '';
+        el.setAttribute(attr, tr(el.dataset[store]));
+      });
+    });
+    document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.setLang === root.lang);
+      b.setAttribute('aria-pressed', b.dataset.setLang === root.lang ? 'true' : 'false');
+    });
+  }
+  function set(lang) {
+    root.lang = lang === 'fr' ? 'fr' : 'en';
+    try { localStorage.setItem(key, root.lang); } catch (e) { /* storage unavailable */ }
+    apply();
+    listeners.forEach(function (f) { f(root.lang); });
+  }
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch (e) { /* storage unavailable */ }
+  // Choice carried by a link of the site (?lang=): pages opened from file:// don't share their storage
+  var askedLang = new URLSearchParams(location.search).get('lang');
+  if (askedLang === 'en' || askedLang === 'fr') { saved = askedLang; try { localStorage.setItem(key, askedLang); } catch (e) { /* storage unavailable */ } }
+  root.lang = saved === 'fr' ? 'fr' : 'en';
+  window.docI18n = { tr: tr, set: set, onChange: function (f) { listeners.push(f); }, lang: function () { return root.lang; } };
+  document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+    b.addEventListener('click', function () { set(b.dataset.setLang); });
+  });
+  apply();
+})();
+</script>
+<script>
+// Project data from the linked GitHub repository (<html data-repo="owner/repo">): name, latest version, license and
+// URL are fetched (cached 1 h) and replace the written values in .repo-name / .repo-version / .repo-license /
+// .repo-link and in the page title. Offline, private repository or API limit: the written values stay.
+(function () {
+  var root = document.documentElement, repo = root.getAttribute('data-repo') || '';
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return;
+  var key = (root.getAttribute('data-storage-key') || 'doc') + '-repo', TTL = 3600 * 1000;
+  function apply(info) {
+    if (!info) return;
+    var oldName = (document.querySelector('.repo-name') || {}).textContent;
+    if (info.name) document.querySelectorAll('.repo-name').forEach(function (e) { e.textContent = info.name; });
+    if (info.version) document.querySelectorAll('.repo-version').forEach(function (e) { e.textContent = info.version; });
+    if (info.license) document.querySelectorAll('.repo-license').forEach(function (e) { e.textContent = info.license; });
+    if (info.url) document.querySelectorAll('a.repo-link').forEach(function (e) { e.href = info.url; });
+    if (info.name && oldName && document.title.indexOf(oldName) === 0) document.title = info.name + document.title.slice(oldName.length);
+  }
+  var cached = null;
+  try { cached = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { /* storage unavailable */ }
+  if (cached && cached.repo === repo) apply(cached);
+  // A language change rewrites the translated texts from their original: apply the fetched data again
+  if (window.docI18n) window.docI18n.onChange(function () { var c = null; try { c = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { /* storage unavailable */ } apply(window.docRepoInfo || c); });
+  if (cached && cached.repo === repo && Date.now() - cached.time < TTL) return;
+  var api = 'https://api.github.com/repos/' + repo;
+  var get = function (u) { return fetch(u, { headers: { Accept: 'application/vnd.github+json' } }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); };
+  get(api).then(function (r) {
+    var info = { repo: repo, time: Date.now(), name: r.name, url: r.html_url, license: r.license && r.license.spdx_id && r.license.spdx_id !== 'NOASSERTION' ? r.license.spdx_id : '' };
+    return get(api + '/releases/latest').then(function (rel) { info.version = rel.tag_name; return info; })
+      .catch(function () { return get(api + '/tags?per_page=1').then(function (tags) { if (tags[0]) info.version = tags[0].name; return info; }); })
+      .catch(function () { return info; });
+  }).then(function (info) {
+    window.docRepoInfo = info;
+    apply(info);
+    try { localStorage.setItem(key, JSON.stringify(info)); } catch (e) { /* storage unavailable */ }
+  }).catch(function () { /* keep the written values */ });
+})();
+</script>
+<script>
+(function () {
+  var root = document.documentElement;
+  var key = (root.getAttribute('data-storage-key') || 'doc') + '-theme';
+  var btn = document.getElementById('themeToggle');
+  try { var saved = localStorage.getItem(key); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+  var askedTheme = new URLSearchParams(location.search).get('theme'); // carried by a link of the site
+  if (askedTheme === 'dark' || askedTheme === 'light') { root.setAttribute('data-theme', askedTheme); try { localStorage.setItem(key, askedTheme); } catch (e) { /* storage unavailable */ } }
+  function isDark() {
+    return root.getAttribute('data-theme') === 'dark' ||
+      (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  btn.setAttribute('aria-checked', isDark() ? 'true' : 'false');
+  btn.addEventListener('click', function () {
+    var next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    btn.setAttribute('aria-checked', next === 'dark' ? 'true' : 'false');
+    try { localStorage.setItem(key, next); } catch (e) {}
+  });
+
+  // Highlight the section visible in the summary
+  var links = document.querySelectorAll('.sidebar a[href^="#"]');
+  if (!('IntersectionObserver' in window)) return;
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      links.forEach(function (a) { a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id); });
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('main section[id]').forEach(function (s) { observer.observe(s); });
+})();
+
+// Hide the tabs of the pages that don't exist, and the whole bar when a single page remains
+// (online: HEAD request; file://: the page is loaded as a hidden script, a missing file fails to load)
+(function () {
+  var nav = document.querySelector('nav.tabs');
+  if (!nav) return;
+  function done(a, ok) {
+    if (!ok) a.remove();
+    if (nav.querySelectorAll('a').length < 2) nav.hidden = true;
+  }
+  nav.querySelectorAll('a:not(.current)').forEach(function (a) {
+    if (/^https?:$/.test(location.protocol)) {
+      fetch(a.href, { method: 'HEAD' }).then(function (r) { done(a, r.ok); }).catch(function () {});
+      return;
+    }
+    var s = document.createElement('script');
+    var mute = function (e) { if (e.filename === s.src) { e.preventDefault(); e.stopImmediatePropagation(); } }; // an HTML page is not JS
+    window.addEventListener('error', mute, true);
+    s.src = a.href;
+    s.onload = function () { window.removeEventListener('error', mute, true); s.remove(); done(a, true); };
+    s.onerror = function () { window.removeEventListener('error', mute, true); s.remove(); done(a, false); };
+    document.head.appendChild(s);
+  });
+  if (nav.querySelectorAll('a').length < 2) nav.hidden = true;
+})();
+
+// Sidebar (mobile), copy buttons, heading anchors, content tabs
+(function () {
+  var tr = function (s) { return window.docI18n ? window.docI18n.tr(s) : s; };
+  var menu = document.getElementById('menuBtn'), side = document.getElementById('sidebar');
+  if (menu && side) {
+    menu.addEventListener('click', function () { side.classList.toggle('open'); });
+    document.addEventListener('click', function (e) { if (!side.contains(e.target) && !menu.contains(e.target)) side.classList.remove('open'); });
+  }
+  document.querySelectorAll('main pre').forEach(function (pre) {
+    if (pre.dataset.nocopy !== undefined) return;
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = tr('Copy');
+    b.addEventListener('click', function () {
+      var code = pre.querySelector('code') || pre;
+      var done = function () { b.textContent = tr('Copied'); setTimeout(function () { b.textContent = tr('Copy'); }, 1400); };
+      if (navigator.clipboard) navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = tr('Select & copy'); });
+      else b.textContent = tr('Select & copy');
+    });
+    pre.appendChild(b);
+  });
+  document.querySelectorAll('main h2[id], main h3[id], main section[id] > h2').forEach(function (h) {
+    var id = h.id || h.parentElement.id;
+    if (!id || h.querySelector('.anchor')) return;
+    var a = document.createElement('a');
+    a.className = 'anchor'; a.href = '#' + id; a.textContent = '#';
+    a.setAttribute('aria-label', tr('Link to this section'));
+    h.appendChild(a);
+  });
+  document.querySelectorAll('.ctabs').forEach(function (bar) {
+    var group = bar.dataset.tabs;
+    var buttons = bar.querySelectorAll('button');
+    var panels = document.querySelectorAll('.ctab-panel[data-tabs="' + group + '"]');
+    function show(name) {
+      buttons.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+      panels.forEach(function (p) { p.classList.toggle('active', p.dataset.tab === name); });
+    }
+    buttons.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.tab); }); });
+    if (buttons.length) show(buttons[0].dataset.tab);
+  });
+  if (window.docI18n) window.docI18n.onChange(function () {
+    document.querySelectorAll('main pre .copy').forEach(function (b) { b.textContent = tr('Copy'); });
+    document.querySelectorAll('.anchor').forEach(function (a) { a.setAttribute('aria-label', tr('Link to this section')); });
+  });
+})();
+</script>
+<script>
+// Links between the pages of the site carry the language, theme and level (?lang=fr&theme=dark&level=technical):
+// the choice applies to every page, also from file:// where each page has its own storage
+(function () {
+  var root = document.documentElement;
+  function carry(e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a || a.target === '_blank') return;
+    var href = a.getAttribute('href');
+    if (!/^[^:?#\/]+\.html(#.*)?$/.test(href) && !/^\.\/[^:?#\/]+\.html(#.*)?$/.test(href)) return; // pages of the same folder only
+    var u = new URL(a.href);
+    u.searchParams.set('lang', root.lang || 'en');
+    if (root.getAttribute('data-theme')) u.searchParams.set('theme', root.getAttribute('data-theme'));
+    if (root.getAttribute('data-level')) u.searchParams.set('level', root.getAttribute('data-level'));
+    a.href = u.href;
+  }
+  document.addEventListener('click', carry, true);
+  document.addEventListener('auxclick', carry, true);
+})();
+</script>
+</body>
+</html>
