@@ -99,7 +99,7 @@ class NeuralNetwork: public utils::type::Freezable {
         /* init (clear any existing network) */
         template<brain::NetworkType type> requires (type == brain::NetworkType::Layered)
         _cold void init(const brain::UIType layer, const brain::UIType neuron_per_layer)                                        {/* Nothing */}; // normal usage with layers
-        template<brain::NetworkType type> requires (type == brain::NetworkType::Brain)
+        template<brain::NetworkType type> requires (type == brain::NetworkType::Brain) // xstyle: ignore CPP-CLASS-BLOCK (false positive: the default argument {1.0, 1.0} of the next line)
         _cold void init(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}) {/* Nothing */}; // custom network (more like a brain), size = 2d space of the neurons
         template<brain::NetworkType type> requires (type == brain::NetworkType::Banana)
         _cold void init(void)                                                                                          {/* Nothing */}; // pre made layer / neuron numbers shaped like a banana (don't ask why...)
