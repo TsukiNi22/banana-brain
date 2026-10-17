@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-set(TARGET banana-brain)
+set(TARGET brain)
 if(NOT CMAKE_TOOLCHAIN_FILE AND NOT DEFINED CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER clang++) # A toolchain (ex: cmake/toolchain/mingw-w64.cmake) or -DCMAKE_CXX_COMPILER wins
 endif()
@@ -9,46 +9,46 @@ project(${TARGET} VERSION 1.0.0 LANGUAGES CXX)
 # Options
 # =========================
 # Project kind: defaults of the package content options below (each one can still be forced with -D...=ON/OFF)
-#   binary      -> BANANA_BRAIN_PACKAGE_BIN=ON  BANANA_BRAIN_PACKAGE_LIB=OFF BANANA_BRAIN_PACKAGE_DEV=OFF (executable only)
-#   library     -> BANANA_BRAIN_PACKAGE_BIN=OFF BANANA_BRAIN_PACKAGE_LIB=ON  BANANA_BRAIN_PACKAGE_DEV=ON  (.a / .so + headers + CMake config)
-#   header-only -> BANANA_BRAIN_PACKAGE_BIN=OFF BANANA_BRAIN_PACKAGE_LIB=OFF BANANA_BRAIN_PACKAGE_DEV=ON  (headers + CMake config only)
-# A binary can also ship its library and its headers: -DBANANA_BRAIN_PACKAGE_LIB=ON -DBANANA_BRAIN_PACKAGE_DEV=ON
-set(BANANA_BRAIN_KIND "library" CACHE STRING "Project kind: binary, library, header-only")
-set_property(CACHE BANANA_BRAIN_KIND PROPERTY STRINGS binary library header-only)
-if(BANANA_BRAIN_KIND STREQUAL "binary")
+#   binary      -> BRAIN_PACKAGE_BIN=ON  BRAIN_PACKAGE_LIB=OFF BRAIN_PACKAGE_DEV=OFF (executable only)
+#   library     -> BRAIN_PACKAGE_BIN=OFF BRAIN_PACKAGE_LIB=ON  BRAIN_PACKAGE_DEV=ON  (.a / .so + headers + CMake config)
+#   header-only -> BRAIN_PACKAGE_BIN=OFF BRAIN_PACKAGE_LIB=OFF BRAIN_PACKAGE_DEV=ON  (headers + CMake config only)
+# A binary can also ship its library and its headers: -DBRAIN_PACKAGE_LIB=ON -DBRAIN_PACKAGE_DEV=ON
+set(BRAIN_KIND "library" CACHE STRING "Project kind: binary, library, header-only")
+set_property(CACHE BRAIN_KIND PROPERTY STRINGS binary library header-only)
+if(BRAIN_KIND STREQUAL "binary")
     set(KIND_BIN ON)
     set(KIND_LIB OFF)
     set(KIND_DEV OFF)
-elseif(BANANA_BRAIN_KIND STREQUAL "library")
+elseif(BRAIN_KIND STREQUAL "library")
     set(KIND_BIN OFF)
     set(KIND_LIB ON)
     set(KIND_DEV ON)
-elseif(BANANA_BRAIN_KIND STREQUAL "header-only")
+elseif(BRAIN_KIND STREQUAL "header-only")
     set(KIND_BIN OFF)
     set(KIND_LIB OFF)
     set(KIND_DEV ON)
 else()
-    message(FATAL_ERROR "Unknown BANANA_BRAIN_KIND '${BANANA_BRAIN_KIND}' (binary, library, header-only)")
+    message(FATAL_ERROR "Unknown BRAIN_KIND '${BRAIN_KIND}' (binary, library, header-only)")
 endif()
 
 # Package content (what is built, installed and packaged)
-option(BANANA_BRAIN_PACKAGE_BIN "Build and package the executable (<name>-op / -db / -as)" ${KIND_BIN})
-option(BANANA_BRAIN_PACKAGE_LIB "Build and package the library (lib<name>-op / -db / -as)" ${KIND_LIB})
-option(BANANA_BRAIN_PACKAGE_DEV "Package the public headers and the CMake config (lib<name>-dev)" ${KIND_DEV})
-option(BANANA_BRAIN_SHARED_LIB "Shared library (.so / .dll) instead of a static one (.a)" OFF)
+option(BRAIN_PACKAGE_BIN "Build and package the executable (<name>-op / -db / -as)" ${KIND_BIN})
+option(BRAIN_PACKAGE_LIB "Build and package the library (lib<name>-op / -db / -as)" ${KIND_LIB})
+option(BRAIN_PACKAGE_DEV "Package the public headers and the CMake config (lib<name>-dev)" ${KIND_DEV})
+option(BRAIN_SHARED_LIB "Shared library (.so / .dll) instead of a static one (.a)" OFF)
 
 # Package building (set by the package_release target)
-option(BANANA_BRAIN_DEV_PACKAGE "Build development package only" OFF)
-option(BANANA_BRAIN_PACKAGE "Build global package" OFF)
-option(BANANA_BRAIN_STABLE_RELEASE "Channel as stable release" OFF)
+option(BRAIN_DEV_PACKAGE "Build development package only" OFF)
+option(BRAIN_PACKAGE "Build global package" OFF)
+option(BRAIN_STABLE_RELEASE "Channel as stable release" OFF)
 option(BUILD_TESTS "Build unit tests" OFF)
 
-if(NOT BANANA_BRAIN_PACKAGE_BIN AND NOT BANANA_BRAIN_PACKAGE_LIB AND NOT BANANA_BRAIN_PACKAGE_DEV)
-    message(FATAL_ERROR "Nothing to build: enable BANANA_BRAIN_PACKAGE_BIN, BANANA_BRAIN_PACKAGE_LIB or BANANA_BRAIN_PACKAGE_DEV")
+if(NOT BRAIN_PACKAGE_BIN AND NOT BRAIN_PACKAGE_LIB AND NOT BRAIN_PACKAGE_DEV)
+    message(FATAL_ERROR "Nothing to build: enable BRAIN_PACKAGE_BIN, BRAIN_PACKAGE_LIB or BRAIN_PACKAGE_DEV")
 endif()
 
 # Target names: the executable keeps the project name, the library gets '_lib' only when both exist
-if(BANANA_BRAIN_PACKAGE_BIN)
+if(BRAIN_PACKAGE_BIN)
     set(TARGET_LIB ${TARGET}_lib)
 else()
     set(TARGET_LIB ${TARGET})
@@ -114,19 +114,19 @@ set(SRC_SHARED
 )
 
 # Library: compiled (.a / .so), or INTERFACE when only the headers are shipped (header-only)
-if(BANANA_BRAIN_PACKAGE_LIB)
-    if(BANANA_BRAIN_SHARED_LIB)
+if(BRAIN_PACKAGE_LIB)
+    if(BRAIN_SHARED_LIB)
         add_library(${TARGET_LIB} SHARED ${SRC_SHARED})
     else()
         add_library(${TARGET_LIB} STATIC ${SRC_SHARED})
     endif()
-elseif(NOT BANANA_BRAIN_PACKAGE_BIN)
+elseif(NOT BRAIN_PACKAGE_BIN)
     add_library(${TARGET_LIB} INTERFACE)
 endif()
 
 # Executable: linked on the library when it exists, else built from the same sources
-if(BANANA_BRAIN_PACKAGE_BIN)
-    if(BANANA_BRAIN_PACKAGE_LIB)
+if(BRAIN_PACKAGE_BIN)
+    if(BRAIN_PACKAGE_LIB)
         add_executable(${TARGET} ${SRC})
     else()
         add_executable(${TARGET} ${SRC} ${SRC_SHARED})
@@ -135,10 +135,10 @@ endif()
 
 # Compiled targets (modes, includes, exception header)
 set(COMPILED_TARGETS "")
-if(BANANA_BRAIN_PACKAGE_BIN)
+if(BRAIN_PACKAGE_BIN)
     list(APPEND COMPILED_TARGETS ${TARGET})
 endif()
-if(BANANA_BRAIN_PACKAGE_LIB)
+if(BRAIN_PACKAGE_LIB)
     list(APPEND COMPILED_TARGETS ${TARGET_LIB})
 endif()
 
@@ -186,7 +186,7 @@ if(NOT WIN32)
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target install --parallel
     )
     list(APPEND PACKAGE_ASAN_COMMANDS
-        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Asan -DBANANA_BRAIN_DEV_PACKAGE=OFF -DBANANA_BRAIN_PACKAGE=OFF
+        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Asan -DBRAIN_DEV_PACKAGE=OFF -DBRAIN_PACKAGE=OFF
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target package --parallel
     )
 endif()
@@ -215,16 +215,16 @@ set(PACKAGE_VARIANT_COMMANDS "")
 set(PACKAGE_DEV_COMMANDS "")
 if(COMPILED_TARGETS)
     list(APPEND PACKAGE_VARIANT_COMMANDS
-        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Debug -DBANANA_BRAIN_DEV_PACKAGE=OFF -DBANANA_BRAIN_PACKAGE=OFF
+        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Debug -DBRAIN_DEV_PACKAGE=OFF -DBRAIN_PACKAGE=OFF
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target package --parallel
         ${PACKAGE_ASAN_COMMANDS}
-        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Optimized -DBANANA_BRAIN_DEV_PACKAGE=OFF -DBANANA_BRAIN_PACKAGE=OFF
+        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Optimized -DBRAIN_DEV_PACKAGE=OFF -DBRAIN_PACKAGE=OFF
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target package --parallel
     )
 endif()
-if(BANANA_BRAIN_PACKAGE_DEV)
+if(BRAIN_PACKAGE_DEV)
     list(APPEND PACKAGE_DEV_COMMANDS
-        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Optimized -DBANANA_BRAIN_DEV_PACKAGE=ON -DBANANA_BRAIN_PACKAGE=OFF
+        COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Optimized -DBRAIN_DEV_PACKAGE=ON -DBRAIN_PACKAGE=OFF
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target package --parallel
     )
 endif()
@@ -232,7 +232,7 @@ endif()
 add_custom_target(package_release
     ${PACKAGE_VARIANT_COMMANDS}
     ${PACKAGE_DEV_COMMANDS}
-    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Optimized -DBANANA_BRAIN_DEV_PACKAGE=OFF -DBANANA_BRAIN_PACKAGE=ON
+    COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR} -DCMAKE_BUILD_TYPE=Optimized -DBRAIN_DEV_PACKAGE=OFF -DBRAIN_PACKAGE=ON
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target package --parallel
     COMMENT "Building the packages: the variants -db, -as, -op (executable and/or library), the headers -dev* and the global one, mingw64-* without Asan with the MinGW toolchain"
     VERBATIM
@@ -244,31 +244,31 @@ add_custom_target(package_release
 foreach(target ${COMPILED_TARGETS})
     add_dependencies(${target} generated_external_exception_header) # include/brain/exception is a public include directory (Includes)
 endforeach()
-if(BANANA_BRAIN_PACKAGE_LIB)
+if(BRAIN_PACKAGE_LIB)
     target_link_libraries(${TARGET_LIB} PUBLIC utils::utils) # The users of the library need libutils too
 endif()
-if(BANANA_BRAIN_PACKAGE_BIN)
-    if(BANANA_BRAIN_PACKAGE_LIB)
+if(BRAIN_PACKAGE_BIN)
+    if(BRAIN_PACKAGE_LIB)
         target_link_libraries(${TARGET} PRIVATE ${TARGET_LIB})
     else()
         target_link_libraries(${TARGET} PRIVATE utils::utils)
     endif()
-    if(WIN32 AND NOT BANANA_BRAIN_SHARED_LIB)
+    if(WIN32 AND NOT BRAIN_SHARED_LIB)
         target_link_options(${TARGET} PRIVATE -static-libgcc -static-libstdc++ -static) # standalone .exe (no MinGW runtime dll)
     endif()
 endif()
-if(TARGET ${TARGET_LIB} AND NOT BANANA_BRAIN_PACKAGE_LIB)
+if(TARGET ${TARGET_LIB} AND NOT BRAIN_PACKAGE_LIB)
     target_link_libraries(${TARGET_LIB} INTERFACE utils::utils) # header-only
 endif()
 
 # =========================
 # Includes
 # =========================
-if(BANANA_BRAIN_PACKAGE_BIN)
+if(BRAIN_PACKAGE_BIN)
     target_include_directories(${TARGET} PRIVATE include)
 endif()
 if(TARGET ${TARGET_LIB})
-    if(BANANA_BRAIN_PACKAGE_LIB)
+    if(BRAIN_PACKAGE_LIB)
         set(INCLUDE_SCOPE PUBLIC)
     else()
         set(INCLUDE_SCOPE INTERFACE)
@@ -287,7 +287,7 @@ endif()
 # =========================
 
 # version injection using @VAR@
-set(BANANA_BRAIN_VERSION "v${PROJECT_VERSION}")
+set(BRAIN_VERSION "v${PROJECT_VERSION}")
 configure_file(
     ${CMAKE_SOURCE_DIR}/include/brain/version.hpp.in
     ${CMAKE_BINARY_DIR}/generated/brain/version.hpp
@@ -297,10 +297,10 @@ configure_file(
 # =========================
 # Modes
 # =========================
-if(BANANA_BRAIN_PACKAGE_LIB)
+if(BRAIN_PACKAGE_LIB)
     set_target_properties(${TARGET_LIB} PROPERTIES
         OUTPUT_NAME "${LIB_NAME}$<$<CONFIG:Debug>:_debug>$<$<CONFIG:Asan>:_asan>"
-        EXPORT_NAME ${TARGET} # find_package(banana-brain): banana-brain::banana-brain
+        EXPORT_NAME ${TARGET} # find_package(brain): brain::brain
     )
 endif()
 
@@ -327,18 +327,18 @@ endforeach()
 # =========================
 # Installation
 # =========================
-if(NOT BANANA_BRAIN_PACKAGE)
+if(NOT BRAIN_PACKAGE)
 include(GNUInstallDirs) # load variable used for installation
 include(CMakePackageConfigHelpers)
 
 # Executable (component bin): Optimized only, same path for every variant (packages in conflict)
-if(BANANA_BRAIN_PACKAGE_BIN)
+if(BRAIN_PACKAGE_BIN)
     install(TARGETS ${TARGET}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT bin
     )
 endif()
 
-# Library (component lib) and its export (component headers: find_package(banana-brain CONFIG REQUIRED))
+# Library (component lib) and its export (component headers: find_package(brain CONFIG REQUIRED))
 if(TARGET ${TARGET_LIB})
     install(TARGETS ${TARGET_LIB}
         EXPORT ${TARGET}Targets
@@ -349,7 +349,7 @@ if(TARGET ${TARGET_LIB})
     )
 endif()
 
-if(BANANA_BRAIN_PACKAGE_DEV)
+if(BRAIN_PACKAGE_DEV)
     # license
     install(
         FILES ${CMAKE_SOURCE_DIR}/LICENSE.md
@@ -369,7 +369,7 @@ if(BANANA_BRAIN_PACKAGE_DEV)
         COMPONENT headers
     )
 
-    # CMake setup for find_package(banana-brain CONFIG REQUIRED): only with a library target to export
+    # CMake setup for find_package(brain CONFIG REQUIRED): only with a library target to export
     if(TARGET ${TARGET_LIB})
         set(CONFIG_INSTALL_DIR
             ${CMAKE_INSTALL_LIBDIR}/cmake/${TARGET}
@@ -384,35 +384,35 @@ if(BANANA_BRAIN_PACKAGE_DEV)
         # Not SECURE!!!!!!!!!! Depends on the 'CMakeFiles/Export' path (one config file per variant: -dev-db, -dev-as, -dev-op)
         # Fuck EXPORT, Fuck Export/<hash>/, Fuck!!!!!!
         set(EXPORT_PATH "CMakeFiles/Export")
-        if(BANANA_BRAIN_DEV_PACKAGE)
+        if(BRAIN_DEV_PACKAGE)
             # main-headers
-            file(GLOB_RECURSE BANANA_BRAIN_EXPORT_FILES "${CMAKE_BINARY_DIR}/${EXPORT_PATH}/*/${TARGET}Targets.cmake")
+            file(GLOB_RECURSE BRAIN_EXPORT_FILES "${CMAKE_BINARY_DIR}/${EXPORT_PATH}/*/${TARGET}Targets.cmake")
             install(
-                FILES ${BANANA_BRAIN_EXPORT_FILES}
+                FILES ${BRAIN_EXPORT_FILES}
                 DESTINATION ${CONFIG_INSTALL_DIR}
                 COMPONENT headers
             )
 
             # sub-headers (compiled library only: an INTERFACE library has no per-config file)
-            if(BANANA_BRAIN_PACKAGE_LIB)
-                file(GLOB_RECURSE BANANA_BRAIN_EXPORT_FILES "${CMAKE_BINARY_DIR}/${EXPORT_PATH}/*/${TARGET}Targets-debug.cmake")
+            if(BRAIN_PACKAGE_LIB)
+                file(GLOB_RECURSE BRAIN_EXPORT_FILES "${CMAKE_BINARY_DIR}/${EXPORT_PATH}/*/${TARGET}Targets-debug.cmake")
                 install(
-                    FILES ${BANANA_BRAIN_EXPORT_FILES}
+                    FILES ${BRAIN_EXPORT_FILES}
                     DESTINATION ${CONFIG_INSTALL_DIR}
                     COMPONENT headers-db
                 )
-                file(GLOB_RECURSE BANANA_BRAIN_EXPORT_FILES "${CMAKE_BINARY_DIR}/${EXPORT_PATH}/*/${TARGET}Targets-asan.cmake")
+                file(GLOB_RECURSE BRAIN_EXPORT_FILES "${CMAKE_BINARY_DIR}/${EXPORT_PATH}/*/${TARGET}Targets-asan.cmake")
                 install(
-                    FILES ${BANANA_BRAIN_EXPORT_FILES}
+                    FILES ${BRAIN_EXPORT_FILES}
                     DESTINATION ${CONFIG_INSTALL_DIR}
                     COMPONENT headers-as
                 )
-                file(GLOB_RECURSE BANANA_BRAIN_EXPORT_FILES
+                file(GLOB_RECURSE BRAIN_EXPORT_FILES
                     "${CMAKE_BINARY_DIR}/${EXPORT_PATH}/*/${TARGET}Targets-optimized.cmake"
                     "${CMAKE_BINARY_DIR}/${EXPORT_PATH}/*/${TARGET}Targets-noconfig.cmake" # No config select optimized by default
                 )
                 install(
-                    FILES ${BANANA_BRAIN_EXPORT_FILES}
+                    FILES ${BRAIN_EXPORT_FILES}
                     DESTINATION ${CONFIG_INSTALL_DIR}
                     COMPONENT headers-op
                 )
@@ -464,8 +464,8 @@ set(CPACK_GENERATOR "RPM;DEB")
 if(WIN32)
     set(PACKAGE_PREFIX "mingw64-")
     set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_SOURCE_DIR}/cmake/package/CPackProjectConfig.cmake") # prefix per generator
-    set(CPACK_BANANA_BRAIN_RPM_PREFIX "/usr/x86_64-w64-mingw32/sys-root/mingw") # Fedora (mingw64-filesystem)
-    set(CPACK_BANANA_BRAIN_DEB_PREFIX "/usr/x86_64-w64-mingw32") # Debian / Ubuntu (mingw-w64)
+    set(CPACK_BRAIN_RPM_PREFIX "/usr/x86_64-w64-mingw32/sys-root/mingw") # Fedora (mingw64-filesystem)
+    set(CPACK_BRAIN_DEB_PREFIX "/usr/x86_64-w64-mingw32") # Debian / Ubuntu (mingw-w64)
     set(CPACK_RPM_PACKAGE_ARCHITECTURE "noarch") # Windows binaries: no host architecture
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "all")
     set(CPACK_RPM_PACKAGE_AUTOREQPROV OFF)
@@ -494,19 +494,19 @@ endif()
 # Package bases: the executable <name>, the library lib<name>, the headers with the library (else with the executable)
 set(PACKAGE_BIN "${PACKAGE_PREFIX}${TARGET}")
 set(PACKAGE_LIB "${PACKAGE_PREFIX}lib${LIB_NAME}")
-if(BANANA_BRAIN_PACKAGE_BIN)
+if(BRAIN_PACKAGE_BIN)
     set(PACKAGE_BASE "${PACKAGE_BIN}")
 else()
     set(PACKAGE_BASE "${PACKAGE_LIB}")
 endif()
-if(BANANA_BRAIN_PACKAGE_LIB)
+if(BRAIN_PACKAGE_LIB)
     set(PACKAGE_DEV "${PACKAGE_LIB}-dev")
 else()
     set(PACKAGE_DEV "${PACKAGE_BASE}-dev")
 endif()
 
 # Setup the channel name
-if(BANANA_BRAIN_STABLE_RELEASE)
+if(BRAIN_STABLE_RELEASE)
     set(CHANNEL "")
     set(MIRROR_CHANNEL "-pre")
 else()
@@ -515,7 +515,7 @@ else()
 endif()
 
 # Edit release value (run count)
-if(BANANA_BRAIN_STABLE_RELEASE)
+if(BRAIN_STABLE_RELEASE)
     # A stable version should never have to be rebuild and should always be removed or marked as depreacted
     set(CPACK_RPM_PACKAGE_RELEASE "1")
     set(CPACK_DEBIAN_PACKAGE_RELEASE "1")
@@ -528,7 +528,7 @@ else() # 0 is impossible for github.run_number
 endif()
 
 # Version constraint of the packages of the same build: exact for a pre-release, minimal for a stable one
-if(BANANA_BRAIN_STABLE_RELEASE)
+if(BRAIN_STABLE_RELEASE)
     set(RPM_SAME_VERSION ">= ${PROJECT_VERSION}")
     set(DEB_SAME_VERSION "(>= ${PROJECT_VERSION})")
 else()
@@ -546,7 +546,7 @@ macro(package_channel_conflict COMPONENT NAME)
         set(RPM_KEY "CPACK_RPM_${COMPONENT}_PACKAGE")
         set(DEB_KEY "CPACK_DEBIAN_${COMPONENT}_PACKAGE")
     endif()
-    if(BANANA_BRAIN_STABLE_RELEASE)
+    if(BRAIN_STABLE_RELEASE)
         # If a recent stable version exist the <package>-pre installation will result in the stable version
         set(${RPM_KEY}_OBSOLETES "${NAME}${MIRROR_CHANNEL} <= ${PROJECT_VERSION}")
         set(${DEB_KEY}_REPLACES "${NAME}${MIRROR_CHANNEL} (<= ${PROJECT_VERSION})")
@@ -559,7 +559,7 @@ endmacro()
 # Separate the executable, the library & the headers
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
-if(BANANA_BRAIN_PACKAGE)
+if(BRAIN_PACKAGE)
     # Global package: installs the default packages (Optimized variants and headers)
     set(CPACK_PACKAGE_NAME "${PACKAGE_BASE}${CHANNEL}")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C++20 neural network library (global)")
@@ -569,20 +569,20 @@ if(BANANA_BRAIN_PACKAGE)
 
     set(RPM_REQUIRES "")
     set(DEB_DEPENDS "")
-    if(BANANA_BRAIN_PACKAGE_BIN)
+    if(BRAIN_PACKAGE_BIN)
         list(APPEND RPM_REQUIRES "${PACKAGE_BIN}-op${CHANNEL} ${RPM_SAME_VERSION}")
         list(APPEND DEB_DEPENDS "${PACKAGE_BIN}-op${CHANNEL} ${DEB_SAME_VERSION}")
     endif()
-    if(BANANA_BRAIN_PACKAGE_LIB)
+    if(BRAIN_PACKAGE_LIB)
         list(APPEND RPM_REQUIRES "${PACKAGE_LIB}-op${CHANNEL} ${RPM_SAME_VERSION}")
         list(APPEND DEB_DEPENDS "${PACKAGE_LIB}-op${CHANNEL} ${DEB_SAME_VERSION}")
-    elseif(BANANA_BRAIN_PACKAGE_DEV)
+    elseif(BRAIN_PACKAGE_DEV)
         list(APPEND RPM_REQUIRES "${PACKAGE_DEV}${CHANNEL} ${RPM_SAME_VERSION}")
         list(APPEND DEB_DEPENDS "${PACKAGE_DEV}${CHANNEL} ${DEB_SAME_VERSION}")
     endif()
     list(JOIN RPM_REQUIRES ", " CPACK_RPM_PACKAGE_REQUIRES)
     list(JOIN DEB_DEPENDS ", " CPACK_DEBIAN_PACKAGE_DEPENDS)
-elseif(BANANA_BRAIN_DEV_PACKAGE)
+elseif(BRAIN_DEV_PACKAGE)
     # Headers + CMake config (-dev), and the CMake config of each variant (-dev-db, -dev-as, -dev-op)
     set(CPACK_PACKAGE_NAME "${PACKAGE_DEV}${CHANNEL}")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C++20 neural network library (headers/cmake)")
@@ -593,7 +593,7 @@ elseif(BANANA_BRAIN_DEV_PACKAGE)
     set(CPACK_RPM_PACKAGE_REQUIRES "${LIBUTILS_PACKAGE}-dev >= ${LIBUTILS_VERSION}") # public headers include <utils/utils.hpp>
     set(CPACK_DEBIAN_PACKAGE_DEPENDS "${LIBUTILS_PACKAGE}-dev (>= ${LIBUTILS_VERSION})")
 
-    if(BANANA_BRAIN_PACKAGE_LIB)
+    if(BRAIN_PACKAGE_LIB)
         if(WIN32)
             set(DEV_VARIANTS db op) # no Asan with MinGW
         else()
@@ -625,8 +625,8 @@ else()
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C++20 neural network library (${VARIANT_SUMMARY})")
     set(CPACK_COMPONENTS_ALL "")
 
-    # Executable: a single /usr/bin/banana-brain -> the variants conflict with each other (one installed at a time)
-    if(BANANA_BRAIN_PACKAGE_BIN)
+    # Executable: a single /usr/bin/${TARGET} -> the variants conflict with each other (one installed at a time)
+    if(BRAIN_PACKAGE_BIN)
         list(APPEND CPACK_COMPONENTS_ALL bin)
         set(CPACK_RPM_BIN_PACKAGE_NAME "${PACKAGE_BIN}-${VARIANT}${CHANNEL}")
         set(CPACK_DEBIAN_BIN_PACKAGE_NAME "${PACKAGE_BIN}-${VARIANT}${CHANNEL}")
@@ -639,7 +639,7 @@ else()
             endforeach()
         endforeach()
         list(JOIN BIN_CONFLICTS ", " BIN_CONFLICTS)
-        if(BANANA_BRAIN_STABLE_RELEASE)
+        if(BRAIN_STABLE_RELEASE)
             set(CPACK_RPM_BIN_PACKAGE_OBSOLETES "${PACKAGE_BIN}-${VARIANT}${MIRROR_CHANNEL} <= ${PROJECT_VERSION}")
             set(CPACK_DEBIAN_BIN_PACKAGE_REPLACES "${PACKAGE_BIN}-${VARIANT}${MIRROR_CHANNEL} (<= ${PROJECT_VERSION})")
         endif()
@@ -656,12 +656,12 @@ else()
     endif()
 
     # Library: lib<name>.a, lib<name>_debug.a, lib<name>_asan.a (installed side by side)
-    if(BANANA_BRAIN_PACKAGE_LIB)
+    if(BRAIN_PACKAGE_LIB)
         list(APPEND CPACK_COMPONENTS_ALL lib)
         set(CPACK_RPM_LIB_PACKAGE_NAME "${PACKAGE_LIB}-${VARIANT}${CHANNEL}")
         set(CPACK_DEBIAN_LIB_PACKAGE_NAME "${PACKAGE_LIB}-${VARIANT}${CHANNEL}")
         package_channel_conflict("LIB" "${PACKAGE_LIB}-${VARIANT}")
-        if(BANANA_BRAIN_PACKAGE_DEV)
+        if(BRAIN_PACKAGE_DEV)
             set(CPACK_RPM_LIB_PACKAGE_REQUIRES "${PACKAGE_DEV}${CHANNEL} ${RPM_SAME_VERSION}, ${PACKAGE_DEV}-${VARIANT}${CHANNEL} ${RPM_SAME_VERSION}, ${LIBUTILS_PACKAGE}-${VARIANT} >= ${LIBUTILS_VERSION}${RPM_SYSTEM_REQUIRES}")
             set(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS "${PACKAGE_DEV}${CHANNEL} ${DEB_SAME_VERSION}, ${PACKAGE_DEV}-${VARIANT}${CHANNEL} ${DEB_SAME_VERSION}, ${LIBUTILS_PACKAGE}-${VARIANT} (>= ${LIBUTILS_VERSION})${SYSTEM_DEPENDS}")
         else()

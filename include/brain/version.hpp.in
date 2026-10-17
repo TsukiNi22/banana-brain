@@ -31,13 +31,13 @@ File Description:
     /* DEFINE */
 
     // Definition of the library version (set by the cmake)
-    #define __BANANA_BRAIN_VERSION__ "@BANANA_BRAIN_VERSION@"
+    #define __BRAIN_VERSION__ "@BRAIN_VERSION@"
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
 /* GLOBAL */
 
-inline constexpr std::string_view version = __BANANA_BRAIN_VERSION__; // "vX.Y.Z"
+inline constexpr std::string_view version = __BRAIN_VERSION__; // "vX.Y.Z"
 
 } // namespace end
 #endif /* BRAINVERSION_H */
