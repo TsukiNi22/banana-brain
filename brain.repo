@@ -1,5 +1,5 @@
-[banana-brain]
-name=banana-brain repository
+[brain]
+name=brain repository
 baseurl=https://tsukini22.github.io/banana-brain/fedora/$releasever/$basearch
 enabled=1
 gpgcheck=1

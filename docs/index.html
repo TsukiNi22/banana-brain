@@ -354,7 +354,7 @@ html, body { overscroll-behavior: none; }
 <!-- 1 -->
 <section id="overview">
   <h2><span data-lang="en">1. Overview</span><span data-lang="fr">1. Vue d'ensemble</span></h2>
-  <p><span data-lang="en"><code>banana-brain</code> is a static C++20 library (<code>libbanana-brain.a</code>) built on <a href='https://github.com/TsukiNi22/libutils'>libutils</a>. Everything is in the namespace <code>brain::</code> (tools in <code>brain::tools::</code>). A <code>brain::NeuralNetwork</code> owns one network (<code>brain::INetwork</code>) created by <code>init&lt;NetworkType&gt;()</code>, configures it (seed, size, activation / loss functions, learning rate), trains it (automatic rounds or a manual loop) and runs it (<code>exec</code>).</span><span data-lang="fr"><code>banana-brain</code> est une bibliothèque statique C++20 (<code>libbanana-brain.a</code>) basée sur <a href='https://github.com/TsukiNi22/libutils'>libutils</a>. Tout est dans le namespace <code>brain::</code> (les outils dans <code>brain::tools::</code>). Un <code>brain::NeuralNetwork</code> possède un réseau (<code>brain::INetwork</code>) créé par <code>init&lt;NetworkType&gt;()</code>, le configure (graine, taille, fonctions d'activation / de perte, taux d'apprentissage), l'entraîne (tours automatiques ou boucle manuelle) et l'exécute (<code>exec</code>).</span></p>
+  <p><span data-lang="en"><code>banana-brain</code> is a static C++20 library (<code>libbrain.a</code>) built on <a href='https://github.com/TsukiNi22/libutils'>libutils</a>. Everything is in the namespace <code>brain::</code> (tools in <code>brain::tools::</code>). A <code>brain::NeuralNetwork</code> owns one network (<code>brain::INetwork</code>) created by <code>init&lt;NetworkType&gt;()</code>, configures it (seed, size, activation / loss functions, learning rate), trains it (automatic rounds or a manual loop) and runs it (<code>exec</code>).</span><span data-lang="fr"><code>banana-brain</code> est une bibliothèque statique C++20 (<code>libbrain.a</code>) basée sur <a href='https://github.com/TsukiNi22/libutils'>libutils</a>. Tout est dans le namespace <code>brain::</code> (les outils dans <code>brain::tools::</code>). Un <code>brain::NeuralNetwork</code> possède un réseau (<code>brain::INetwork</code>) créé par <code>init&lt;NetworkType&gt;()</code>, le configure (graine, taille, fonctions d'activation / de perte, taux d'apprentissage), l'entraîne (tours automatiques ou boucle manuelle) et l'exécute (<code>exec</code>).</span></p>
   <div class="callout warn"><p><span data-lang="en"><strong>Status (v1.0.0): architecture only.</strong> Every class, function and exception code exists with its final signature and an empty body (<code>/* Nothing */</code>); the logic is planned for the next versions. The behaviors described below are the intended ones.</span><span data-lang="fr"><strong>État (v1.0.0) : architecture seule.</strong> Chaque classe, fonction et code d'erreur existe avec sa signature finale et un corps vide (<code>/* Nothing */</code>) ; la logique est prévue pour les versions suivantes. Les comportements décrits ci-dessous sont ceux attendus.</span></p></div>
   <div class="table-wrap"><table>
     <thead><tr><th><span data-lang="en">Element</span><span data-lang="fr">Élément</span></th><th><span data-lang="en">Header</span><span data-lang="fr">En-tête</span></th><th><span data-lang="en">Role</span><span data-lang="fr">Rôle</span></th></tr></thead>
@@ -364,7 +364,7 @@ html, body { overscroll-behavior: none; }
       <tr><td><code>NetworkType</code>, <code>ActivationFunction</code>, <code>LossFunction</code></td><td><code>brain/NetworkDefine.hpp</code></td><td><span data-lang="en">Kind of network, internal activation and loss functions</span><span data-lang="fr">Type de réseau, fonctions internes d'activation et de perte</span></td></tr>
       <tr><td><code>IType</code>, <code>UIType</code>, <code>FType</code>, <code>Values</code>, <code>Dataset</code>, <code>*Fn</code>, <code>LayerNeuron</code>, <code>BrainNeuron</code></td><td><code>brain/NetworkType.hpp</code></td><td><span data-lang="en">Value types, data aliases, hooks and the neuron structs</span><span data-lang="fr">Types de valeurs, alias de données, hooks et structs de neurones</span></td></tr>
       <tr><td><code>brain::tools::</code></td><td><code>brain/tools/random.hpp</code>, <code>brain/tools/dataset.hpp</code></td><td><span data-lang="en">Global random generator, shuffle, random training / testing sets, text conversion</span><span data-lang="fr">Générateur aléatoire global, mélange, jeux d'entraînement / de test aléatoires, conversion de texte</span></td></tr>
-      <tr><td><code>brain/brain.hpp</code></td><td></td><td><span data-lang="en">Global include (+ <code>brain::version</code>)</span><span data-lang="fr">Include global (+ <code>brain::version</code>)</span></td></tr>
+      <tr><td><code>brain/brain.hpp</code></td><td></td><td><span data-lang="en">Global include (+ <code>brain::version</code>), without the network classes: they are internal, created by <code>NeuralNetwork::init&lt;...&gt;</code>; include <code>brain/network/Network.hpp</code> only when they are needed</span><span data-lang="fr">Include global (+ <code>brain::version</code>), sans les classes de réseaux : elles sont internes, créées par <code>NeuralNetwork::init&lt;...&gt;</code> ; inclure <code>brain/network/Network.hpp</code> seulement quand elles sont nécessaires</span></td></tr>
     </tbody>
   </table></div>
   <figure>
@@ -388,12 +388,12 @@ html, body { overscroll-behavior: none; }
       <text class="lbl" x="125" y="215" text-anchor="middle">brain::tools</text>
 
       <path class="edge" data-from="f1-nn:right" data-to="f1-in:left" marker-end="url(#arr1)"/>
-      <path class="edge dash" data-from="f1-layer:left" data-to="f1-in:right" marker-end="url(#arr1)"/>
-      <path class="edge dash" data-from="f1-brain:left" data-to="f1-in:right" marker-end="url(#arr1)"/>
+      <path id="f1-e-layer" class="edge dash" data-from="f1-layer:left" data-to="f1-in:right" marker-end="url(#arr1)"/>
+      <path id="f1-e-brain" class="edge dash" data-from="f1-brain:left" data-to="f1-in:right" marker-end="url(#arr1)"/>
       <path class="edge-accent" data-from="f1-tools:top" data-to="f1-nn:bottom" marker-end="url(#arr1a)"/>
       <text class="small" x="260" y="115" text-anchor="middle">init&lt;T&gt;</text>
-      <text class="small" x="500" y="70" text-anchor="middle">Layered / Banana</text>
-      <text class="small" x="500" y="195" text-anchor="middle">Brain</text>
+      <text class="small" x="500" y="50" text-anchor="middle">Layered / Banana</text>
+      <text class="small" x="500" y="208" text-anchor="middle">Brain</text>
     </svg>
     <figcaption><span data-lang="en">Figure 1: the front class, the network it owns and the two implementations; the tools (randomness, datasets) serve the training.</span><span data-lang="fr">Figure 1 : la classe principale, le réseau qu'elle possède et les deux implémentations ; les outils (aléatoire, jeux de données) servent l'entraînement.</span></figcaption>
   </figure>
@@ -415,22 +415,22 @@ html, body { overscroll-behavior: none; }
 <pre data-title="Install"><code>curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s          # --pre, --no-install, --no-sudo</code></pre>
   </div>
   <div class="ctab-panel" data-tabs="install" data-tab="rpm">
-<pre data-title="Install"><code>sudo dnf install libbanana-brain                 # libbanana-brain-dev + libbanana-brain-op
-sudo dnf install libbanana-brain-db libbanana-brain-as   # Debug / Asan modes (+ libutils-db / libutils-as)
-sudo dnf install mingw64-libbanana-brain         # Windows (MinGW sysroot)</code></pre>
+<pre data-title="Install"><code>sudo dnf install libbrain                 # libbrain-dev + libbrain-op
+sudo dnf install libbrain-db libbrain-as   # Debug / Asan modes (+ libutils-db / libutils-as)
+sudo dnf install mingw64-libbrain         # Windows (MinGW sysroot)</code></pre>
   </div>
   <div class="ctab-panel" data-tabs="install" data-tab="deb">
-<pre data-title="Install"><code>sudo apt install libbanana-brain
-sudo apt install libbanana-brain-db libbanana-brain-as</code></pre>
+<pre data-title="Install"><code>sudo apt install libbrain
+sudo apt install libbrain-db libbrain-as</code></pre>
   </div>
   <div class="ctab-panel" data-tabs="install" data-tab="src">
 <pre data-title="Build & install (/usr/local)"><code>cmake -S . -B build
 sudo cmake --build build --target install_release --parallel $(nproc)   # Debug, Asan & Optimized (install: Optimized only)</code></pre>
   </div>
   <h3><span data-lang="en">2.2 CMake</span><span data-lang="fr">2.2 CMake</span></h3>
-<pre data-title="CMakeLists.txt"><code>find_package(banana-brain 1.0.0 CONFIG REQUIRED)                    # finds libutils (utils::utils) too
-target_link_libraries(${TARGET} PRIVATE banana-brain::banana-brain)</code></pre>
-  <p><span data-lang="en">The library follows the <code>CMAKE_BUILD_TYPE</code> of the project: <code>Debug</code> → <code>libbanana-brain_debug.a</code>, <code>Asan</code> → <code>libbanana-brain_asan.a</code>, anything else → <code>libbanana-brain.a</code>. The installed configuration stops with the name of the missing package. On Windows the same CMake works with a MinGW toolchain (<code>cmake/toolchain/mingw-w64.cmake</code>, or <code>mingw64-cmake</code> on Fedora) and the <code>mingw64-libbanana-brain*</code> packages of the MinGW sysroot (no Asan with MinGW).</span><span data-lang="fr">La bibliothèque suit le <code>CMAKE_BUILD_TYPE</code> du projet : <code>Debug</code> → <code>libbanana-brain_debug.a</code>, <code>Asan</code> → <code>libbanana-brain_asan.a</code>, autre → <code>libbanana-brain.a</code>. La configuration installée s'arrête avec le nom du paquet manquant. Sous Windows le même CMake fonctionne avec une toolchain MinGW (<code>cmake/toolchain/mingw-w64.cmake</code>, ou <code>mingw64-cmake</code> sur Fedora) et les paquets <code>mingw64-libbanana-brain*</code> du sysroot MinGW (pas d'Asan avec MinGW).</span></p>
+<pre data-title="CMakeLists.txt"><code>find_package(brain 1.0.0 CONFIG REQUIRED)                    # finds libutils (utils::utils) too
+target_link_libraries(${TARGET} PRIVATE brain::brain)</code></pre>
+  <p><span data-lang="en">The library follows the <code>CMAKE_BUILD_TYPE</code> of the project: <code>Debug</code> → <code>libbrain_debug.a</code>, <code>Asan</code> → <code>libbrain_asan.a</code>, anything else → <code>libbrain.a</code>. The installed configuration stops with the name of the missing package. On Windows the same CMake works with a MinGW toolchain (<code>cmake/toolchain/mingw-w64.cmake</code>, or <code>mingw64-cmake</code> on Fedora) and the <code>mingw64-libbrain*</code> packages of the MinGW sysroot (no Asan with MinGW).</span><span data-lang="fr">La bibliothèque suit le <code>CMAKE_BUILD_TYPE</code> du projet : <code>Debug</code> → <code>libbrain_debug.a</code>, <code>Asan</code> → <code>libbrain_asan.a</code>, autre → <code>libbrain.a</code>. La configuration installée s'arrête avec le nom du paquet manquant. Sous Windows le même CMake fonctionne avec une toolchain MinGW (<code>cmake/toolchain/mingw-w64.cmake</code>, ou <code>mingw64-cmake</code> sur Fedora) et les paquets <code>mingw64-libbrain*</code> du sysroot MinGW (pas d'Asan avec MinGW).</span></p>
 <pre data-title="main.cpp"><code>#define _Exception
 #include &lt;utils/utils.hpp&gt;
 #include &lt;brain/brain.hpp&gt;
@@ -478,7 +478,7 @@ brain::Values outputs = network.exec({0.0, 1.0});</code></pre>
     <thead><tr><th><span data-lang="en">Struct</span><span data-lang="fr">Struct</span></th><th><span data-lang="en">Members</span><span data-lang="fr">Membres</span></th></tr></thead>
     <tbody>
       <tr><td><code>brain::LayerNeuron</code></td><td><span data-lang="en"><code>incoming</code> (weight of each input, one per neuron of the previous layer), <code>bias</code> (0.0)</span><span data-lang="fr"><code>incoming</code> (poids de chaque entrée, un par neurone de la couche précédente), <code>bias</code> (0.0)</span></td></tr>
-      <tr><td><code>brain::BrainNeuron</code></td><td><span data-lang="en"><code>incoming</code> (<code>&lt;weight, id of the incoming neuron&gt;</code> pairs), <code>pos</code> (<code>utils::type::OVector2&lt;FType&gt;</code>, position in the 2d space), <code>bias</code> (0.0)</span><span data-lang="fr"><code>incoming</code> (paires <code>&lt;poids, id du neurone entrant&gt;</code>), <code>pos</code> (<code>utils::type::OVector2&lt;FType&gt;</code>, position dans l'espace 2d), <code>bias</code> (0.0)</span></td></tr>
+      <tr><td><code>brain::BrainNeuron</code></td><td><span data-lang="en"><code>incoming</code> (<code>&lt;weight, id of the incoming neuron&gt;</code> pairs), <code>ordered</code> (every other neuron as <code>&lt;id, squared distance&gt;</code>, closest first once set up by <code>brain::tools::sort</code>), <code>pos</code> (<code>utils::type::OVector2&lt;FType&gt;</code>, position in the 2d space), <code>id</code> (0), <code>bias</code> (0.0); <code>operator==</code> compares the ids only, <code>distance2()</code> / <code>operator|</code> give the squared distance between two positions (no sqrt: only the order matters)</span><span data-lang="fr"><code>incoming</code> (paires <code>&lt;poids, id du neurone entrant&gt;</code>), <code>ordered</code> (chaque autre neurone en <code>&lt;id, distance au carré&gt;</code>, le plus proche d'abord une fois rempli par <code>brain::tools::sort</code>), <code>pos</code> (<code>utils::type::OVector2&lt;FType&gt;</code>, position dans l'espace 2d), <code>id</code> (0), <code>bias</code> (0.0) ; <code>operator==</code> compare seulement les ids, <code>distance2()</code> / <code>operator|</code> donnent la distance au carré entre deux positions (pas de sqrt : seul l'ordre compte)</span></td></tr>
     </tbody>
   </table></div>
 </section>
@@ -570,8 +570,8 @@ brain::Values outputs = network.exec({0.0, 1.0});</code></pre>
       <path class="edge" data-from="f5-apply:right" data-to="f5-hook:left" marker-end="url(#arr5)"/>
       <text class="small" x="435" y="78" text-anchor="middle">outputs</text>
       <path class="edge-accent" data-from="f5-hook:bottom" data-to="f5-bp:right" marker-end="url(#arr5a)"/>
-      <path class="edge dash" data-from="f5-bp:top" data-to="f5-apply:bottom" marker-end="url(#arr5)"/>
-      <text class="small" x="330" y="136" text-anchor="middle">next sample</text>
+      <path id="f5-e-next" class="edge dash" data-from="f5-bp:top" data-to="f5-apply:bottom" marker-end="url(#arr5)"/>
+      <text class="small" x="300" y="135" text-anchor="end">next sample</text>
       <path class="edge dash" data-from="f5-bp:right" data-to="f5-lr:left" marker-end="url(#arr5)"/>
     </svg>
     <figcaption><span data-lang="en">Figure 3: one training step; the loop stops after n rounds or once the mean loss is under the target.</span><span data-lang="fr">Figure 3 : un pas d'entraînement ; la boucle s'arrête après n tours ou dès que la perte moyenne passe sous la cible.</span></figcaption>
@@ -586,10 +586,11 @@ brain::Values outputs = network.exec({0.0, 1.0});</code></pre>
   <div class="table-wrap"><table>
     <thead><tr><th><span data-lang="en">Function (<code>brain::tools::</code>)</span><span data-lang="fr">Fonction (<code>brain::tools::</code>)</span></th><th><span data-lang="en">Header</span><span data-lang="fr">En-tête</span></th><th><span data-lang="en">Role</span><span data-lang="fr">Rôle</span></th></tr></thead>
     <tbody>
-      <tr><td><code>generator</code></td><td><code>tools/random.hpp</code></td><td><span data-lang="en">Global <code>std::mt19937_64</code> used by every randomness call: change it here to change the randomness everywhere</span><span data-lang="fr"><code>std::mt19937_64</code> global utilisé par chaque appel aléatoire : le changer ici change l'aléatoire partout</span></td></tr>
-      <tr><td><code>rand(seed)</code>, <code>rand_unsigned_integer()</code>, <code>rand_floating()</code></td><td><code>tools/random.hpp</code></td><td><span data-lang="en">Seed the generator (0 = random seed), next unsigned integer / floating value (inline)</span><span data-lang="fr">Initialise la graine (0 = graine aléatoire), prochain entier non signé / flottant (inline)</span></td></tr>
+      <tr><td><code>generator</code></td><td><code>tools/random.hpp</code></td><td><span data-lang="en"><code>std::mt19937_64</code> used by every randomness call, scope chosen at compile time: <code>BRAIN_SEED_GLOBAL</code> (default) = one generator shared by the whole program (<code>extern</code>, defined once in the library), <code>BRAIN_SEED_LOCAL</code> = one per translation unit including the header (<code>static</code>, independent sequences); both defined = <code>#error</code></span><span data-lang="fr"><code>std::mt19937_64</code> utilisé par chaque appel aléatoire, portée choisie à la compilation : <code>BRAIN_SEED_GLOBAL</code> (défaut) = un générateur partagé par tout le programme (<code>extern</code>, défini une fois dans la bibliothèque), <code>BRAIN_SEED_LOCAL</code> = un par unité de traduction incluant l'en-tête (<code>static</code>, séquences indépendantes) ; les deux définis = <code>#error</code></span></td></tr>
+      <tr><td><code>rand(seed)</code>, <code>rand_unsigned_integer()</code>, <code>rand_floating()</code></td><td><code>tools/random.hpp</code></td><td><span data-lang="en">Seed the generator (0 = random seed), next unsigned integer / floating value (inline, use whichever generator is active)</span><span data-lang="fr">Initialise la graine (0 = graine aléatoire), prochain entier non signé / flottant (inline, utilisent le générateur actif)</span></td></tr>
       <tr><td><code>shuffle(dataset, seed = 0)</code></td><td><code>tools/dataset.hpp</code></td><td><span data-lang="en">Shuffle the samples order</span><span data-lang="fr">Mélange l'ordre des échantillons</span></td></tr>
       <tr><td><code>rand_sets(dataset, percentage, seed = 0)</code></td><td><code>tools/dataset.hpp</code></td><td><span data-lang="en"><code>&lt;training, testing&gt;</code> sets picked randomly, <code>percentage</code> = part of the data kept for the training</span><span data-lang="fr">Jeux <code>&lt;entraînement, test&gt;</code> tirés au hasard, <code>percentage</code> = part des données gardée pour l'entraînement</span></td></tr>
+      <tr><td><code>sort(neuron, neurons)</code></td><td><code>tools/neuron.hpp</code></td><td><span data-lang="en">Fills <code>neuron.ordered</code> with every other neuron as <code>&lt;id, squared distance&gt;</code> sorted closest first; a distance not yet computed is stored in both neurons (the other list stays unsorted)</span><span data-lang="fr">Remplit <code>neuron.ordered</code> avec chaque autre neurone en <code>&lt;id, distance au carré&gt;</code> trié du plus proche ; une distance pas encore calculée est stockée dans les deux neurones (l'autre liste reste non triée)</span></td></tr>
       <tr><td><code>text_to_input(text)</code>, <code>input_to_text(values)</code></td><td><code>tools/dataset.hpp</code></td><td><span data-lang="en">Text ↔ values conversion (the result can be not what you want, the validity of the text is not ensured)</span><span data-lang="fr">Conversion texte ↔ valeurs (le résultat peut ne pas être ce que vous voulez, la validité du texte n'est pas garantie)</span></td></tr>
     </tbody>
   </table></div>
@@ -621,7 +622,7 @@ brain::Values outputs = network.exec({0.0, 1.0});</code></pre>
 <!-- 8 -->
 <section id="build">
   <h2><span data-lang="en">8. Build, tests & CI</span><span data-lang="fr">8. Build, tests & CI</span></h2>
-  <p><span data-lang="en">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (exception header). Modes: <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code>); the <code>release</code> target builds the three libraries, <code>install_release</code> installs them, <code>package_release</code> builds every RPM/DEB package (<code>BANANA_BRAIN_STABLE_RELEASE=ON</code> for the stable channel).</span><span data-lang="fr">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (en-tête d'exceptions). Modes : <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code>) ; la cible <code>release</code> construit les trois bibliothèques, <code>install_release</code> les installe, <code>package_release</code> construit tous les paquets RPM/DEB (<code>BANANA_BRAIN_STABLE_RELEASE=ON</code> pour le canal stable).</span></p>
+  <p><span data-lang="en">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (exception header). Modes: <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code>); the <code>release</code> target builds the three libraries, <code>install_release</code> installs them, <code>package_release</code> builds every RPM/DEB package (<code>BRAIN_STABLE_RELEASE=ON</code> for the stable channel).</span><span data-lang="fr">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (en-tête d'exceptions). Modes : <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code>) ; la cible <code>release</code> construit les trois bibliothèques, <code>install_release</code> les installe, <code>package_release</code> construit tous les paquets RPM/DEB (<code>BRAIN_STABLE_RELEASE=ON</code> pour le canal stable).</span></p>
 <pre data-title="Unit tests (GoogleTest)"><code>cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
 cmake --build build --parallel $(nproc)
 ctest --test-dir build --output-on-failure --timeout 30     # or ./unit_tests</code></pre>
@@ -630,9 +631,11 @@ ctest --test-dir build --output-on-failure --timeout 30     # or ./unit_tests</c
     <thead><tr><th><span data-lang="en">Workflow</span><span data-lang="fr">Workflow</span></th><th><span data-lang="en">Trigger</span><span data-lang="fr">Déclencheur</span></th><th><span data-lang="en">Role</span><span data-lang="fr">Rôle</span></th></tr></thead>
     <tbody>
       <tr><td><code>Dispatch (CI/CD)</code></td><td><span data-lang="en">push on <code>main</code> / tag <code>v*</code></span><span data-lang="fr">push sur <code>main</code> / tag <code>v*</code></span></td><td><span data-lang="en">Decides from the ref / message: <code>[build]</code> or tag <code>vX.Y.Z-pre</code> = pre-release packages, tag <code>vX.Y.Z</code> = stable, <code>[ignore]</code> = nothing; notifies <code>docker-image</code> (<code>banana-brain-released</code>)</span><span data-lang="fr">Décide depuis la ref / le message : <code>[build]</code> ou tag <code>vX.Y.Z-pre</code> = paquets pré-release, tag <code>vX.Y.Z</code> = stable, <code>[ignore]</code> = rien ; notifie <code>docker-image</code> (<code>banana-brain-released</code>)</span></td></tr>
-      <tr><td><code>Unit Tests - Libraries (CI)</code></td><td><span data-lang="en">dispatched first</span><span data-lang="fr">lancé en premier</span></td><td><span data-lang="en">Linux (<code>unit-tests</code> image) and Windows (<code>mingw64-unit-tests</code>, <code>wine</code>)</span><span data-lang="fr">Linux (image <code>unit-tests</code>) et Windows (<code>mingw64-unit-tests</code>, <code>wine</code>)</span></td></tr>
-      <tr><td><code>Build - Libraries (CI)</code></td><td><span data-lang="en">no package build</span><span data-lang="fr">pas de build de paquets</span></td><td><span data-lang="en">Compilation check of the three libraries</span><span data-lang="fr">Vérification de la compilation des trois bibliothèques</span></td></tr>
+      <tr><td><code>Unit Tests (CI)</code></td><td><span data-lang="en">dispatched first</span><span data-lang="fr">lancé en premier</span></td><td><span data-lang="en">Linux (<code>unit-tests</code> image) and Windows (<code>mingw64-unit-tests</code>, <code>wine</code>)</span><span data-lang="fr">Linux (image <code>unit-tests</code>) et Windows (<code>mingw64-unit-tests</code>, <code>wine</code>)</span></td></tr>
+      <tr><td><code>Build (CI)</code></td><td><span data-lang="en">no package build</span><span data-lang="fr">pas de build de paquets</span></td><td><span data-lang="en">Compilation check of the libraries (Linux and Windows)</span><span data-lang="fr">Vérification de la compilation des bibliothèques (Linux et Windows)</span></td></tr>
       <tr><td><code>Build - Packages (CI/CD)</code></td><td><span data-lang="en"><code>[build]</code> / tags</span><span data-lang="fr"><code>[build]</code> / tags</span></td><td><span data-lang="en">Linux and <code>mingw64-*</code> packages, GPG signed, published on the <code>gh-pages</code> repository (5 last <code>-pre</code> kept)</span><span data-lang="fr">Paquets Linux et <code>mingw64-*</code>, signés GPG, publiés sur le dépôt <code>gh-pages</code> (5 derniers <code>-pre</code> gardés)</span></td></tr>
+      <tr><td><code>Release - GitHub (CD)</code></td><td><span data-lang="en">tag <code>vX.Y.Z</code> / <code>vX.Y.Z-pre</code></span><span data-lang="fr">tag <code>vX.Y.Z</code> / <code>vX.Y.Z-pre</code></span></td><td><span data-lang="en">GitHub release of the tag, notes = its section of the <code>CHANGELOG.md</code>, once the packages are published</span><span data-lang="fr">Release GitHub du tag, notes = sa section du <code>CHANGELOG.md</code>, une fois les paquets publiés</span></td></tr>
+      <tr><td><code>Docs - Pages (CD)</code></td><td><span data-lang="en">push changing <code>docs/</code></span><span data-lang="fr">push modifiant <code>docs/</code></span></td><td><span data-lang="en">Copies <code>docs/</code> on the <code>gh-pages</code> branch</span><span data-lang="fr">Copie <code>docs/</code> sur la branche <code>gh-pages</code></span></td></tr>
       <tr><td><code>Style - xstyle (CI)</code></td><td><span data-lang="en">push / pull request</span><span data-lang="fr">push / pull request</span></td><td><span data-lang="en">Coding style check, fails on a major issue</span><span data-lang="fr">Vérification du style, échoue sur un problème majeur</span></td></tr>
       <tr><td><code>Merge - libutils (CD)</code></td><td><span data-lang="en">manual</span><span data-lang="fr">manuel</span></td><td><span data-lang="en">Reserved for the future automatic merge into libutils, does nothing yet</span><span data-lang="fr">Réservé au futur merge automatique dans libutils, ne fait rien pour l'instant</span></td></tr>
     </tbody>
@@ -674,6 +677,113 @@ window.DOC_FR = {
   "Previous": "Précédent",
   "Next": "Suivant"
 };
+</script>
+<script>
+// From html-style/templates/base.js (keep in sync)
+// Diagram links: an arrow is computed from the shapes it joins instead of typed coordinates, so it always touches
+// them. <path class="edge" data-from="a" data-to="b" marker-end="url(#arr)"/>: a / b = id of a rect, circle, ellipse
+// (or a <g> holding one). Options: data-from="a:right" (side: top, bottom, left, right), data-bend="0.2" (curve, +/-
+// fraction of the length), data-gap="2" (space before the shape). A label <text data-label-for="pathId"
+// data-offset="-8"> is placed on the middle of the path. Geometry is read from the attributes (works while hidden).
+window.docDiagram = (function () {
+  function translateOf(el, svg) {
+    var x = 0, y = 0;
+    for (var n = el; n && n !== svg; n = n.parentNode) {
+      var t = n.getAttribute && n.getAttribute('transform');
+      var m = t && t.match(/translate\(\s*(-?[\d.]+)[\s,]*(-?[\d.]+)?\s*\)/);
+      if (m) { x += +m[1]; y += +(m[2] || 0); }
+    }
+    return [x, y];
+  }
+  function shape(svg, id) {
+    var el = svg.querySelector('[id="' + id + '"]');
+    if (el && el.tagName.toLowerCase() === 'g') el = el.querySelector('rect, circle, ellipse');
+    if (!el) return null;
+    var o = translateOf(el, svg), num = function (a) { return +(el.getAttribute(a) || 0); };
+    var tag = el.tagName.toLowerCase();
+    if (tag === 'rect') return { kind: 'rect', x: num('x') + o[0], y: num('y') + o[1], w: num('width'), h: num('height') };
+    if (tag === 'circle') return { kind: 'ellipse', cx: num('cx') + o[0], cy: num('cy') + o[1], rx: num('r'), ry: num('r') };
+    return { kind: 'ellipse', cx: num('cx') + o[0], cy: num('cy') + o[1], rx: num('rx'), ry: num('ry') };
+  }
+  function center(s) { return s.kind === 'rect' ? [s.x + s.w / 2, s.y + s.h / 2] : [s.cx, s.cy]; }
+  function side(s, name) {
+    var c = center(s), hw = s.kind === 'rect' ? s.w / 2 : s.rx, hh = s.kind === 'rect' ? s.h / 2 : s.ry;
+    return { top: [c[0], c[1] - hh], bottom: [c[0], c[1] + hh], left: [c[0] - hw, c[1]], right: [c[0] + hw, c[1]] }[name];
+  }
+  // Point of the border of s in the direction of p, moved back by gap
+  function border(s, p, gap) {
+    var c = center(s), dx = p[0] - c[0], dy = p[1] - c[1], len = Math.hypot(dx, dy) || 1, k;
+    if (s.kind === 'rect') k = Math.min(dx ? (s.w / 2) / Math.abs(dx) : Infinity, dy ? (s.h / 2) / Math.abs(dy) : Infinity);
+    else k = 1 / Math.sqrt((dx * dx) / (s.rx * s.rx) + (dy * dy) / (s.ry * s.ry));
+    return [c[0] + dx * k + dx / len * gap, c[1] + dy * k + dy / len * gap];
+  }
+  // Point of the border of s for an arrow coming from / going to toward; off spreads several arrows of the same
+  // shape along its side (instead of all reaching the same point)
+  function end(s, spec, toward, gap, off) {
+    var name = spec.split(':')[1], p;
+    if (name) p = side(s, name);
+    else if (off && s.kind === 'rect') {
+        var c = center(s), dx = toward[0] - c[0], dy = toward[1] - c[1];
+        if (Math.abs(dy) * s.w >= Math.abs(dx) * s.h) p = [c[0] + off * s.w, c[1] + (dy < 0 ? -1 : 1) * s.h / 2];
+        else p = [c[0] + (dx < 0 ? -1 : 1) * s.w / 2, c[1] + off * s.h];
+    } else p = border(s, toward, 0);
+    var vx = toward[0] - p[0], vy = toward[1] - p[1], len = Math.hypot(vx, vy) || 1;
+    return [p[0] + vx / len * gap, p[1] + vy / len * gap];
+  }
+  // Slot (-0.3 .. 0.3 of the side) of each arrow end sharing a shape, ordered by where the other end is
+  function slots(items) {
+    var groups = {};
+    items.forEach(function (it) { if (!it.spec.split(':')[1]) (groups[it.id] = groups[it.id] || []).push(it); });
+    Object.keys(groups).forEach(function (id) {
+      var g = groups[id], s = g[0].shape, c = center(s);
+      if (g.length < 2) return;
+      g.forEach(function (it) {
+        var dx = it.toward[0] - c[0], dy = it.toward[1] - c[1];
+        it.vertical = s.kind === 'rect' && Math.abs(dy) * s.w >= Math.abs(dx) * s.h;
+        it.key = it.vertical ? dx : dy;
+      });
+      [true, false].forEach(function (v) {
+        var sub = g.filter(function (it) { return it.vertical === v; }).sort(function (a, b) { return a.key - b.key; });
+        if (sub.length > 1) sub.forEach(function (it, i) { it.off = ((i + 1) / (sub.length + 1) - 0.5) * 0.6; });
+      });
+    });
+  }
+  function layout(svg) {
+    var items = [], links = [];
+    svg.querySelectorAll('[data-from][data-to]').forEach(function (path) {
+      var fa = path.dataset.from, ta = path.dataset.to;
+      var a = shape(svg, fa.split(':')[0]), b = shape(svg, ta.split(':')[0]);
+      if (!a || !b) { console.warn('diagram link: unknown shape', fa, ta); return; }
+      var gap = +(path.dataset.gap || 2), bend = +(path.dataset.bend || 0);
+      var ca = fa.indexOf(':') > 0 ? side(a, fa.split(':')[1]) : center(a);
+      var cb = ta.indexOf(':') > 0 ? side(b, ta.split(':')[1]) : center(b);
+      var mx = (ca[0] + cb[0]) / 2, my = (ca[1] + cb[1]) / 2, len = Math.hypot(cb[0] - ca[0], cb[1] - ca[1]) || 1;
+      var ctrl = [mx - (cb[1] - ca[1]) / len * bend * len, my + (cb[0] - ca[0]) / len * bend * len];
+      var ea = { spec: fa, id: fa.split(':')[0], shape: a, toward: bend ? ctrl : cb, off: 0 };
+      var eb = { spec: ta, id: ta.split(':')[0], shape: b, toward: bend ? ctrl : ca, off: 0 };
+      items.push(ea, eb);
+      links.push({ path: path, gap: gap, bend: bend, ctrl: ctrl, ea: ea, eb: eb });
+    });
+    slots(items);
+    links.forEach(function (l) {
+      var path = l.path, gap = l.gap, bend = l.bend, ctrl = l.ctrl;
+      var p1 = end(l.ea.shape, l.ea.spec, l.ea.toward, gap, l.ea.off), p2 = end(l.eb.shape, l.eb.spec, l.eb.toward, gap, l.eb.off);
+      var f = function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); };
+      path.setAttribute('d', bend ? 'M' + f(p1) + ' Q' + f(ctrl) + ' ' + f(p2) : 'M' + f(p1) + ' L' + f(p2));
+      var mid = bend ? [(p1[0] + 2 * ctrl[0] + p2[0]) / 4, (p1[1] + 2 * ctrl[1] + p2[1]) / 4] : [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
+      if (path.id) svg.querySelectorAll('[data-label-for="' + path.id + '"]').forEach(function (t) {
+        var off = +(t.dataset.offset || -8), dx = p2[0] - p1[0], dy = p2[1] - p1[1], l = Math.hypot(dx, dy) || 1;
+        var nx = -dy / l, ny = dx / l;
+        if (ny > 0) { nx = -nx; ny = -ny; } // a negative offset is always above the path
+        t.setAttribute('x', (mid[0] - nx * off).toFixed(1));
+        t.setAttribute('y', (mid[1] - ny * off).toFixed(1));
+        if (!t.getAttribute('text-anchor')) t.setAttribute('text-anchor', 'middle');
+      });
+    });
+  }
+  document.querySelectorAll('svg').forEach(layout);
+  return { layout: layout };
+})();
 </script>
 <script>
 // Language (English by default, French on demand): [data-i18n] elements and [data-i18n-<attr>] attributes are

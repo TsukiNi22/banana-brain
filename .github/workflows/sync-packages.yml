@@ -58,12 +58,12 @@ jobs:
           # Generate Release file
           cat > dists/stable/Release <<EOF
           Origin: TsukiNi22
-          Label: banana-brain
+          Label: brain
           Suite: stable
           Codename: stable
           Architectures: amd64
           Components: main
-          Description: banana-brain APT repository
+          Description: brain APT repository
           Date: $(date -Ru)
           EOF
 
