@@ -2,15 +2,15 @@
 # Usage: setup.sh [--no-sudo] [--pre] [--windows] [--no-install]
 # Options:
 #   --no-sudo      Run without sudo (requires the script to be run as root already)
-#   --pre          Install the pre-release/unstable package (libbanana-brain-pre)
-#   --windows      Install the Windows packages (mingw64-libbanana-brain, MinGW sysroot) instead of the Linux ones
+#   --pre          Install the pre-release/unstable package (libbrain-pre)
+#   --windows      Install the Windows packages (mingw64-libbrain, MinGW sysroot) instead of the Linux ones
 #   --no-install   Only setup the mirror & gpg key, don't install the package
 #   -h, --help     Display this usage
 set -euo pipefail
 
 BASE_URL="https://tsukini22.github.io/banana-brain"
 KEY_NAME="RPM-GPG-KEY-tsukini"
-PACKAGE="libbanana-brain"
+PACKAGE="libbrain"
 SUDO="sudo"
 INSTALL=true
 CHANNEL=""
@@ -92,19 +92,19 @@ is_deb_based() {
 # RPM
 # =========================
 install_rpm_repo() {
-    echo "Detected RPM-based system (ID=$OS_ID). Setting up banana-brain repo..."
+    echo "Detected RPM-based system (ID=$OS_ID). Setting up brain repo..."
 
     # The mirror is only built for a fixed release (see: .github/workflows/build-packages.yml)
     if [[ "$OS_ID" = "fedora" ]] && ! curl -fsSL -o /dev/null "$BASE_URL/fedora/$OS_VERSION/$(uname -m)/repodata/repomd.xml"; then
         echo "Warning: no packages published for fedora $OS_VERSION ($(uname -m)), the installation will probably fail." >&2
     fi
 
-    $SUDO curl -fsSL -o /etc/yum.repos.d/banana-brain.repo \
-        "$BASE_URL/banana-brain.repo"
+    $SUDO curl -fsSL -o /etc/yum.repos.d/brain.repo \
+        "$BASE_URL/brain.repo"
 
     $SUDO rpm --import "$BASE_URL/$KEY_NAME"
 
-    echo "banana-brain repo installed."
+    echo "brain repo installed."
 }
 
 install_rpm_package() {
@@ -119,23 +119,23 @@ install_rpm_package() {
 # DEB
 # =========================
 install_deb_repo() {
-    echo "Detected DEB-based system (ID=$OS_ID). Setting up banana-brain repo..."
+    echo "Detected DEB-based system (ID=$OS_ID). Setting up brain repo..."
     require gpg dpkg
 
     $SUDO install -m 0755 -d /etc/apt/keyrings
 
     curl -fsSL "$BASE_URL/$KEY_NAME" \
-        | gpg --dearmor | $SUDO tee /etc/apt/keyrings/banana-brain.gpg > /dev/null
-    $SUDO chmod a+r /etc/apt/keyrings/banana-brain.gpg
+        | gpg --dearmor | $SUDO tee /etc/apt/keyrings/brain.gpg > /dev/null
+    $SUDO chmod a+r /etc/apt/keyrings/brain.gpg
 
     ARCH="$(dpkg --print-architecture)"
 
-    echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/banana-brain.gpg] ${BASE_URL}/debian stable main" \
-        | $SUDO tee /etc/apt/sources.list.d/banana-brain.list > /dev/null
+    echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/brain.gpg] ${BASE_URL}/debian stable main" \
+        | $SUDO tee /etc/apt/sources.list.d/brain.list > /dev/null
 
     $SUDO apt-get update
 
-    echo "banana-brain repo installed."
+    echo "brain repo installed."
 }
 
 install_deb_package() {
