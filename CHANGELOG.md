@@ -20,8 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [pre-release] (empty)
 
-## v1.0.0 - 2026-10-17
+## v0.0.0 - 2026-10-17
 ### Added
+- Nothing executes yet: the project, its packages and its documentation exist, every class and function has its final signature with an empty body (the logic comes with the next versions)
 - Architecture of the library (every signature, no logic yet): `brain::NeuralNetwork` (`utils::type::Freezable`, `init<NetworkType>`, configuration setters / getters, `train`, manual training, `exec`, `load` / `save`), the network family `brain::INetwork` -> `brain::ANetwork` -> `brain::LayerNetwork` / `brain::BrainNetwork`, the enums `NetworkType` / `ActivationFunction` / `LossFunction`, the value types `IType` / `UIType` / `FType`, the neuron structs `LayerNeuron` / `BrainNeuron` (cache line aligned) and the tools `brain::tools::` (`generator`, `rand`, `rand_unsigned_integer`, `rand_floating`, `shuffle`, `rand_sets`, `text_to_input`, `input_to_text`)
 - Exception codes of the library (`utils::exception::ExternalCode::NoNetwork`, `NetworkNotLoaded`, `FrozenNetwork`, `InvalidInputSize`...) generated from `cmake/config/exceptions/brain.json` and installed with the headers
 - Static library `libbrain.a` (`_debug`, `_asan`) with `find_package(brain)` / `brain::brain`, RPM/DEB packages like libutils (`libbrain`, `-dev`, `-dev-op` / `-dev-db` / `-dev-as`, `-op` / `-db` / `-as`, `-pre` channel) and the Windows ones (`mingw64-libbrain*`, MinGW-w64 cross compilation)
@@ -30,4 +31,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTML documentation (`docs/`: technical page + interactive project graph, EN / FR, published on GitHub Pages)
 - `setup.sh` (package repository + GPG key + installation), README, CHANGELOG, license CC BY-NC-SA 4.0
 
-[v1.0.0]: https://github.com/TsukiNi22/banana-brain/releases/tag/v1.0.0
+[v0.0.0]: https://github.com/TsukiNi22/banana-brain/releases/tag/v0.0.0
