@@ -4,8 +4,8 @@ on:
   workflow_dispatch: # Triggered by Dispatch (CI/CD)
 
 env:
-  # Content of the project (the BANANA_BRAIN_PACKAGE_BIN / BANANA_BRAIN_PACKAGE_LIB options of the CMakeLists.txt)
-  NAME: "banana-brain"
+  # Content of the project (the BRAIN_PACKAGE_BIN / BRAIN_PACKAGE_LIB options of the CMakeLists.txt)
+  NAME: "brain"
   PACKAGE_BIN: "OFF"
   PACKAGE_LIB: "ON"
 

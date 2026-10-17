@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: false # queue the syncs, never cancel a publication
 
 env:
-  # Content of the packages (the BANANA_BRAIN_PACKAGE_BIN / BANANA_BRAIN_PACKAGE_LIB / BANANA_BRAIN_PACKAGE_DEV options of the CMakeLists.txt)
-  NAME: "banana-brain"
+  # Content of the packages (the BRAIN_PACKAGE_BIN / BRAIN_PACKAGE_LIB / BRAIN_PACKAGE_DEV options of the CMakeLists.txt)
+  NAME: "brain"
   PACKAGE_BIN: "OFF"
   PACKAGE_LIB: "ON"
   PACKAGE_DEV: "ON"
@@ -47,7 +47,7 @@ jobs:
       - name: Build packages (Release)
         run: |
           set -e
-          cmake -S . -B build -DBANANA_BRAIN_STABLE_RELEASE=${{ inputs.stable }} -DPACKAGE_RELEASE=${{ github.run_number }}
+          cmake -S . -B build -DBRAIN_STABLE_RELEASE=${{ inputs.stable }} -DPACKAGE_RELEASE=${{ github.run_number }}
           cmake --build build --target package_release --parallel $(nproc)
         timeout-minutes: 6
 
@@ -118,7 +118,7 @@ jobs:
       - name: Build packages (Release, MinGW-w64)
         run: |
           set -e
-          cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/mingw-w64.cmake -DBANANA_BRAIN_STABLE_RELEASE=${{ inputs.stable }} -DPACKAGE_RELEASE=${{ github.run_number }}
+          cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/mingw-w64.cmake -DBRAIN_STABLE_RELEASE=${{ inputs.stable }} -DPACKAGE_RELEASE=${{ github.run_number }}
           cmake --build build --target package_release --parallel $(nproc)
         timeout-minutes: 8
 
@@ -282,12 +282,12 @@ jobs:
           # Generate Release file
           cat > dists/stable/Release <<EOF
           Origin: TsukiNi22
-          Label: banana-brain
+          Label: brain
           Suite: stable
           Codename: stable
           Architectures: amd64
           Components: main
-          Description: banana-brain APT repository
+          Description: brain APT repository
           Date: $(date -Ru)
           EOF
 
