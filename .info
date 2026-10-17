@@ -1,3 +1,6 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////
+------------------------ IGNORED FOR NOW ONLY INFORAMTION STORAGE HERE ----------------------------
+
 stored:
     QKV/token
     neuron-weigths/neuron/layer
@@ -6,14 +9,17 @@ Q -> used to compare with or token's K
 K -> used to be matched against Q
 V -> value of the token that will be use
 
-generating-token:
-    
+generating-token:   
 
 training:
     generating-token
     compute the distance of the error
     find the weights responsible for the error Q/K/V/neuron-weigths and slighlty edit them
     retry/switch to new context or next token
+
+------------------------ IGNORED FOR NOW ONLY INFORAMTION STORAGE HERE ----------------------------
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // neuron network type
 enum NetworkType {
@@ -35,17 +41,30 @@ enum LossFunction {
     cross-entropy
 }
 
+// aligner les struct de neuron sur hardware destructive size (libutils) si utile pour ne pas avoir de concurence au cpu/gpu quand on les editera lors de la backpropagation
+// optimise les ajencement des var/leur ordre pour optimiser le tout si besoin pour ces struct des neuron
+struct LayerNeuron {
+    vector<float> incoming; // weight input
+    float bias = 0.0;
+}
+struct BrainNeuron {
+    OVector2<size_t> pos;
+    vector<pair<float, id>> incoming; // weight input + id of the incoming neuron link to this weight
+    float bias = 0.0;
+}
+
 using IType = int64;
 using UIType = size_t;
 using FType = float; // replace any neuron/coef values type in the class/other
-static_assert(Type is floating type) // float/double/any other floating type
+static_assert(FType is floating type) // float/double/any other floating type
+// autre static_assert utile sur les autre *Type
 
 /* tools */
 std::vector<float> text_to_input; // can be not what you want
 std::vector<float> input_to_text; // doesn't ensure the validity of the output
 // seed == 0 -> random seed
 void shuffle(vector<std::vector<float>>& inputs, seed = 0) // shuffle input order
-pair<vector<std::vector<float>>, vector<std::vector<float>>> rand_separator(vector<std::vector<float>>& inputs, float percentage, seed = 0) // setup a testing and cheking set using randomness <training, testing> (percentage == percentage of the training data from the whole data)
+pair<vector<std::vector<float>>, vector<std::vector<float>>> rand_sets(vector<std::vector<float>>& inputs, float percentage, seed = 0) // setup a testing and cheking set using randomness <training, testing> (percentage == percentage of the training data from the whole data)
 
 /* randomness call every where to change it rapidly */
 extarn/global generator;
@@ -54,7 +73,37 @@ inline size_t randUnsignedInterer(void)
 inline float randFloating(void)
 
 INetwork:
-    // not defined for now
+    priv:
+    protected:
+        void init_(void); // init neuron call in the ctro at the end (default empty/falltrhroug in ANewtork)
+
+    pub:
+        void load(void); // load the network into memory on gpu if not already done (failsage)
+        void unload(void); // unload the network memory if not larady done (failsage)
+        void inputs(const std::vector<float>& inputs); // load the inputs into the network
+        std::vector<float> apply(void); // execute the network wiht the given input
+        void backpropagation(float coef); // coef between -1 <-> 1 representing 100% == perfect or -100% == totaly false (can be above or under for massive change)
+        void backpropagation(const std::vector<float>& coefs); // same has above but a special coef value for each output
+        void weightInit(float fallback = 0.01) // at 1.0 by default (if not init might cause probleme for the training -> dead network)
+        void biasInit(float fallback = 0.01) // at 0.0 by default
+        pair<size_t, size_t> neurons(void) const; // <layer, nurons> on brain network the value for layer will be 0 (no layer can also append on the normal network) and the neurons the number of totla neurons
+
+LayerNetwork -> INetwork:
+    priv:
+        std::vector<std::vector<Neurons>> _neurons;
+
+    pub:
+        /* define of the INetwork virtual */
+        ctro(size_t layer, size_t neuron_per_layer)
+
+BrainNetwork -> INetwork:
+    priv:
+        size_t _neuron;
+        pair<float, float> _size;
+
+    pub:
+        /* define of the INetwork virtual */
+        ctro(size_t neuron, pair<float, float> size) // size used to define the 2d space for the neuron (could be apply in 3d in the future)
 
 // handle all neurons
 NeuralNetwork -> Freable: (in freezed mode only allow the exec usage)
@@ -78,8 +127,8 @@ NeuralNetwork -> Freable: (in freezed mode only allow the exec usage)
     pub:
         /* init */
         // init a new neural network (clear any exiting one in the class)
-        void init<Layer>(size_t layer, size_t neuron-per-layer) // normal usage with layer and other
-        void init<Brain>(size_t neurons) // my own custom network (more like a brain) 
+        void init<Layer>(size_t layer, size_t neuron_per_layer) // normal usage with layer and other
+        void init<Brain>(size_t neurons, pair<float, float> size = {f1.0, f1.0}) // my own custom network (more like a brain) 
         void init<Banana>(void) // a pre made layer/nuron number to shape it like a bana (don't ask why...)
         // fallback is the value used on resultet that fall on 0
         void weightInit(float fallback = 0.01) // at 1.0 by default (if not init might cause probleme for the training -> dead network)
@@ -107,6 +156,7 @@ NeuralNetwork -> Freable: (in freezed mode only allow the exec usage)
         pair<ActivationFunction, function> activationFunction(void)
         pair<LossFunction, function> lossFunction(void)
         pair<pair<float, float>, function> rand(void)
+        pair<size_t, size_t> neurons(void) const;
 
         /* training (auto) */
         void start(size_t round, cosnt vector<vector<float>>& inputs, cosnt vector<vector<float>>& expected_outputs, fn backpropagation) // the backpropagation function take 2 vector of float (output and the expected one [can be empty and the backpropagation function should ignore these]) and return (coef or coefs -> polymorphise of the start / 2 version)
