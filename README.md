@@ -4,7 +4,7 @@
 > Technical documentation and project graph: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v1.0.0).
 
 C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling several kinds of networks (layered, brain, banana), their configuration, training and usage, plus the dataset and randomness tools.
-Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB packages (optimized, debug and asan variants, plus the `mingw64-libbanana-brain*` packages for Windows), or installed from the sources with CMake.
+Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
 
 > [!NOTE]
 > The library is an architecture for now: every class, function and exception code exists with its final signature, the logic comes with the next versions.
@@ -31,7 +31,7 @@ Built as a static library on top of [libutils](https://github.com/TsukiNi22/libu
 | [libutils](https://github.com/TsukiNi22/libutils) | MIT | ![Dispatch (CI/CD)](https://github.com/TsukiNi22/libutils/actions/workflows/dispatch.yml/badge.svg) | ![](https://img.shields.io/github/last-commit/TsukiNi22/libutils) |
 
 > [!NOTE]
-> The content of the packages is chosen at the top of the `CMakeLists.txt` (layout of [cpp_project_template](https://github.com/TsukiNi22/cpp_project_template)): `BANANA_BRAIN_KIND` (`library`) sets the defaults of `BANANA_BRAIN_PACKAGE_BIN` (executable, `OFF`), `BANANA_BRAIN_PACKAGE_LIB` (library, `BANANA_BRAIN_SHARED_LIB` for a `.so`) and `BANANA_BRAIN_PACKAGE_DEV` (headers + CMake config), each one can be forced with `-D...=ON/OFF`.
+> The content of the packages is chosen at the top of the `CMakeLists.txt` (layout of [cpp_project_template](https://github.com/TsukiNi22/cpp_project_template)): `BRAIN_KIND` (`library`) sets the defaults of `BRAIN_PACKAGE_BIN` (executable, `OFF`), `BRAIN_PACKAGE_LIB` (library, `BRAIN_SHARED_LIB` for a `.so`) and `BRAIN_PACKAGE_DEV` (headers + CMake config), each one can be forced with `-D...=ON/OFF`.
 > After a change, update `PACKAGE_BIN` / `PACKAGE_LIB` / `PACKAGE_DEV` in `.github/workflows/build.yml` and `build-packages.yml`.
 
 | Name | Version | Fedora (`dnf`) | Debian/Ubuntu (`apt`) |
@@ -52,25 +52,25 @@ Built as a static library on top of [libutils](https://github.com/TsukiNi22/libu
 
 | File Name | Content |
 | --------- | ------- |
-| `libbanana-brain` | Install the default packages (`libbanana-brain-dev`, `libbanana-brain-op`) |
-| `libbanana-brain-dev` | All the includes (exception codes included) and the global CMake configuration (requires `libutils-dev`) |
-| `libbanana-brain-dev-op` | CMake configuration for `libbanana-brain-op` |
-| `libbanana-brain-dev-db` | CMake configuration for `libbanana-brain-db` |
-| `libbanana-brain-dev-as` | CMake configuration for `libbanana-brain-as` |
-| `libbanana-brain-op` | Library compiled with the optimization options (requires `libutils-op`) |
-| `libbanana-brain-db` | Library compiled with the debug options (requires `libutils-db`, intended for debugging only) |
-| `libbanana-brain-as` | Library compiled with the asan options (requires `libutils-as`, intended for debugging only) |
+| `libbrain` | Install the default packages (`libbrain-dev`, `libbrain-op`) |
+| `libbrain-dev` | All the includes (exception codes included) and the global CMake configuration (requires `libutils-dev`) |
+| `libbrain-dev-op` | CMake configuration for `libbrain-op` |
+| `libbrain-dev-db` | CMake configuration for `libbrain-db` |
+| `libbrain-dev-as` | CMake configuration for `libbrain-as` |
+| `libbrain-op` | Library compiled with the optimization options (requires `libutils-op`) |
+| `libbrain-db` | Library compiled with the debug options (requires `libutils-db`, intended for debugging only) |
+| `libbrain-as` | Library compiled with the asan options (requires `libutils-as`, intended for debugging only) |
 
 **Windows** (MinGW-w64 cross compilation, installed in the MinGW sysroot: `/usr/x86_64-w64-mingw32/sys-root/mingw` on Fedora, `/usr/x86_64-w64-mingw32` on Debian/Ubuntu)
 
 | File Name | Content |
 | --------- | ------- |
-| `mingw64-libbanana-brain` | Install the default Windows packages (`mingw64-libbanana-brain-dev`, `mingw64-libbanana-brain-op`) |
-| `mingw64-libbanana-brain-dev` | All the includes and the global CMake configuration (requires `mingw64-libutils-dev`) |
-| `mingw64-libbanana-brain-dev-op` | CMake configuration for `mingw64-libbanana-brain-op` |
-| `mingw64-libbanana-brain-dev-db` | CMake configuration for `mingw64-libbanana-brain-db` |
-| `mingw64-libbanana-brain-op` | Windows library compiled with the optimization options |
-| `mingw64-libbanana-brain-db` | Windows library compiled with the debug options (no asan version with MinGW) |
+| `mingw64-libbrain` | Install the default Windows packages (`mingw64-libbrain-dev`, `mingw64-libbrain-op`) |
+| `mingw64-libbrain-dev` | All the includes and the global CMake configuration (requires `mingw64-libutils-dev`) |
+| `mingw64-libbrain-dev-op` | CMake configuration for `mingw64-libbrain-op` |
+| `mingw64-libbrain-dev-db` | CMake configuration for `mingw64-libbrain-db` |
+| `mingw64-libbrain-op` | Windows library compiled with the optimization options |
+| `mingw64-libbrain-db` | Windows library compiled with the debug options (no asan version with MinGW) |
 
 ## Quick Setup - 1 (all)
 > Setup into `/usr/local`
@@ -103,11 +103,11 @@ sudo cmake --build $BUILD_DIR --target install_release --parallel $(nproc)  # De
 > [!NOTE]
 > The usage of `sudo` in the script can be removed with the `--no-sudo` argument.
 
-Run the setup script directly, without cloning the repository. It registers the banana-brain package repository so the system package manager can install the packages, then installs `libbanana-brain`:
+Run the setup script directly, without cloning the repository. It registers the banana-brain package repository so the system package manager can install the packages, then installs `libbrain`:
 1. Detect the distribution from `/etc/os-release` (`rpm` or `deb` based).
-2. `rpm`: add `/etc/yum.repos.d/banana-brain.repo` and import the GPG key.
-3. `deb`: add the GPG key in `/etc/apt/keyrings/banana-brain.gpg`, the source in `/etc/apt/sources.list.d/banana-brain.list`, then `apt-get update`.
-4. Install the package `libbanana-brain` (`--pre` for the unstable one, `--windows` for `mingw64-libbanana-brain`), unless `--no-install`.
+2. `rpm`: add `/etc/yum.repos.d/brain.repo` and import the GPG key.
+3. `deb`: add the GPG key in `/etc/apt/keyrings/brain.gpg`, the source in `/etc/apt/sources.list.d/brain.list`, then `apt-get update`.
+4. Install the package `libbrain` (`--pre` for the unstable one, `--windows` for `mingw64-libbrain`), unless `--no-install`.
 
 ```bash
 wget -qO- https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s
@@ -122,19 +122,19 @@ curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.s
 | Argument | Effect |
 | -------- | ------ |
 | `--no-sudo` | Run without `sudo` (the script must already run as root) |
-| `--pre` | Install the pre-release/unstable package (`libbanana-brain-pre`) |
-| `--windows` | Install the Windows packages (`mingw64-libbanana-brain`, MinGW sysroot) instead of the Linux ones |
+| `--pre` | Install the pre-release/unstable package (`libbrain-pre`) |
+| `--windows` | Install the Windows packages (`mingw64-libbrain`, MinGW sysroot) instead of the Linux ones |
 | `--no-install` | Only setup the mirror & the GPG key, don't install the package |
 | `-h`, `--help` | Display the usage |
 
 ## Windows (cross compilation)
-> Build `libbanana-brain.a` for Windows (x86_64) from Linux with the MinGW-w64 toolchain
+> Build `libbrain.a` for Windows (x86_64) from Linux with the MinGW-w64 toolchain
 
 From the packages (after the `setup.sh` of [Quick Setup - 2](#quick-setup---2-limited)), installed in the MinGW sysroot:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s -- --windows   # mingw64-libbanana-brain (--pre for the unstable one)
-sudo dnf install mingw64-libbanana-brain-db        # Fedora: Debug variant (requires mingw64-libutils-db)
+curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s -- --windows   # mingw64-libbrain (--pre for the unstable one)
+sudo dnf install mingw64-libbrain-db        # Fedora: Debug variant (requires mingw64-libutils-db)
 ```
 
 From the sources:
@@ -143,8 +143,8 @@ From the sources:
 export BUILD_DIR=build-windows
 cmake -S . -B $BUILD_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/mingw-w64.cmake -DCMAKE_BUILD_TYPE=Optimized
 cmake --build $BUILD_DIR --parallel $(nproc)
-cmake --install $BUILD_DIR --prefix <windows_prefix>          # include/, lib/libbanana-brain.a, lib/cmake/banana-brain/
-cmake --build $BUILD_DIR --target package_release               # mingw64-libbanana-brain-* RPM/DEB (MinGW sysroot)
+cmake --install $BUILD_DIR --prefix <windows_prefix>          # include/, lib/libbrain.a, lib/cmake/brain/
+cmake --build $BUILD_DIR --target package_release               # mingw64-libbrain-* RPM/DEB (MinGW sysroot)
 ```
 
 > [!NOTE]
@@ -153,17 +153,17 @@ cmake --build $BUILD_DIR --target package_release               # mingw64-libban
 ## Usage
 
 ```cmake
-find_package(banana-brain 1.0.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
-target_link_libraries(${TARGET} PRIVATE banana-brain::banana-brain)  # includes, utils::utils & library
+find_package(brain 1.0.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
+target_link_libraries(${TARGET} PRIVATE brain::brain)  # includes, utils::utils & library
 ```
 
 The same CMake code works for Linux and Windows (MinGW toolchain, see [Windows](#windows-cross-compilation)). The library follows the `CMAKE_BUILD_TYPE` of the project, and needs the libutils of the same mode:
 
 | Build type | Library | Package (Linux) | Package (Windows) |
 | ---------- | ------- | --------------- | ----------------- |
-| `Debug` | `libbanana-brain_debug.a` | `libbanana-brain-db` | `mingw64-libbanana-brain-db` |
-| `Asan` | `libbanana-brain_asan.a` | `libbanana-brain-as` | none (no AddressSanitizer with MinGW, use `Debug`) |
-| anything else | `libbanana-brain.a` | `libbanana-brain-op` (in `libbanana-brain`) | `mingw64-libbanana-brain-op` (in `mingw64-libbanana-brain`) |
+| `Debug` | `libbrain_debug.a` | `libbrain-db` | `mingw64-libbrain-db` |
+| `Asan` | `libbrain_asan.a` | `libbrain-as` | none (no AddressSanitizer with MinGW, use `Debug`) |
+| anything else | `libbrain.a` | `libbrain-op` (in `libbrain`) | `mingw64-libbrain-op` (in `mingw64-libbrain`) |
 
 A missing package stops the configuration with the name of the package to install.
 
