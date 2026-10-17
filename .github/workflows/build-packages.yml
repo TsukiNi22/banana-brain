@@ -14,9 +14,11 @@ concurrency:
   cancel-in-progress: false # queue the syncs, never cancel a publication
 
 env:
-  LIBRARIES: "libbanana-brain.a libbanana-brain_debug.a libbanana-brain_asan.a"
-  PACKAGES: "libbanana-brain libbanana-brain-dev libbanana-brain-dev-op libbanana-brain-dev-db libbanana-brain-dev-as libbanana-brain-op libbanana-brain-db libbanana-brain-as"
-  WINDOWS_PACKAGES: "mingw64-libbanana-brain mingw64-libbanana-brain-dev mingw64-libbanana-brain-dev-op mingw64-libbanana-brain-dev-db mingw64-libbanana-brain-op mingw64-libbanana-brain-db"
+  # Content of the packages (the BANANA_BRAIN_PACKAGE_BIN / BANANA_BRAIN_PACKAGE_LIB / BANANA_BRAIN_PACKAGE_DEV options of the CMakeLists.txt)
+  NAME: "banana-brain"
+  PACKAGE_BIN: "OFF"
+  PACKAGE_LIB: "ON"
+  PACKAGE_DEV: "ON"
 
 jobs:
   build-packages:
@@ -38,7 +40,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /github/home/.cache/ccache
-          key: ccache-${{ runner.os }}-${{ hashFiles('**/*.cpp', '**/*.hpp', 'CMakeLists.txt') }}
+          key: ccache-${{ runner.os }}-${{ hashFiles('**/*.cpp', '**/*.hpp', 'cmake/config/exceptions/*.json', 'CMakeLists.txt') }}
           restore-keys: |
             ccache-${{ runner.os }}-
 
@@ -52,43 +54,34 @@ jobs:
       - name: Show ccache stats
         run: ccache -s
 
-      - name: Check libraries
-        run: |
-          set -euo pipefail
-          for library in $LIBRARIES; do
-            if [ ! -f "./build/$library" ]; then
-              echo "::error title=Missing library, file=$library::Library '$library' not found"
-              exit 1
-            fi
-            echo "✓ Library '$library' ok"
-          done
-
       - name: Check packages
         run: |
           set -euo pipefail
-          declare -A PACKAGE_PATTERNS=(
-            ["libbanana-brain"]="libbanana-brain-*-Linux.@ext@"
-            ["libbanana-brain-op"]="libbanana-brain-op-*-lib.@ext@"
-            ["libbanana-brain-db"]="libbanana-brain-db-*-lib.@ext@"
-            ["libbanana-brain-as"]="libbanana-brain-as-*-lib.@ext@"
-            ["libbanana-brain-dev"]="libbanana-brain-dev-*-headers.@ext@"
-            ["libbanana-brain-dev-op"]="libbanana-brain-dev-*-headers-op.@ext@"
-            ["libbanana-brain-dev-db"]="libbanana-brain-dev-*-headers-db.@ext@"
-            ["libbanana-brain-dev-as"]="libbanana-brain-dev-*-headers-as.@ext@"
-          )
+          # Expected files: <base>-<variant>-<version>-Linux-<component>.<ext>, <dev>-<version>-Linux-headers[-<variant>].<ext>, <base>-<version>-Linux.<ext>
+          # (<version> = X.Y.Z or pre-X.Y.Z), the file base is the executable name, else the library one
+          LIB="lib${NAME#lib}"
+          if [ "$PACKAGE_BIN" = "ON" ]; then BASE="$NAME"; else BASE="$LIB"; fi
+          if [ "$PACKAGE_LIB" = "ON" ]; then DEV="$LIB-dev"; else DEV="$BASE-dev"; fi
 
-          for package in $(echo $PACKAGES | tr ',' ' ' | xargs); do
+          check() { # <package> <file pattern>
             for ext in rpm deb; do
-              pattern="${PACKAGE_PATTERNS[$package]//@ext@/$ext}"
+              pattern="${2//@ext@/$ext}"
               FILE=$(find ./build -maxdepth 1 -name "$pattern" -print -quit)
-
               if [ -z "$FILE" ]; then
-                echo "::error title=Missing package (${ext^^})::Package '$package' (.$ext) not found (pattern: $pattern)"
+                echo "::error title=Missing package (${ext^^})::Package '$1' (.$ext) not found (pattern: $pattern)"
                 exit 1
               fi
-              echo "✓ Package '$package' (.$ext) ok -> $(basename "$FILE")"
+              echo "✓ Package '$1' (.$ext) ok -> $(basename "$FILE")"
             done
+          }
+
+          for variant in op db as; do
+            [ "$PACKAGE_BIN" = "ON" ] && check "$NAME-$variant" "$BASE-$variant-*-Linux-bin.@ext@"
+            [ "$PACKAGE_LIB" = "ON" ] && check "$LIB-$variant" "$BASE-$variant-*-Linux-lib.@ext@"
+            [ "$PACKAGE_DEV" = "ON" ] && [ "$PACKAGE_LIB" = "ON" ] && check "$DEV-$variant" "$DEV-*-Linux-headers-$variant.@ext@"
           done
+          [ "$PACKAGE_DEV" = "ON" ] && check "$DEV" "$DEV-*-Linux-headers.@ext@"
+          check "$BASE" "$BASE-*-Linux.@ext@"
 
       - name: Upload compiled packages
         uses: actions/upload-artifact@v6
@@ -118,7 +111,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /github/home/.cache/ccache
-          key: ccache-mingw64-${{ hashFiles('**/*.cpp', '**/*.hpp', 'CMakeLists.txt') }}
+          key: ccache-mingw64-${{ hashFiles('**/*.cpp', '**/*.hpp', 'cmake/config/exceptions/*.json', 'CMakeLists.txt') }}
           restore-keys: |
             ccache-mingw64-
 
@@ -135,27 +128,30 @@ jobs:
       - name: Check packages
         run: |
           set -euo pipefail
-          declare -A PACKAGE_PATTERNS=(
-            ["mingw64-libbanana-brain"]="mingw64-libbanana-brain-*-win64.@ext@"
-            ["mingw64-libbanana-brain-op"]="mingw64-libbanana-brain-op-*-lib.@ext@"
-            ["mingw64-libbanana-brain-db"]="mingw64-libbanana-brain-db-*-lib.@ext@"
-            ["mingw64-libbanana-brain-dev"]="mingw64-libbanana-brain-dev-*-headers.@ext@"
-            ["mingw64-libbanana-brain-dev-op"]="mingw64-libbanana-brain-dev-*-headers-op.@ext@"
-            ["mingw64-libbanana-brain-dev-db"]="mingw64-libbanana-brain-dev-*-headers-db.@ext@"
-          )
+          # Same files as the Linux ones with the mingw64- prefix and the win64 system, without the Asan variant
+          LIB="mingw64-lib${NAME#lib}"
+          if [ "$PACKAGE_BIN" = "ON" ]; then BASE="mingw64-$NAME"; else BASE="$LIB"; fi
+          if [ "$PACKAGE_LIB" = "ON" ]; then DEV="$LIB-dev"; else DEV="$BASE-dev"; fi
 
-          for package in $WINDOWS_PACKAGES; do
+          check() { # <package> <file pattern>
             for ext in rpm deb; do
-              pattern="${PACKAGE_PATTERNS[$package]//@ext@/$ext}"
+              pattern="${2//@ext@/$ext}"
               FILE=$(find ./build -maxdepth 1 -name "$pattern" -print -quit)
-
               if [ -z "$FILE" ]; then
-                echo "::error title=Missing package (${ext^^})::Package '$package' (.$ext) not found (pattern: $pattern)"
+                echo "::error title=Missing package (${ext^^})::Package '$1' (.$ext) not found (pattern: $pattern)"
                 exit 1
               fi
-              echo "✓ Package '$package' (.$ext) ok -> $(basename "$FILE")"
+              echo "✓ Package '$1' (.$ext) ok -> $(basename "$FILE")"
             done
+          }
+
+          for variant in op db; do
+            [ "$PACKAGE_BIN" = "ON" ] && check "mingw64-$NAME-$variant" "$BASE-$variant-*-win64-bin.@ext@"
+            [ "$PACKAGE_LIB" = "ON" ] && check "$LIB-$variant" "$BASE-$variant-*-win64-lib.@ext@"
+            [ "$PACKAGE_DEV" = "ON" ] && [ "$PACKAGE_LIB" = "ON" ] && check "$DEV-$variant" "$DEV-*-win64-headers-$variant.@ext@"
           done
+          [ "$PACKAGE_DEV" = "ON" ] && check "$DEV" "$DEV-*-win64-headers.@ext@"
+          check "$BASE" "$BASE-*-win64.@ext@"
 
       - name: Upload compiled packages
         uses: actions/upload-artifact@v6
@@ -166,6 +162,7 @@ jobs:
             build/*.deb
           retention-days: 1
 
+  # >>> gh-pages >>> (removed by setup.sh without the gh-pages option: the packages stay as artifacts of the run)
   sync-online-packages:
     needs: [build-packages, build-packages-windows]
     if: needs.build-packages.result == 'success' && needs.build-packages-windows.result == 'success'
@@ -318,3 +315,4 @@ jobs:
           fi
           git commit -m "chore: sync packages from main (${{ github.sha }})"
           git push origin gh-pages
+  # <<< gh-pages <<<

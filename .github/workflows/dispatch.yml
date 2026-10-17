@@ -7,12 +7,14 @@ on:
     paths-ignore:
       - '**.md'
       - '**.txt'
+      - 'docs/**'
 
 permissions:
   actions: write
 
 jobs:
   dispatch:
+
     runs-on: ${{ vars.RUNNER }}
     defaults:
       run:
@@ -75,20 +77,20 @@ jobs:
           wait_interval: 4
           propagate_failure: true
 
-  notify-build-libraries:
+  notify-build:
     needs: [dispatch, notify-unit-tests]
     if: needs.dispatch.outputs.ignore == 'false' && needs.dispatch.outputs.build == 'false' && needs.notify-unit-tests.result == 'success'
 
     runs-on: ${{ vars.RUNNER }}
 
     steps:
-      - name: Trigger build-libraries.yml and wait
+      - name: Trigger build.yml and wait
         uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
           owner: ${{ github.repository_owner }}
           repo: ${{ github.event.repository.name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow_file_name: build-libraries.yml
+          workflow_file_name: build.yml
           ref: ${{ github.ref_name }}
           wait_interval: 4
           propagate_failure: true
@@ -113,6 +115,28 @@ jobs:
           client_payload: '{"stable": "${{ needs.dispatch.outputs.stable }}"}'
 
   notify-release:
+    # GitHub release of a tag (notes = section of the CHANGELOG), once its packages are published
+    needs: [dispatch, notify-build-packages]
+    if: github.ref_type == 'tag' && needs.dispatch.outputs.ignore == 'false' && needs.notify-build-packages.result == 'success'
+
+    runs-on: ${{ vars.RUNNER }}
+
+    steps:
+      - name: Trigger release.yml (workflow_dispatch) and wait
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
+        with:
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow_file_name: release.yml
+          ref: ${{ github.ref_name }}
+          wait_interval: 4
+          propagate_failure: true
+
+  # Downstream notification (like libutils -> docker-image): after a package publication, or a commit containing
+  # [release]. docker-image must listen with 'on: repository_dispatch: types: [banana-brain-released]', the token
+  # (secret DOWNSTREAM_REPO_TOKEN) needs the 'repo' scope on it.
+  notify-downstream:
     needs: [dispatch, notify-build-packages]
     if: always() && needs.dispatch.outputs.ignore == 'false' && (needs.dispatch.outputs.build == 'true' || needs.dispatch.outputs.release == 'true') && (needs.notify-build-packages.result == 'success' || needs.notify-build-packages.result == 'skipped')
 
@@ -126,7 +150,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -sf -X POST \
-            -H "Authorization: Bearer ${{ secrets.DOCKER_IMAGE_REPO_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.DOWNSTREAM_REPO_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/TsukiNi22/docker-image/dispatches" \
             -d '{
