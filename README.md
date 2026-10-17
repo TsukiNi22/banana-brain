@@ -1,7 +1,7 @@
 # banana-brain
 
 > [!TIP]
-> Technical documentation and project graph: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v1.0.0).
+> Technical documentation and project graph: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v0.0.0).
 
 C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling several kinds of networks (layered, brain, banana), their configuration, training and usage, plus the dataset and randomness tools.
 Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
@@ -153,7 +153,7 @@ cmake --build $BUILD_DIR --target package_release               # mingw64-libbra
 ## Usage
 
 ```cmake
-find_package(brain 1.0.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
+find_package(brain 0.0.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
 target_link_libraries(${TARGET} PRIVATE brain::brain)  # includes, utils::utils & library
 ```
 
@@ -259,7 +259,7 @@ The pre-release of the packages (`<package_name>-pre`) is triggered by:
 > Only the 5 last versions of each `-pre` package are kept in the package repository, every release is kept.
 
 ### Release (stable)
-The release of the packages (channel `stable`) and the GitHub release are only triggered by a tag matching exactly `vx.x.x` (ex: `v1.0.0`), whose section must exist in the `CHANGELOG.md`.
+The release of the packages (channel `stable`) and the GitHub release are only triggered by a tag matching exactly `vx.x.x` (ex: `v0.0.0`), whose section must exist in the `CHANGELOG.md`.
 
 ### Downstream notification
 `Dispatch (CI/CD)` notifies the `docker-image` repository (`notify-downstream` job: `repository_dispatch`, event `banana-brain-released`, secret `DOWNSTREAM_REPO_TOKEN`) after the packages are published:
