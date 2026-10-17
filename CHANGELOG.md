@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exception codes of the library (`utils::exception::ExternalCode::NoNetwork`, `NetworkNotLoaded`, `FrozenNetwork`, `InvalidInputSize`...) generated from `cmake/config/exceptions/brain.json` and installed with the headers
 - Static library `libbanana-brain.a` (`_debug`, `_asan`) with `find_package(banana-brain)` / `banana-brain::banana-brain`, RPM/DEB packages like libutils (`libbanana-brain`, `-dev`, `-dev-op` / `-dev-db` / `-dev-as`, `-op` / `-db` / `-as`, `-pre` channel) and the Windows ones (`mingw64-libbanana-brain*`, MinGW-w64 cross compilation)
 - Unit tests (GoogleTest, `tests/`) of the default states, the types and the compile time checks of `train`
-- Workflows: `Dispatch (CI/CD)`, `Unit Tests - Libraries (CI)`, `Build - Libraries (CI)`, `Build - Packages (CI/CD)`, `Style - xstyle (CI)` and `Merge - libutils (CD)` (reserved, does nothing yet)
+- Workflows of [cpp_project_template](https://github.com/TsukiNi22/cpp_project_template): `Dispatch (CI/CD)`, `Unit Tests (CI)`, `Build (CI)`, `Build - Packages (CI/CD)`, `Release - GitHub (CD)`, `Docs - Pages (CD)`, plus `Style - xstyle (CI)` and `Merge - libutils (CD)` (reserved, does nothing yet)
 - HTML documentation (`docs/`: technical page + interactive project graph, EN / FR, published on GitHub Pages)
 - `setup.sh` (package repository + GPG key + installation), README, CHANGELOG, license CC BY-NC-SA 4.0
 

@@ -30,6 +30,10 @@ Built as a static library on top of [libutils](https://github.com/TsukiNi22/libu
 | ----------- | ------- | ------ | ----------- |
 | [libutils](https://github.com/TsukiNi22/libutils) | MIT | ![Dispatch (CI/CD)](https://github.com/TsukiNi22/libutils/actions/workflows/dispatch.yml/badge.svg) | ![](https://img.shields.io/github/last-commit/TsukiNi22/libutils) |
 
+> [!NOTE]
+> The content of the packages is chosen at the top of the `CMakeLists.txt` (layout of [cpp_project_template](https://github.com/TsukiNi22/cpp_project_template)): `BANANA_BRAIN_KIND` (`library`) sets the defaults of `BANANA_BRAIN_PACKAGE_BIN` (executable, `OFF`), `BANANA_BRAIN_PACKAGE_LIB` (library, `BANANA_BRAIN_SHARED_LIB` for a `.so`) and `BANANA_BRAIN_PACKAGE_DEV` (headers + CMake config), each one can be forced with `-D...=ON/OFF`.
+> After a change, update `PACKAGE_BIN` / `PACKAGE_LIB` / `PACKAGE_DEV` in `.github/workflows/build.yml` and `build-packages.yml`.
+
 | Name | Version | Fedora (`dnf`) | Debian/Ubuntu (`apt`) |
 | ---- | ------- | -------------- | --------------------- |
 | `clang++` | C++20 | `clang` | `clang` |
@@ -103,7 +107,7 @@ Run the setup script directly, without cloning the repository. It registers the 
 1. Detect the distribution from `/etc/os-release` (`rpm` or `deb` based).
 2. `rpm`: add `/etc/yum.repos.d/banana-brain.repo` and import the GPG key.
 3. `deb`: add the GPG key in `/etc/apt/keyrings/banana-brain.gpg`, the source in `/etc/apt/sources.list.d/banana-brain.list`, then `apt-get update`.
-4. Install the package (`libbanana-brain`, or `libbanana-brain-pre` with `--pre`), unless `--no-install`.
+4. Install the package `libbanana-brain` (`--pre` for the unstable one, `--windows` for `mingw64-libbanana-brain`), unless `--no-install`.
 
 ```bash
 wget -qO- https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s
@@ -119,6 +123,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.s
 | -------- | ------ |
 | `--no-sudo` | Run without `sudo` (the script must already run as root) |
 | `--pre` | Install the pre-release/unstable package (`libbanana-brain-pre`) |
+| `--windows` | Install the Windows packages (`mingw64-libbanana-brain`, MinGW sysroot) instead of the Linux ones |
 | `--no-install` | Only setup the mirror & the GPG key, don't install the package |
 | `-h`, `--help` | Display the usage |
 
@@ -128,8 +133,8 @@ curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.s
 From the packages (after the `setup.sh` of [Quick Setup - 2](#quick-setup---2-limited)), installed in the MinGW sysroot:
 
 ```bash
-sudo dnf install mingw64-libbanana-brain-pre       # Fedora: + mingw64-libbanana-brain-db-pre for Debug (requires mingw64-libutils)
-sudo apt install mingw64-libbanana-brain-pre       # Debian/Ubuntu: libutils for MinGW must be built by hand
+curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s -- --windows   # mingw64-libbanana-brain (--pre for the unstable one)
+sudo dnf install mingw64-libbanana-brain-db        # Fedora: Debug variant (requires mingw64-libutils-db)
 ```
 
 From the sources:
@@ -139,7 +144,7 @@ export BUILD_DIR=build-windows
 cmake -S . -B $BUILD_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/mingw-w64.cmake -DCMAKE_BUILD_TYPE=Optimized
 cmake --build $BUILD_DIR --parallel $(nproc)
 cmake --install $BUILD_DIR --prefix <windows_prefix>          # include/, lib/libbanana-brain.a, lib/cmake/banana-brain/
-cmake --build $BUILD_DIR --target package                       # mingw64-libbanana-brain-* RPM/DEB (MinGW sysroot)
+cmake --build $BUILD_DIR --target package_release               # mingw64-libbanana-brain-* RPM/DEB (MinGW sysroot)
 ```
 
 > [!NOTE]
@@ -209,6 +214,9 @@ try {
 }
 ```
 
+> [!NOTE]
+> Every new `.cpp` goes in the `SRC_SHARED` list of the `CMakeLists.txt` (the library; `SRC` is the executable only, empty here): `cmake --build build --target get_unregistered_files` lists the missing ones.
+
 ## Unit tests
 
 ```bash
@@ -223,15 +231,21 @@ ctest --test-dir $BUILD_DIR --output-on-failure --timeout 30   # or ./unit_tests
 
 ## Workflows/Release
 ### Workflows
-- `Dispatch (CI/CD)`: runs on every push (branch `main` or tag `v*`, not for `*.md` / `*.txt` only changes) and decides what to trigger from the ref / commit message
-- `Unit Tests - Libraries (CI)`: builds and runs the unit tests, always first (Linux in the `unit-tests` image, Windows in the `mingw64-unit-tests` image under `wine`)
-- `Build - Packages (CI/CD)`: builds the packages (RPM/DEB: Linux in the `ci` image, Windows `mingw64-libbanana-brain*` in the `build-packages-windows` job on `mingw64-ci`), signs them and publishes them on the `gh-pages` repository
-- `Build - Libraries (CI)`: only builds the libraries and checks the compilation, without producing or publishing packages
+- `Dispatch (CI/CD)`: runs on every push (branch `main` or tag `v*`, not for `*.md` / `*.txt` / `docs/` only changes) and decides what to trigger from the ref / commit message
+- `Unit Tests (CI)`: builds and runs the unit tests, always first (Linux in the `unit-tests` image, Windows in the `mingw64-unit-tests` image under `wine`)
+- `Build (CI)`: only builds the libraries (Linux in the `ci` image, Windows in the `mingw64-ci` image) and checks the outputs, without producing packages
+- `Build - Packages (CI/CD)`: builds the packages (RPM/DEB: Linux in the `ci` image, Windows `mingw64-*` in the `mingw64-ci` image), checks them against the `PACKAGE_*` content, signs them and publishes them on the `gh-pages` repository
+- `Release - GitHub (CD)`: creates the GitHub release of a tag from its section of the `CHANGELOG.md`, once the packages are published
+- `Docs - Pages (CD)`: copies `docs/` on the `gh-pages` branch on every push changing it (https://tsukini22.github.io/banana-brain/docs/)
+- `Sync Packages (CD)` (on `gh-pages`): rebuilds the metadata and signatures of the package repository after a manual push on the branch
 - `Style - xstyle (CI)`: checks the coding style with `xstyle` (whole project on a push, changed lines on a pull request, fails on a major issue)
 - `Merge - libutils (CD)`: reserved for the future automatic merge of the library into libutils, does nothing yet (manual trigger only)
 
 > [!NOTE]
-> `Build - Libraries (CI)` only runs when `Dispatch (CI/CD)` decides **not** to build the packages, to check that the code still compiles.
+> `Build (CI)` only runs when `Dispatch (CI/CD)` decides **not** to build the packages, to check that the code still compiles.
+
+> [!IMPORTANT]
+> The workflows need the repository variable `RUNNER` (`gh variable set RUNNER --body <runner>`), the containers `ghcr.io/tsukini22/ci`, `unit-tests`, `mingw64-ci`, `mingw64-unit-tests`, `package`, `git`, the secrets `GPG_PRIVATE_KEY` (base64), `GPG_KEY_ID`, `GPG_PASSPHRASE` to sign and publish the packages, and `DOWNSTREAM_REPO_TOKEN` for the downstream notification.
 
 > [!TIP]
 > A commit containing `[ignore]` (preferably in the description) skips the whole CI.
@@ -245,10 +259,10 @@ The pre-release of the packages (`<package_name>-pre`) is triggered by:
 > Only the 5 last versions of each `-pre` package are kept in the package repository, every release is kept.
 
 ### Release (stable)
-The release of the packages (channel `stable`) is only triggered by a tag matching exactly `vx.x.x` (ex: `v1.0.0`).
+The release of the packages (channel `stable`) and the GitHub release are only triggered by a tag matching exactly `vx.x.x` (ex: `v1.0.0`), whose section must exist in the `CHANGELOG.md`.
 
 ### Downstream notification
-`Dispatch (CI/CD)` notifies the `docker-image` repository (`repository_dispatch`, event `banana-brain-released`) after the packages are published:
+`Dispatch (CI/CD)` notifies the `docker-image` repository (`notify-downstream` job: `repository_dispatch`, event `banana-brain-released`, secret `DOWNSTREAM_REPO_TOKEN`) after the packages are published:
 - on every package build (release or pre-release)
 - or on a commit containing `[release]`, preferably in the description
 
