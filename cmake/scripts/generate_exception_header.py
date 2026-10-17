@@ -150,7 +150,7 @@ File Description:
 
 namespace {NAMES.EXCEPTION_SCOPE} {{ // namespace start
 //----------------------------------------------------------------//
-/* ENUM */
+/* TYPEDEF */
 
 /* Definition of the different exception code */
 enum class {NAMES.CODE_SECTION}: std::size_t {{

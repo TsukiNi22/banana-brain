@@ -7,19 +7,20 @@ export RESET="\033[0m"
 
 # Vars definition
 mode="${1:-}"
-[[ $# -gt 0 ]] && shift
-files="$@"
+shift || true
+files=("$@")
+registered=$(printf '%s\n' "${files[@]}") # one path per line
 
 # Execution
 if [[ "$mode" = "unregistered" ]]; then
     echo -e "╔═════ 🔻 [${CYAN}Unregistered Files${RESET}] 🔻 ═════╗"
-    find src -name "*.cpp" -printf "src/%P\n" | while read -r file; do
-        printf '%s\n' $files | grep -qxF "$file" || echo "$file" # exact path, not a substring
+    [[ -d src ]] && find src -name "*.cpp" -printf "src/%P\n" | while read -r file; do
+        grep -qxF "$file" <<< "$registered" || echo "$file"
     done
     echo -e "╚═════ 🔺 [${CYAN}Unregistered Files${RESET}] 🔺 ═════╝"
 elif [[ "$mode" = "unknown" ]]; then
     echo -e "╔════════ 🔻 [${CYAN}Unknown Files${RESET}] 🔻 ════════╗"
-    for file in $files; do
+    for file in "${files[@]}"; do
         [[ -f "$file" ]] || echo "$file"
     done
     echo -e "╚════════ 🔺 [${CYAN}Unknown Files${RESET}] 🔺 ════════╝"

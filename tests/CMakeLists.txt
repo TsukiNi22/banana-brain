@@ -28,6 +28,13 @@ endif()
 # =========================
 # Sources
 # =========================
+# Project sources: the library target when it exists, else the shared list of the parent (never its entry point)
+set(SRC_PROJECT "")
+if(NOT BANANA_BRAIN_PACKAGE_LIB)
+    set(SRC_PROJECT ${SRC_SHARED})
+    list(TRANSFORM SRC_PROJECT PREPEND ${CMAKE_SOURCE_DIR}/)
+endif()
+
 set(SRC
     # Brain
     NetworkType.cpp
@@ -43,13 +50,16 @@ set(SRC
     tools/Dataset.cpp
     tools/Neuron.cpp
 )
-add_executable(${TARGET} ${SRC})
+add_executable(${TARGET} ${SRC} ${SRC_PROJECT})
 
 # =========================
 # Dependencies
 # =========================
-target_include_directories(${TARGET} PRIVATE ../include/ .)
-target_link_libraries(${TARGET} PRIVATE banana-brain GTest::gtest GTest::gtest_main) # banana-brain gives utils::utils & the exception header directory
+target_include_directories(${TARGET} PRIVATE ../include/ ../include/brain/exception/ .)
+target_link_libraries(${TARGET} PRIVATE utils::utils GTest::gtest GTest::gtest_main)
+if(BANANA_BRAIN_PACKAGE_LIB)
+    target_link_libraries(${TARGET} PRIVATE ${TARGET_LIB})
+endif()
 add_dependencies(${TARGET} generated_external_exception_header)
 if(WIN32)
     target_link_options(${TARGET} PRIVATE -static-libgcc -static-libstdc++ -static) # standalone .exe (no MinGW runtime dll)
@@ -60,7 +70,7 @@ endif()
 # =========================
 target_compile_options(${TARGET} PRIVATE -g -ggdb3)
 if(NOT WIN32)
-    # libbanana-brain_asan.a & libutils_asan.a need the AddressSanitizer runtime at the link
+    # libutils_asan.a needs the AddressSanitizer runtime at the link
     target_compile_options(${TARGET} PRIVATE $<$<CONFIG:Asan>:-fsanitize=address -fno-omit-frame-pointer>)
     target_link_options(${TARGET} PRIVATE $<$<CONFIG:Asan>:-fsanitize=address>)
 endif()

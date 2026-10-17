@@ -6,8 +6,8 @@
 #**  mingw-w64.cmake
 #
 #File Description:
-#**  Toolchain used to cross compile banana-brain for Windows (x86_64)
-#**  cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/mingw-w64.cmake
+#**  Toolchain used to cross compile the project for Windows (x86_64)
+#**  cmake -S . -B build-windows -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/mingw-w64.cmake
 #**************************************************************#
 
 set(CMAKE_SYSTEM_NAME Windows)
@@ -22,14 +22,14 @@ set(CMAKE_C_COMPILER ${MINGW_PREFIX}-gcc)
 set(CMAKE_CXX_COMPILER ${MINGW_PREFIX}-g++)
 set(CMAKE_RC_COMPILER ${MINGW_PREFIX}-windres)
 
-# Sysroot of the target (Fedora: mingw64-*, Debian/Ubuntu: mingw-w64)
+# Sysroot of the target (Fedora: mingw64-*, Debian/Ubuntu: mingw-w64), where mingw64-libutils* is installed
 foreach(root /usr/${MINGW_PREFIX}/sys-root/mingw /usr/${MINGW_PREFIX})
     if(EXISTS ${root})
         list(APPEND CMAKE_FIND_ROOT_PATH ${root})
     endif()
 endforeach()
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)  # Host programs (python3, ccache)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)   # Target libraries (OpenSSL)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)   # Target libraries (libutils, OpenSSL)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
