@@ -1,8 +1,9 @@
 #!/bin/bash
-# Usage: setup.sh [--no-sudo] [--pre] [--no-install]
+# Usage: setup.sh [--no-sudo] [--pre] [--windows] [--no-install]
 # Options:
 #   --no-sudo      Run without sudo (requires the script to be run as root already)
 #   --pre          Install the pre-release/unstable package (libbanana-brain-pre)
+#   --windows      Install the Windows packages (mingw64-libbanana-brain, MinGW sysroot) instead of the Linux ones
 #   --no-install   Only setup the mirror & gpg key, don't install the package
 #   -h, --help     Display this usage
 set -euo pipefail
@@ -12,12 +13,14 @@ KEY_NAME="RPM-GPG-KEY-tsukini"
 PACKAGE="libbanana-brain"
 SUDO="sudo"
 INSTALL=true
+CHANNEL=""
+PREFIX=""
 
 # =========================
 # Parse arguments
 # =========================
 usage() {
-    sed -n '2,7s/^# \{0,1\}//p' "$0" # the usage block of the header
+    sed -n '2,8s/^# \{0,1\}//p' "$0" # the usage block of the header
     exit 1
 }
 
@@ -27,7 +30,10 @@ for arg in "$@"; do
             SUDO=""
             ;;
         --pre)
-            PACKAGE="libbanana-brain-pre"
+            CHANNEL="-pre"
+            ;;
+        --windows)
+            PREFIX="mingw64-"
             ;;
         --no-install)
             INSTALL=false
@@ -41,6 +47,7 @@ for arg in "$@"; do
             ;;
     esac
 done
+PACKAGE="${PREFIX}${PACKAGE}${CHANNEL}"
 
 if [[ -z "$SUDO" ]] && [[ "$(id -u)" -ne 0 ]]; then
     echo "Error: --no-sudo requires the script to be run as root." >&2
@@ -152,7 +159,7 @@ else
 fi
 
 if $INSTALL; then
-    echo "$PACKAGE installed. Next step: find_package(banana-brain) + banana-brain::banana-brain in your CMake"
+    echo "$PACKAGE installed."
 elif is_rpm_based; then
     echo "You can now run: $SUDO dnf install $PACKAGE"
 else
