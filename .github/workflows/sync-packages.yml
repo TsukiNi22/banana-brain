@@ -6,7 +6,7 @@ on:
 
 jobs:
   sync-packages:
-    if: github.event.head_commit.author.email != 'github-actions[bot]@users.noreply.github.com' && !contains(github.event.head_commit.message, '[ignore]') && !startsWith(github.event.head_commit.message, 'Merge')
+    if: github.event.head_commit.author.email != 'github-actions[bot]@users.noreply.github.com' && !contains(github.event.head_commit.message, '[ignore]') && !startsWith(github.event.head_commit.message, 'Merge') && !startsWith(github.event.head_commit.message, 'docs(pages)')
     permissions:
       contents: write
 
@@ -34,17 +34,19 @@ jobs:
           echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
 
       - name: Update metadata and signature (RPM)
-        working-directory: gh-pages/fedora/44/x86_64
         run: |
           set -e
+          mkdir -p gh-pages/fedora/44/x86_64
+          cd gh-pages/fedora/44/x86_64
           createrepo_c --update .
           rm -f repodata/repomd.xml.asc
           gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" --detach-sign --armor repodata/repomd.xml
 
       - name: Update metadata and signature (DEB)
-        working-directory: gh-pages/debian
         run: |
           set -euo pipefail
+          mkdir -p gh-pages/debian/pool/main
+          cd gh-pages/debian
           DIST_DIR="dists/stable/main/binary-amd64"
           mkdir -p "$DIST_DIR"
 
