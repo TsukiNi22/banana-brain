@@ -67,31 +67,70 @@ template<>
 _cold void brain::NeuralNetwork::init<brain::NetworkType::Layered>(const brain::UIType layer, const brain::UIType neuron_per_layer)
 {
     this->requireUnfrozen();
-    if (layer == 0 || neuron_per_layer == 0) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the number of layers and of neurons per layer should be above 0");
-    }
+    std::unique_ptr<brain::INetwork> network = std::make_unique<brain::LayerNetwork>(layer, neuron_per_layer); // the network checks its parameters, the actual one is kept on an error
     this->clear();
-    this->_network = std::make_unique<brain::LayerNetwork>(layer, neuron_per_layer);
+    this->_network = std::move(network);
 }
 
 template<>
 _cold void brain::NeuralNetwork::init<brain::NetworkType::Brain>(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size)
 {
     this->requireUnfrozen();
-    if (neurons == 0 || !(size.first > 0) || !(size.second > 0)) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the number of neurons and the size of the space should be above 0");
-    }
+    std::unique_ptr<brain::INetwork> network = std::make_unique<brain::BrainNetwork>(neurons, size); // the network checks its parameters, the actual one is kept on an error
     this->clear();
-    this->_network = std::make_unique<brain::BrainNetwork>(neurons, size);
+    this->_network = std::move(network);
 }
 
 _cold void brain::NeuralNetwork::rand(const brain::FType min, const brain::FType max)
 {
     this->requireUnfrozen();
-    if (!(min <= max)) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the min of the random range should be under or equal to the max");
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
     }
-    this->_rand.first = {min, max};
+    this->_network->rand(min, max);
+}
+
+_cold void brain::NeuralNetwork::rand(const brain::RandFn& fn)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->rand(fn);
+}
+
+_cold void brain::NeuralNetwork::activationFunction(const brain::ActivationFn& fn)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->activationFunction(fn);
+}
+
+_cold void brain::NeuralNetwork::internalActivationFunction(const brain::ActivationFunction fn)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->internalActivationFunction(fn);
+}
+
+_cold const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& brain::NeuralNetwork::rand(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->rand();
+}
+
+_cold const std::pair<brain::ActivationFunction, brain::ActivationFn>& brain::NeuralNetwork::activationFunction(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->activationFunction();
 }
 
 _cold void brain::NeuralNetwork::learningRate(const brain::FType learning_rate, const brain::UIType learning_rate_decay, const std::pair<bool, brain::FType>& coef)
