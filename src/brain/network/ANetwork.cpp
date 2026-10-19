@@ -57,6 +57,8 @@ _hot void brain::ANetwork::inputs(const brain::Values& inputs) const
     // check inputs
     if (inputs.empty()) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "no inputs given");
+    } else if (this->_ioSize.first != 0 && inputs.size() != this->_ioSize.first) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "given " + std::to_string(inputs.size()) + ", expected " + std::to_string(this->_ioSize.first));
     }
     this->_inputs = inputs;
 }

@@ -81,6 +81,8 @@ _hot void brain::BrainNetwork::backpropagation(const brain::Values& coefs)
     // check inputs
     if (coefs.empty()) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "no coefficients given");
+    } else if (this->_ioSize.second != 0 && coefs.size() != this->_ioSize.second) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(coefs.size()) + ", expected " + std::to_string(this->_ioSize.second));
     }
     /* Nothing */
 }

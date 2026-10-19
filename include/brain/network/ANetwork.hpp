@@ -40,6 +40,7 @@ class ANetwork: public brain::INetwork {
     protected:
         std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn> _rand = {{-1.0, 1.0}, nullptr}; // <<min, max>, generator from the seed> used for the random weights / bias at start (the function wins when set)
         std::pair<brain::ActivationFunction, brain::ActivationFn> _activationFunction = {brain::ActivationFunction::None, nullptr}; // internal first, the function when set, raw values when none
+        std::pair<brain::UIType, brain::UIType> _ioSize = {0, 0}; // <input, output> (named from 0 to n - 1), 0 = not set: the size is not checked
         mutable brain::Values _inputs; // last inputs given to the network
 
         // ---------- Pre-Function -------- //
@@ -61,7 +62,15 @@ class ANetwork: public brain::INetwork {
         void internalActivationFunction(const brain::ActivationFunction fn) final;
 
         // ------------ Function ---------- //
+        /* setter (size) */
+        _cold inline void size(const brain::UIType input, const brain::UIType output) final {this->_ioSize = {input, output};};
+        _cold inline void input(const brain::UIType input) final                            {this->_ioSize.first = input;};
+        _cold inline void output(const brain::UIType output) final                          {this->_ioSize.second = output;};
+
         /* getter */
+        _cold _nodiscard inline brain::UIType input(void) const final                                  {return this->_ioSize.first;};
+        _cold _nodiscard inline brain::UIType output(void) const final                                 {return this->_ioSize.second;};
+        _cold _nodiscard inline const std::pair<brain::UIType, brain::UIType>& size(void) const final {return this->_ioSize;};
         _cold _nodiscard inline const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& rand(void) const final {return this->_rand;};
         _cold _nodiscard inline const std::pair<brain::ActivationFunction, brain::ActivationFn>& activationFunction(void) const final {return this->_activationFunction;};
 
