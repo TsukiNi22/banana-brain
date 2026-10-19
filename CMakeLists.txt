@@ -95,6 +95,8 @@ add_compile_options(
 # Executable only (never in the library)
 set(SRC
     # Entry
+    src/brain/tools/loss.cpp
+    src/brain/tools/activation.cpp
 )
 
 # Shared by the executable and the library (the <name>_lib target when both exist)

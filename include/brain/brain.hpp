@@ -28,9 +28,11 @@ File Description:
     #include "NetworkType.hpp"       // brain::IType, brain::UIType, brain::FType, brain::Values, brain::Dataset, brain::LayerNeuron, brain::BrainNeuron
 
     /* tools */
+    #include "tools/activation.hpp"  // brain::tools::sigmoid, brain::tools::softmax, brain::tools::linear, brain::tools::relu
     #include "tools/dataset.hpp"     // brain::tools::text_to_input, brain::tools::input_to_text, brain::tools::shuffle, brain::tools::rand_sets
     #include "tools/random.hpp"      // brain::tools::generator, brain::tools::rand, brain::tools::rand_unsigned_integer, brain::tools::rand_floating
     #include "tools/neuron.hpp"      // brain::tools::sort
+    #include "tools/loss.hpp"        // brain::tools::mse, brain::tools::cross_entropy
 
     /* network (the networks are internal, created by brain::NeuralNetwork::init<...>: include "network/Network.hpp" only when the network classes are needed) */
     //#include "network/Network.hpp"   // brain::INetwork, brain::ANetwork, brain::LayerNetwork, brain::BrainNetwork
