@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 19/10/2026 by @author Tsukini
 
 File Name:
 ##  @file ANetwork.hpp
@@ -35,7 +35,7 @@ namespace brain { // namespace start
 
 class ANetwork: public brain::INetwork {
     protected:
-        brain::Values _inputs; // last inputs given to the network
+        mutable brain::Values _inputs; // last inputs given to the network
         bool _loaded = false; // true: in memory (gpu) | false: unloaded
 
         // ---------- Pre-Function -------- //
@@ -49,7 +49,7 @@ class ANetwork: public brain::INetwork {
 
         // ------------ Function ---------- //
         /* execution */
-        _hot void inputs(const brain::Values& inputs) final {this->_inputs = inputs;};
+        _hot void inputs(const brain::Values& inputs) const final {this->_inputs = inputs;};
 
         // ------------ Operator ---------- //
         ANetwork& operator=(const ANetwork& other) = delete;

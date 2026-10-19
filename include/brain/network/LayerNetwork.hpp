@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 19/10/2026 by @author Tsukini
 
 File Name:
 ##  @file LayerNetwork.hpp
@@ -45,7 +45,7 @@ class LayerNetwork: public brain::ANetwork {
     public:
         // ---------- Pre-Function -------- //
         /* execution */
-        brain::Values apply(void) final;
+        brain::Values apply(void) const final;
         void backpropagation(const brain::FType coef) final;
         void backpropagation(const brain::Values& coefs) final;
 

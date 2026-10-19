@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 19/10/2026 by @author Tsukini
 
 File Name:
 ##  @file INetwork.hpp
@@ -43,8 +43,8 @@ class INetwork {
         virtual void unload(void) = 0; // unload the network memory if not already done (failsafe)
 
         /* execution */
-        virtual void inputs(const brain::Values& inputs) = 0; // load the inputs into the network
-        virtual brain::Values apply(void) = 0; // execute the network with the given inputs
+        virtual void inputs(const brain::Values& inputs) const = 0; // load the inputs into the network
+        virtual brain::Values apply(void) const = 0; // execute the network with the given inputs
         virtual void backpropagation(const brain::FType coef) = 0; // coef between -1 <-> 1 (100% == perfect, -100% == totally false), can be above or under for a massive change
         virtual void backpropagation(const brain::Values& coefs) = 0; // same as above with a special coef for each output
 

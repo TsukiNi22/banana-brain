@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 19/10/2026 by @author Tsukini
 
 File Name:
 ##  @file LayerNetwork.cpp
@@ -34,7 +34,7 @@ _cold void brain::LayerNetwork::init_(void)
     /* Nothing */
 }
 
-_hot brain::Values brain::LayerNetwork::apply(void)
+_hot brain::Values brain::LayerNetwork::apply(void) const
 {
     /* Nothing */
     return {};
