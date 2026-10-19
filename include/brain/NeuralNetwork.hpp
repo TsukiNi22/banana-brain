@@ -47,7 +47,6 @@ class NeuralNetwork: public utils::type::Freezable {
         std::pair<bool, brain::FType> _decayCoef = {true, 1.0}; // <smooth decay | by step, coef> applied to the learning rate every _decay steps
         brain::FType _learningRate = 1.0; // not edited during the training
         brain::UIType _decay = 0; // 0 = no decay, otherwise the learning rate is multiplied by the coef every n steps
-        brain::IType _seed = 0; // 0 = random seed setup at start (won't be the same each time)
 
         /* training */
         brain::FType _learningRateDecayed = 1.0; // edited during the training
@@ -116,13 +115,6 @@ class NeuralNetwork: public utils::type::Freezable {
         void clear(void); // remove the network and reset the training state
 
         // ------------ Function ---------- //
-        /* init (clear any existing network, specialized in the .cpp where the network classes are known) */
-
-        /* training (manual) */
-
-        /* setter (random) */
-        _cold inline void seed(const brain::IType seed)                        {this->requireUnfrozen(); this->_seed = seed;}; // seed of the random generator (0 = random)
-
         /* setter (size) */
         _cold inline void size(const brain::UIType input, const brain::UIType output) {this->requireUnfrozen(); this->_size = {input, output};}; // number of inputs and outputs (named from 0 to n - 1)
         _cold inline void input(const brain::UIType input)                            {this->requireUnfrozen(); this->_size.first = input;};
@@ -133,7 +125,6 @@ class NeuralNetwork: public utils::type::Freezable {
         _cold inline void internalLossFunction(const brain::LossFunction fn)             {this->requireUnfrozen(); this->_lossFunction = {fn, nullptr};}; // internal, more optimized than an external one
 
         /* getter */
-        _cold _nodiscard inline brain::IType seed(void) const                {return this->_seed;};
         _cold _nodiscard inline brain::UIType input(void) const              {return this->_size.first;};
         _cold _nodiscard inline brain::UIType output(void) const             {return this->_size.second;};
         _cold _nodiscard inline brain::FType learningRate(void) const        {return this->_learningRate;};
