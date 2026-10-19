@@ -53,8 +53,9 @@ class LayerNetwork: public brain::ANetwork {
         void weightInit(const brain::FType fallback = 0.01) final;
         void biasInit(const brain::FType fallback = 0.01) final;
 
+        // ------------ Function ---------- //
         /* getter */
-        std::pair<brain::UIType, brain::UIType> neurons(void) const final; // <layers, total neurons>
+        _cold _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const final {return {this->_layer, this->_neuronPerLayer};}; // <layers, neuron_per_layer>
 
         // ------------ Operator ---------- //
         LayerNetwork& operator=(const LayerNetwork& other) = delete;

@@ -59,9 +59,3 @@ _cold void brain::BrainNetwork::biasInit(const brain::FType fallback)
 {
     /* Nothing */
 }
-
-_cold std::pair<brain::UIType, brain::UIType> brain::BrainNetwork::neurons(void) const
-{
-    /* Nothing */
-    return {};
-}
