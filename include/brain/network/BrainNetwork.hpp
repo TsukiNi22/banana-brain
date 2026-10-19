@@ -24,10 +24,11 @@ File Description:
     /* INCLUDE */
 
     /* type */
-    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::BrainNeuron
+    #define _System
+    #include <utils/utils.hpp>      // utils::system::HybridMemory
+    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::BrainNeuron, brain::BrainLink, brain::BrainDistance
     #include "ANetwork.hpp"         // brain::ANetwork
     #include <utility>              // std::pair
-    #include <vector>               // std::vector
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -35,7 +36,9 @@ namespace brain { // namespace start
 
 class BrainNetwork: public brain::ANetwork {
     private:
-        std::vector<brain::BrainNeuron> _neurons; // every neuron of the 2d space
+        utils::system::HybridMemory<brain::BrainNeuron> _neurons; // every neuron of the 2d space (gpu when available)
+        utils::system::HybridMemory<brain::BrainLink> _incoming; // the links of every neuron, from BrainNeuron::incoming (BrainNeuron::incomingCount links)
+        utils::system::HybridMemory<brain::BrainDistance> _ordered; // the distances of every neuron to every other, from BrainNeuron::ordered (BrainNeuron::orderedCount distances)
         std::pair<brain::FType, brain::FType> _size = {1.0, 1.0}; // <width, height> of the 2d space (could be applied in 3d in the future)
         brain::UIType _neuron = 0; // number of neurons
 

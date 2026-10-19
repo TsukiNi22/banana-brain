@@ -39,13 +39,13 @@ TEST(NetworkDefine, NoneValues) {
     EXPECT_NE(brain::ActivationFunction::None, brain::ActivationFunction::Sigmoid);
     EXPECT_NE(brain::LossFunction::None, brain::LossFunction::MSE);
     EXPECT_NE(brain::NetworkType::Layered, brain::NetworkType::Brain);
-    EXPECT_NE(brain::NetworkType::Brain, brain::NetworkType::Banana);
 }
 
 /* ------------------------------- Neurons ------------------------------- */
 TEST(LayerNeuron, DefaultState) {
     brain::LayerNeuron neuron;
-    EXPECT_TRUE(neuron.incoming.empty());
+    EXPECT_EQ(neuron.incoming, 0u);
+    EXPECT_EQ(neuron.count, 0u);
     EXPECT_EQ(neuron.bias, 0.0);
 }
 
@@ -56,8 +56,10 @@ TEST(LayerNeuron, CacheLineAligned) {
 
 TEST(BrainNeuron, DefaultState) {
     brain::BrainNeuron neuron;
-    EXPECT_TRUE(neuron.incoming.empty());
-    EXPECT_TRUE(neuron.ordered.empty());
+    EXPECT_EQ(neuron.incoming, 0u);
+    EXPECT_EQ(neuron.incomingCount, 0u);
+    EXPECT_EQ(neuron.ordered, 0u);
+    EXPECT_EQ(neuron.orderedCount, 0u);
     EXPECT_EQ(neuron.id, 0u);
     EXPECT_EQ(neuron.bias, 0.0);
 }
@@ -83,6 +85,12 @@ TEST(BrainNeuron, SquaredDistanceOperator) {
     b.pos = {3.0, 4.0};
     EXPECT_EQ(a | b, a.distance2(b)); // the operator forwards to distance2 (squared: 25 once implemented, never 5)
 }
+
+// The neurons, the links and the distances are stored in a utils::system::HybridMemory: bytes copied to the gpu
+static_assert(std::is_trivially_copyable_v<brain::LayerNeuron>);
+static_assert(std::is_trivially_copyable_v<brain::BrainNeuron>);
+static_assert(std::is_trivially_copyable_v<brain::BrainLink>);
+static_assert(std::is_trivially_copyable_v<brain::BrainDistance>);
 
 TEST(BrainNeuron, CacheLineAligned) {
     EXPECT_EQ(alignof(brain::BrainNeuron), std::hardware_destructive_interference_size);

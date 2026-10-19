@@ -26,8 +26,9 @@ File Description:
     /* type */
     #define _Attribute
     #define _CustomType
+    #define _System
     #include <utils/utils.hpp>   // _alignas, _hot, _nodiscard, utils::type::OVector2, std::hardware_destructive_interference_size
-    #include <type_traits>       // std::is_floating_point_v, std::is_integral_v, std::is_signed_v, std::is_unsigned_v
+    #include <type_traits>       // std::is_floating_point_v, std::is_integral_v, std::is_signed_v, std::is_unsigned_v, std::is_trivially_copyable_v
     #include <functional>        // std::function
     #include <cstdint>           // std::int64_t
     #include <cstddef>           // std::size_t
@@ -59,24 +60,48 @@ using RandFn = std::function<brain::FType(const brain::IType seed)>; // weight /
 //----------------------------------------------------------------//
 /* STRUCT */
 
+// Link of a brain network neuron (trivially copyable: stored in a utils::system::HybridMemory)
+struct BrainLink {
+    brain::FType weight = 0.0; // weight of the link
+    brain::UIType id = 0; // id of the incoming neuron linked to this weight
+};
+
+// Distance of a brain network neuron to another one (trivially copyable: stored in a utils::system::HybridMemory)
+struct BrainDistance {
+    brain::UIType id = 0; // id of the other neuron
+    brain::FType distance = 0.0; // squared distance (no sqrt: only the order matters)
+};
+
 // Neuron of a layered network, aligned on the cache line: no false sharing when the neurons are edited concurrently (cpu / gpu) during the backpropagation
+// Trivially copyable (stored in a utils::system::HybridMemory), its weights are in the weights memory of the network
 struct _alignas(std::hardware_destructive_interference_size) LayerNeuron {
-    std::vector<brain::FType> incoming; // weight of each input (one per neuron of the previous layer)
+    brain::UIType incoming = 0; // index of the first weight in the weights memory (one weight per input of the neuron)
+    brain::UIType count = 0; // number of weights
     brain::FType bias = 0.0;
 };
 
 // Neuron of a brain network (2d space), same alignment as brain::LayerNeuron
+// Trivially copyable (stored in a utils::system::HybridMemory), its links and distances are in the memories of the network
 struct _alignas(std::hardware_destructive_interference_size) BrainNeuron {
-    std::vector<std::pair<brain::FType, brain::UIType>> incoming; // <weight, id of the incoming neuron linked to this weight>
-    std::vector<std::pair<brain::UIType, brain::FType>> ordered; // every other neuron as <id, squared distance>, closest first once set up (brain::tools::sort)
     utils::type::OVector2<brain::FType> pos; // position in the 2d space of the network
+    brain::UIType incoming = 0; // index of the first brain::BrainLink in the links memory
+    brain::UIType incomingCount = 0; // number of links
+    brain::UIType ordered = 0; // index of the first brain::BrainDistance in the distances memory (every other neuron, closest first once set up with brain::tools::sort)
+    brain::UIType orderedCount = 0; // number of distances
     brain::UIType id = 0; // identifier of the neuron (unique in its network)
     brain::FType bias = 0.0;
 
     _hot _nodiscard inline brain::FType distance2(const BrainNeuron& other) const        {return (this->pos - other.pos).lengthSquared();}; // squared distance between the positions (no sqrt: only the order matters, every distance stays squared and comparable)
     _hot _nodiscard inline brain::FType operator|(const BrainNeuron& other) const {return this->distance2(other);}; // squared distance (same as distance2)
     _hot _nodiscard inline bool operator==(const BrainNeuron& other) const        {return this->id == other.id;}; // same neuron: ids only
+
+    // Copy only (defaulted): without move operations, the non trivial move assignment of utils::type::OVector2 doesn't make the neuron non trivially copyable
+    BrainNeuron() = default;
+    BrainNeuron(const BrainNeuron& other) = default;
+    BrainNeuron& operator=(const BrainNeuron& other) = default;
 };
+static_assert(std::is_trivially_copyable_v<brain::BrainLink> && std::is_trivially_copyable_v<brain::BrainDistance>, "the links and the distances are stored in a HybridMemory");
+static_assert(std::is_trivially_copyable_v<brain::LayerNeuron> && std::is_trivially_copyable_v<brain::BrainNeuron>, "the neurons are stored in a HybridMemory");
 
 } // namespace end
 #endif /* NETWORKTYPE_H */

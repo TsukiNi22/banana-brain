@@ -24,10 +24,11 @@ File Description:
     /* INCLUDE */
 
     /* type */
+    #define _System
+    #include <utils/utils.hpp>      // utils::system::HybridMemory
     #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::LayerNeuron
     #include "ANetwork.hpp"         // brain::ANetwork
     #include <utility>              // std::pair
-    #include <vector>               // std::vector
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -35,7 +36,8 @@ namespace brain { // namespace start
 
 class LayerNetwork: public brain::ANetwork {
     private:
-        std::vector<std::vector<brain::LayerNeuron>> _neurons; // [layer][neuron]
+        utils::system::HybridMemory<brain::LayerNeuron> _neurons; // [layer * _neuronPerLayer + neuron] (gpu when available)
+        utils::system::HybridMemory<brain::FType> _weights; // the weights of every neuron, from LayerNeuron::incoming (LayerNeuron::count weights)
         brain::UIType _neuronPerLayer = 0; // neurons of each layer
         brain::UIType _layer = 0; // number of layers
 
