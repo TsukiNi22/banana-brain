@@ -436,8 +436,8 @@ _cold void brain::NeuralNetwork::load(const std::filesystem::path& path)
 
     // the second magic byte gives the kind of network (the network checks both again)
     switch (data[1]) {
-        case BRAIN_MAGIC_BRAIN: network = std::make_unique<brain::BrainNetwork>(0); break;
-        case BRAIN_MAGIC_LAYER: network = std::make_unique<brain::LayerNetwork>(0, 0); break;
+        case BRAIN_MAGIC_BRAIN: network = std::make_unique<brain::BrainNetwork>(1); break; // placeholder, deserialize() rebuilds it
+        case BRAIN_MAGIC_LAYER: network = std::make_unique<brain::LayerNetwork>(1, 1); break; // placeholder, deserialize() rebuilds it
         default: throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unknown network kind in " + path.string());
     }
 
