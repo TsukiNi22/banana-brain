@@ -78,8 +78,8 @@ INetwork:
         void init_(void); // init neuron call in the ctro at the end (default empty/falltrhroug in ANewtork)
 
     pub:
-        void load(void); // load the network into memory on gpu if not already done (failsage)
-        void unload(void); // unload the network memory if not larady done (failsage)
+        void load(void); // load the network into memory on gpu if not already done (failsafe)
+        void unload(void); // unload the network memory if not already done (failsafe)
         void inputs(const std::vector<float>& inputs); // load the inputs into the network
         std::vector<float> apply(void); // execute the network wiht the given input
         void backpropagation(float coef); // coef between -1 <-> 1 representing 100% == perfect or -100% == totaly false (can be above or under for massive change)
