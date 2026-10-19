@@ -34,7 +34,7 @@ namespace brain::tools { // namespace start
 
 /* activation (brain::ActivationFunction) */
 _hot _nodiscard brain::FType sigmoid(const brain::FType value); // 1 / (1 + e^-value)
-_hot _nodiscard brain::Values softmax(const brain::Values& values); // e^value / sum of every e^value (the max is removed first to avoid an overflow)
+//_hot _nodiscard brain::Values softmax(const brain::Values& values); // e^value / sum of every e^value (the max is removed first to avoid an overflow)
 _hot _nodiscard brain::FType linear(const brain::FType value); // value unchanged
 _hot _nodiscard brain::FType relu(const brain::FType value); // max(0, value)
 

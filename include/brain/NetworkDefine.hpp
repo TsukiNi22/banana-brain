@@ -34,7 +34,7 @@ enum class NetworkType {
 enum class ActivationFunction {
     None, // raw values
     Sigmoid,
-    Softmax,
+    //Softmax,
     Linear,
     ReLU,
 };

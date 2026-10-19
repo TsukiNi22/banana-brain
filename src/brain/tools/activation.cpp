@@ -29,6 +29,7 @@ _hot brain::FType brain::tools::sigmoid(const brain::FType value)
     return static_cast<brain::FType>(1.0) / (static_cast<brain::FType>(1.0) + std::exp(-value));
 }
 
+/*
 _hot brain::Values brain::tools::softmax(const brain::Values& values)
 {
     brain::Values result(values.size());
@@ -48,6 +49,7 @@ _hot brain::Values brain::tools::softmax(const brain::Values& values)
     for (brain::FType& value: result) value /= total;
     return result;
 }
+*/
 
 _hot brain::FType brain::tools::linear(const brain::FType value)
 {
