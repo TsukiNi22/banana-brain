@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 19/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NeuralNetwork.hpp
@@ -59,6 +59,9 @@ class NeuralNetwork: public utils::type::Freezable {
         /* network / neurons storage */
         std::unique_ptr<brain::INetwork> _network; // nullptr = no network (init<...> first)
 
+        // ---------- Pre-Function -------- //
+        void decay_(void); // decay the learning rate
+
     public:
         // ---------- Pre-Function -------- //
         /* init (clear any existing network, specialized in the .cpp where the network classes are known) */
@@ -66,32 +69,24 @@ class NeuralNetwork: public utils::type::Freezable {
         void init(const brain::UIType layer, const brain::UIType neuron_per_layer); // normal usage with layers
         template<brain::NetworkType type> requires (type == brain::NetworkType::Brain)
         void init(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}); // custom network (more like a brain), size = 2d space of the neurons
-        template<brain::NetworkType type> requires (type == brain::NetworkType::Banana)
-        void init(void); // pre made layer / neuron numbers shaped like a banana (don't ask why...)
-        void weightInit(const brain::FType fallback = 0.01); // weights at 1.0 by default (not init -> dead network), fallback used on a result that falls on 0
-        void biasInit(const brain::FType fallback = 0.01); // bias at 0.0 by default, fallback used on a result that falls on 0
 
         /* setter */
         void learningRate(const brain::FType learning_rate, const brain::UIType learning_rate_decay = 0, const std::pair<bool, brain::FType>& coef = {true, 1.0}); // decay 0 = none, otherwise the learning rate is multiplied by the coef every n steps, <smooth, coef>: smooth decay or by step
-
-        /* getter */
-        std::pair<brain::UIType, brain::UIType> neurons(void) const; // <layers, neurons> of the network (NoNetwork without one)
+        void resetLearningRate(void);
 
         /* training (auto): the backpropagation hook receives the outputs and the expected ones (can be empty: ignore them) */
-        void train(const brain::UIType round, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const brain::BackpropagationFn& backpropagation); // n rounds, one coef per sample
-        void train(const brain::UIType round, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const brain::BackpropagationsFn& backpropagation); // n rounds, one coef per output
-        void train(const brain::FType loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const brain::BackpropagationFn& backpropagation); // until the mean loss is under this rate (checked after each round), one coef per sample
-        void train(const brain::FType loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const brain::BackpropagationsFn& backpropagation); // until the mean loss is under this rate (checked after each round), one coef per output
+        template<bool mean = false>
+        void train(const brain::UIType round, const brain::Dataset& inputs, const brain::Dataset& expected_outputs); // n rounds, one coef per sample
+        template<bool mean = false>
+        void train(const brain::FType loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs); // until the mean loss is under this rate (checked after each round), one coef per sample
 
         /* training (manual) */
-        void load(void); // load the network into memory (gpu) if not already done (failsafe)
-        void unload(void); // unload the network memory if not already done (failsafe)
-        void inputs(const brain::Values& inputs); // load the inputs into the network
-        brain::Values apply(void); // execute the network with the given inputs
-        void backpropagation(const brain::FType coef); // coef between -1 <-> 1 (100% == perfect, -100% == totally false), can be above or under for a massive change
-        void backpropagation(const brain::Values& coefs); // same as above with a special coef for each output
         brain::FType loss(const brain::FType output, const brain::FType expected) const; // compute the loss of one output
-        brain::FType loss(const brain::Values& outputs, const brain::Values& expected) const; // compute the mean loss
+        template<bool mean> requires (mean)
+        brain::FType loss(const brain::Values& outputs, const brain::Values& expected, const brain::FType coef = 1.0) const; // compute the mean loss, coef applied to every value (specialized in the .cpp)
+        template<bool mean> requires (!mean)
+        brain::Values loss(const brain::Values& outputs, const brain::Values& expected, const brain::FType coef = 1.0) const; // compute the loss of each output, coef applied to every value (specialized in the .cpp)
+        std::pair<brain::Values, brain::FType> loss(const brain::Values& outputs, const brain::Values& expected, const brain::FType coef = 1.0) const; // compute both: <loss of each output, mean loss>, coef applied to every value (call without template)
 
         /* usage */
         brain::Values exec(const brain::Values& inputs) const; // doesn't touch the content at all (the only call allowed when frozen)
@@ -102,9 +97,19 @@ class NeuralNetwork: public utils::type::Freezable {
         void clear(void); // remove the network and reset the training state
 
         // ------------ Function ---------- //
-        /* training (auto): the round / loss must be exactly a brain::UIType / brain::FType (no implicit conversion) */
-        template<typename T, typename Fn> requires (!std::same_as<T, brain::UIType> && !std::same_as<T, brain::FType>)
-        void train(const T round_or_loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const Fn& backpropagation) = delete;
+        /* init (clear any existing network, specialized in the .cpp where the network classes are known) */
+        _cold inline void weightInit(const brain::FType fallback = 0.01) {this->_network->weightInit(fallback);}; // weights at 1.0 by default (not init -> dead network), fallback used on a result that falls on 0
+        _cold inline void biasInit(const brain::FType fallback = 0.01)   {this->_network->biasInit(fallback);}; // bias at 0.0 by default, fallback used on a result that falls on 0
+
+        /* memory */
+        _cold inline void load(void)   {this->_network->load();}; // load the network into memory (gpu) if not already done (failsafe)
+        _cold inline void unload(void) {this->_network->unload();}; // unload the network memory if not already done (failsafe)
+
+        /* training (manual) */
+        _hot inline void inputs(const brain::Values& inputs) const   {this->_network->inputs(inputs);}; // load the inputs into the network
+        _hot _nodiscard inline brain::Values apply(void) const       {return this->_network->apply();}; // execute the network with the given inputs
+        _hot inline void backpropagation(const brain::FType coef)    {this->_network->backpropagation(coef);}; // coef between -1 <-> 1 (100% == perfect, -100% == totally false), can be above or under for a massive change
+        _hot inline void backpropagation(const brain::Values& coefs) {this->_network->backpropagation(coefs);}; // same as above with a special coef for each output
 
         /* setter (random) */
         _cold inline void rand(const brain::FType min, const brain::FType max) {this->_rand.first = {min, max};}; // range of the random weights / bias generation
@@ -123,12 +128,15 @@ class NeuralNetwork: public utils::type::Freezable {
         _cold inline void internalLossFunction(const brain::LossFunction fn)             {this->_lossFunction = {fn, nullptr};}; // internal, more optimized than an external one
 
         /* getter */
-        _cold _nodiscard inline brain::IType seed(void) const         {return this->_seed;};
-        _cold _nodiscard inline brain::UIType input(void) const       {return this->_size.first;};
-        _cold _nodiscard inline brain::UIType output(void) const      {return this->_size.second;};
-        _cold _nodiscard inline brain::FType learningRate(void) const {return this->_learningRate;};
+        _cold _nodiscard inline brain::IType seed(void) const                {return this->_seed;};
+        _cold _nodiscard inline brain::UIType input(void) const              {return this->_size.first;};
+        _cold _nodiscard inline brain::UIType output(void) const             {return this->_size.second;};
+        _cold _nodiscard inline brain::FType learningRate(void) const        {return this->_learningRate;};
+        _cold _nodiscard inline brain::FType learningRateDecayed(void) const {return this->_learningRateDecayed;};
+        _cold _nodiscard inline brain::UIType learningSteps(void) const      {return this->_steps;};
 
         /* getter (pair) */
+        _cold _nodiscard inline std::pair<brain::UIType, brain::UIType> neurons(void) const {return this->_network->neurons();}; // <layers, neurons> of the network (NoNetwork without one)
         _cold _nodiscard inline const std::pair<brain::UIType, brain::UIType>& size(void) const {return this->_size;}; // <input, output>
         _cold _nodiscard inline const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& rand(void) const {return this->_rand;}; // <<min, max>, function>
         _cold _nodiscard inline const std::pair<brain::ActivationFunction, brain::ActivationFn>& activationFunction(void) const {return this->_activationFunction;};

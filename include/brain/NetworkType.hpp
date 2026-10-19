@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 19/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NetworkType.hpp
@@ -54,8 +54,6 @@ using Dataset = std::vector<brain::Values>; // several samples
 using ActivationFn = std::function<brain::FType(const brain::FType value)>; // external activation function
 using LossFn = std::function<brain::FType(const brain::FType output, const brain::FType expected)>; // external loss function
 using RandFn = std::function<brain::FType(const brain::IType seed)>; // weight / bias generator from the seed
-using BackpropagationFn = std::function<brain::FType(const brain::Values& outputs, const brain::Values& expected)>; // -> one coefficient for the whole output (expected can be empty: ignore it)
-using BackpropagationsFn = std::function<brain::Values(const brain::Values& outputs, const brain::Values& expected)>; // -> one coefficient per output (expected can be empty: ignore it)
 
 //----------------------------------------------------------------//
 /* STRUCT */
@@ -75,10 +73,7 @@ struct _alignas(std::hardware_destructive_interference_size) BrainNeuron {
     brain::FType bias = 0.0;
 
     _hot _nodiscard brain::FType distance2(const BrainNeuron& other) const // squared distance between the positions (no sqrt: only the order matters, every distance stays squared and comparable)
-    {
-        /* Nothing */
-        return {};
-    };
+    {return (this->pos - other.pos).lengthSquared();};
     _hot _nodiscard inline brain::FType operator|(const BrainNeuron& other) const {return this->distance2(other);}; // squared distance (same as distance2)
     _hot _nodiscard inline bool operator==(const BrainNeuron& other) const        {return this->id == other.id;}; // same neuron: ids only
 };

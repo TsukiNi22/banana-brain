@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 19/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NetworkDefine.hpp
@@ -28,7 +28,6 @@ namespace brain { // namespace start
 enum class NetworkType {
     Layered, // classic layers of neurons (brain::LayerNetwork)
     Brain, // neurons placed in a 2d space (brain::BrainNetwork)
-    Banana, // pre made layer / neuron numbers shaped like a banana (don't ask why...)
 };
 
 // Internal activation functions (more optimized than an external one)
