@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 20/10/2026 by @author Tsukini
 
 File Name:
 ##  @file ANetwork.cpp
@@ -22,11 +22,34 @@ File Description:
 #define _Exception
 #include <utils/utils.hpp>
 #include "brain/network/ANetwork.hpp"
+#include "brain/NetworkDefine.hpp"
+#include <iostream>
 #include <cmath>
 
 _cold void brain::ANetwork::init_(void)
 {
     /* Nothing */
+}
+
+_cold std::uint8_t brain::ANetwork::serializeActivation_(void) const
+{
+    if (this->_activationFunction.second) return static_cast<std::uint8_t>(BRAIN_ACTIVATION_CUSTOM);
+    return static_cast<std::uint8_t>(this->_activationFunction.first);
+}
+
+_cold void brain::ANetwork::deserializeActivation_(const std::uint8_t mode)
+{
+    switch (mode) {
+        case BRAIN_ACTIVATION_NONE: this->internalActivationFunction(brain::ActivationFunction::None); break;
+        case BRAIN_ACTIVATION_CUSTOM:
+            this->internalActivationFunction(brain::ActivationFunction::None);
+            std::cerr << utils::exception::WarningException(utils::exception::ExternalCode::CustomActivationRequired).formated() << std::endl;
+            break;
+        case static_cast<std::uint8_t>(brain::ActivationFunction::Sigmoid): this->internalActivationFunction(brain::ActivationFunction::Sigmoid); break;
+        case static_cast<std::uint8_t>(brain::ActivationFunction::Linear):  this->internalActivationFunction(brain::ActivationFunction::Linear); break;
+        case static_cast<std::uint8_t>(brain::ActivationFunction::ReLU):    this->internalActivationFunction(brain::ActivationFunction::ReLU); break;
+        default: throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unknown activation mode " + std::to_string(mode));
+    }
 }
 
 _hot void brain::ANetwork::inputs(const brain::Values& inputs) const

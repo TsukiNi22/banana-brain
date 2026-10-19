@@ -30,6 +30,7 @@ File Description:
     #include "../NetworkType.hpp"   // brain::FType, brain::Values, brain::RandFn, brain::ActivationFn
     #include "INetwork.hpp"         // brain::INetwork
     #include <utility>              // std::pair
+    #include <cstdint>              // std::uint8_t
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -43,6 +44,8 @@ class ANetwork: public brain::INetwork {
 
         // ---------- Pre-Function -------- //
         void init_(void) override; // default: nothing (fallthrough), a child inits its neurons
+        std::uint8_t serializeActivation_(void) const; // BRAIN_ACTIVATION_NONE | BRAIN_ACTIVATION_CUSTOM | the internal mode
+        void deserializeActivation_(const std::uint8_t mode); // setup the internal mode, a custom one is only warned (to give again)
 
     public:
         // ---------- Pre-Function -------- //

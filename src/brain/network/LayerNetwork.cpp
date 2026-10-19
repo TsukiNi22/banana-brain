@@ -44,15 +44,16 @@ _cold void brain::LayerNetwork::init_(void)
 _cold brain::Bytes brain::LayerNetwork::serialize(void) const
 {
     /* Nothing */
-    return {static_cast<std::uint8_t>(BRAIN_MAGIC), static_cast<std::uint8_t>(BRAIN_MAGIC_LAYER)};
+    return {static_cast<std::uint8_t>(BRAIN_MAGIC), static_cast<std::uint8_t>(BRAIN_MAGIC_LAYER), this->serializeActivation_()};
 }
 
 _cold void brain::LayerNetwork::deserialize(const brain::Bytes& data)
 {
     // check the magic bytes
-    if (data.size() < 2 || data[0] != static_cast<std::uint8_t>(BRAIN_MAGIC) || data[1] != static_cast<std::uint8_t>(BRAIN_MAGIC_LAYER)) _unlikely {
+    if (data.size() < 3 || data[0] != static_cast<std::uint8_t>(BRAIN_MAGIC) || data[1] != static_cast<std::uint8_t>(BRAIN_MAGIC_LAYER)) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "bad magic bytes for a layer network");
     }
+    this->deserializeActivation_(data[2]);
     /* Nothing */
 }
 

@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 19/10/2026 by @author Tsukini
+##  @date 20/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NetworkDefine.hpp
@@ -33,6 +33,11 @@ File Description:
     #define BRAIN_MAGIC_BRAIN 'b' // 0x62, second byte of a brain network
     #define BRAIN_MAGIC_LAYER 'l' // 0x6C, second byte of a layer network
 
+    /* activation byte (third byte of the serialized data: how the activation function is restored) */
+    #define BRAIN_ACTIVATION_NONE 0x00 // no activation function (raw values, default)
+    #define BRAIN_ACTIVATION_CUSTOM 0xFF // external function (std::function): can't be saved, to give again after the load
+    // 0x01 -> 0xFE: internal mode, the value of brain::ActivationFunction
+
 namespace brain { // namespace start
 //----------------------------------------------------------------//
 /* ENUM */
@@ -45,7 +50,7 @@ enum class NetworkType {
 
 // Internal activation functions (more optimized than an external one)
 enum class ActivationFunction {
-    None, // raw values
+    None = BRAIN_ACTIVATION_NONE, // raw values
     Sigmoid,
     //Softmax,
     Linear,

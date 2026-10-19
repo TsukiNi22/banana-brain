@@ -56,6 +56,12 @@
             "code": "InvalidNetworkFile",
             "message": "Invalid or unreadable network file",
             "restrictions": ["Fatal", "Error", "Warning"]
+        },
+        {
+            "code": "CustomActivationRequired",
+            "message": "The network used a custom activation function, it can't be restored from a file",
+            "info": "Give it again with activationFunction()",
+            "restrictions": ["Error", "Warning"]
         }
     ]
 }
