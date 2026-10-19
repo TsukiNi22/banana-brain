@@ -25,9 +25,11 @@ File Description:
 
     /* type */
     #define _Attribute
-    #include <utils/utils.hpp>      // _hot
-    #include "../NetworkType.hpp"   // brain::Values
+    #include <utils/utils.hpp>      // _hot, _cold, _nodiscard
+    #include "../NetworkDefine.hpp"    // brain::ActivationFunction
+    #include "../NetworkType.hpp"   // brain::FType, brain::Values, brain::RandFn, brain::ActivationFn
     #include "INetwork.hpp"         // brain::INetwork
+    #include <utility>              // std::pair
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -35,15 +37,30 @@ namespace brain { // namespace start
 
 class ANetwork: public brain::INetwork {
     protected:
+        std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn> _rand = {{-1.0, 1.0}, nullptr}; // <<min, max>, generator from the seed> used for the random weights / bias at start (the function wins when set)
+        std::pair<brain::ActivationFunction, brain::ActivationFn> _activationFunction = {brain::ActivationFunction::None, nullptr}; // internal first, the function when set, raw values when none
         mutable brain::Values _inputs; // last inputs given to the network
 
         // ---------- Pre-Function -------- //
         void init_(void) override; // default: nothing (fallthrough), a child inits its neurons
 
     public:
-        // ------------ Function ---------- //
+        // ---------- Pre-Function -------- //
         /* execution */
-        _hot void inputs(const brain::Values& inputs) const final {this->_inputs = inputs;};
+        void inputs(const brain::Values& inputs) const final;
+
+        /* setter (random) */
+        void rand(const brain::FType min, const brain::FType max) final;
+        void rand(const brain::RandFn& fn) final;
+
+        /* setter (function) */
+        void activationFunction(const brain::ActivationFn& fn) final;
+        void internalActivationFunction(const brain::ActivationFunction fn) final;
+
+        // ------------ Function ---------- //
+        /* getter */
+        _cold _nodiscard inline const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& rand(void) const final {return this->_rand;};
+        _cold _nodiscard inline const std::pair<brain::ActivationFunction, brain::ActivationFn>& activationFunction(void) const final {return this->_activationFunction;};
 
         // ------------ Operator ---------- //
         ANetwork& operator=(const ANetwork& other) = delete;

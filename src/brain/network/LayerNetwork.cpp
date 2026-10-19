@@ -24,10 +24,15 @@ File Description:
 #include "brain/network/LayerNetwork.hpp"
 #include "brain/NetworkDefine.hpp"
 #include <utility>
+#include <cmath>
 
 brain::LayerNetwork::LayerNetwork(const brain::UIType layer, const brain::UIType neuron_per_layer)
 : _neuronPerLayer{neuron_per_layer}, _layer{layer}
 {
+    // check inputs
+    if (layer == 0 || neuron_per_layer == 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the number of layers and of neurons per layer should be above 0");
+    }
     /* Nothing */
 }
 
@@ -53,26 +58,46 @@ _cold void brain::LayerNetwork::deserialize(const brain::Bytes& data)
 
 _hot brain::Values brain::LayerNetwork::apply(void) const
 {
+    // check inputs
+    if (this->_inputs.empty()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "no inputs loaded (call inputs() first)");
+    }
     /* Nothing */
     return {};
 }
 
 _hot void brain::LayerNetwork::backpropagation(const brain::FType coef)
 {
+    // check inputs
+    if (!std::isfinite(coef)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "the coefficient should be a finite number");
+    }
     /* Nothing */
 }
 
 _hot void brain::LayerNetwork::backpropagation(const brain::Values& coefs)
 {
+    // check inputs
+    if (coefs.empty()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "no coefficients given");
+    }
     /* Nothing */
 }
 
 _cold void brain::LayerNetwork::weightInit(const brain::FType fallback)
 {
+    // check inputs
+    if (!std::isfinite(fallback) || fallback == 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the fallback should be a finite number different from 0");
+    }
     /* Nothing */
 }
 
 _cold void brain::LayerNetwork::biasInit(const brain::FType fallback)
 {
+    // check inputs
+    if (!std::isfinite(fallback) || fallback == 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the fallback should be a finite number different from 0");
+    }
     /* Nothing */
 }

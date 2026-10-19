@@ -24,7 +24,8 @@ File Description:
     /* INCLUDE */
 
     /* type */
-    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes
+    #include "../NetworkDefine.hpp"    // brain::ActivationFunction
+    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::RandFn, brain::ActivationFn
     #include <utility>              // std::pair
 
 namespace brain { // namespace start
@@ -52,7 +53,17 @@ class INetwork {
         virtual void weightInit(const brain::FType fallback = 0.01) = 0; // weights at 1.0 by default (not init -> dead network), fallback used on a result that falls on 0
         virtual void biasInit(const brain::FType fallback = 0.01) = 0; // bias at 0.0 by default, fallback used on a result that falls on 0
 
+        /* setter (random) */
+        virtual void rand(const brain::FType min, const brain::FType max) = 0; // range of the random weights / bias generation (min <= max)
+        virtual void rand(const brain::RandFn& fn) = 0; // function used for the weights / bias generation (wins over the range)
+
+        /* setter (function) */
+        virtual void activationFunction(const brain::ActivationFn& fn) = 0; // external activation function (none by default)
+        virtual void internalActivationFunction(const brain::ActivationFunction fn) = 0; // internal, more optimized than an external one
+
         /* getter */
+        virtual const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& rand(void) const = 0; // <<min, max>, function>
+        virtual const std::pair<brain::ActivationFunction, brain::ActivationFn>& activationFunction(void) const = 0; // internal first, the function when set, raw values when none
         virtual std::pair<brain::UIType, brain::UIType> neurons(void) const = 0; // <layers, neurons>: layers = 0 on a brain network, neurons = total number of neurons
 
         // ------------ Operator ---------- //
