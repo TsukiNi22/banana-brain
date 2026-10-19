@@ -19,30 +19,41 @@ File Description:
 \**************************************************************/
 
 #define _Attribute
+#define _Exception
 #include <utils/utils.hpp>
 #include "brain/tools/neuron.hpp"
-#include <unordered_set>
 #include <algorithm>
-#include <vector>
+#include <cstddef>
+#include <string>
 
-_cold void brain::tools::sort(brain::BrainNeuron& neuron, std::vector<brain::BrainNeuron>& neurons)
+_cold void brain::tools::sort(const brain::UIType index, std::span<brain::BrainNeuron> neurons, std::span<brain::BrainDistance> ordered)
 {
-    std::unordered_set<brain::UIType> known;
+    const brain::UIType count = neurons.size();
 
-    // Ids already linked to the neuron
-    for (const std::pair<brain::UIType, brain::FType>& other: neuron.ordered)
-        known.insert(other.first);
+    // check inputs
+    if (index >= count) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::OutOfBounds, "the neuron " + std::to_string(index) + " is outside of the " + std::to_string(count) + " neurons");
+    } else if (ordered.size() < count * (count - 1)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the distances memory should hold every neuron to every other one (" + std::to_string(count * (count - 1)) + ")");
+    }
 
-    // Every other neuron (neuron itself skipped: operator== compares the ids)
-    for (brain::BrainNeuron& other: neurons) {
-        if (other == neuron || known.contains(other.id)) continue;
+    // Place the list of the neuron
+    brain::BrainNeuron& neuron = neurons[index];
+    brain::UIType slot = 0;
+    neuron.ordered = index * (count - 1);
+    neuron.orderedCount = count - 1;
 
-        // Squared distance, stored on both sides (the other list is left unsorted)
-        const brain::FType distance = neuron | other;
-        neuron.ordered.push_back({other.id, distance});
-        other.ordered.push_back({neuron.id, distance});
+    // Every other neuron: squared distance, stored on both sides (the other list is left unsorted)
+    for (brain::UIType other = 0; other < count; ++other) {
+        if (other == index) continue;
+        const brain::FType distance = neuron | neurons[other];
+        neurons[other].ordered = other * (count - 1);
+        neurons[other].orderedCount = count - 1;
+        ordered[neuron.ordered + slot] = {neurons[other].id, distance};
+        ordered[neurons[other].ordered + (index < other ? index : index - 1)] = {neuron.id, distance};
+        ++slot;
     }
 
     // Closest first
-    std::sort(neuron.ordered.begin(), neuron.ordered.end(), [](const std::pair<brain::UIType, brain::FType>& a, const std::pair<brain::UIType, brain::FType>& b) {return a.second < b.second;});
+    std::sort(ordered.begin() + static_cast<std::ptrdiff_t>(neuron.ordered), ordered.begin() + static_cast<std::ptrdiff_t>(neuron.ordered + neuron.orderedCount), [](const brain::BrainDistance& a, const brain::BrainDistance& b) {return a.distance < b.distance;});
 }

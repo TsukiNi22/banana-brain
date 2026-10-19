@@ -26,15 +26,16 @@ File Description:
     /* type */
     #define _Attribute
     #include <utils/utils.hpp>      // _cold
-    #include "../NetworkType.hpp"   // brain::BrainNeuron
-    #include <vector>               // std::vector
+    #include "../NetworkType.hpp"   // brain::UIType, brain::BrainNeuron, brain::BrainDistance
+    #include <span>                 // std::span
 
 namespace brain::tools { // namespace start
 //----------------------------------------------------------------//
 /* PROTOTYPE */
 
 /* brain neuron */
-_cold void sort(brain::BrainNeuron& neuron, std::vector<brain::BrainNeuron>& neurons); // fill neuron.ordered with every other neuron <id, squared distance> sorted closest first (the distances are also stored, unsorted, in the other neurons)
+// The spans are host memory (fetch / store the HybridMemory of the network first on a gpu), the distances of the neuron i are ordered[i * (n - 1), (i + 1) * (n - 1)) with n the number of neurons
+_cold void sort(const brain::UIType index, std::span<brain::BrainNeuron> neurons, std::span<brain::BrainDistance> ordered); // fill the distances of the neuron index with every other neuron sorted closest first (the distances are also stored, unsorted, in the other neurons), sets BrainNeuron::ordered and BrainNeuron::orderedCount
 
 } // namespace end
 #endif /* NEURON_H */
