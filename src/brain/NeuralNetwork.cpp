@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 19/10/2026 by @author Tsukini
+##  @date 20/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NeuralNetwork.cpp
@@ -19,11 +19,19 @@ File Description:
 \**************************************************************/
 
 #define _Attribute
+#define _Exception
 #include <utils/utils.hpp>
 #include "brain/network/Network.hpp"
 #include "brain/NeuralNetwork.hpp"
 #include "brain/tools/loss.hpp"
+#include "brain/NetworkDefine.hpp"
 #include <filesystem>
+#include <algorithm>
+#include <iterator>
+#include <iostream>
+#include <fstream>
+#include <cctype>
+#include <string>
 #include <utility>
 #include <memory>
 #include <cmath>
@@ -234,14 +242,62 @@ _hot brain::Values brain::NeuralNetwork::exec(const brain::Values& inputs) const
     return this->apply();
 }
 
+// Warn (and continue) when the extension of the file is not a known one
+_cold static void checkExtension(const std::filesystem::path& path)
+{
+    std::string extension = path.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(), [](const unsigned char c) {return static_cast<char>(std::tolower(c));});
+    if (extension == BRAIN_EXTENSION_BRAIN || extension == BRAIN_EXTENSION_LAYER || extension == BRAIN_EXTENSION_NETWORK) return;
+    std::cerr << utils::exception::WarningException(utils::exception::ExternalCode::InvalidNetworkFile, "unknown extension '" + path.extension().string() + "' for " + path.string() + " (known: " BRAIN_EXTENSION_BRAIN ", " BRAIN_EXTENSION_LAYER ", " BRAIN_EXTENSION_NETWORK ")").formated() << std::endl;
+}
+
 _cold void brain::NeuralNetwork::load(const std::filesystem::path& path)
 {
-    /* Nothing */
+    std::unique_ptr<brain::INetwork> network;
+    std::ifstream file(path, std::ios::binary);
+    brain::Bytes data;
+
+    // read the file
+    checkExtension(path);
+    if (!file) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "can't open " + path.string());
+    }
+    data.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    if (data.size() < 2 || data[0] != static_cast<std::uint8_t>(BRAIN_MAGIC)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "bad magic bytes in " + path.string());
+    }
+
+    // the second magic byte gives the kind of network (the network checks both again)
+    switch (data[1]) {
+        case BRAIN_MAGIC_BRAIN: network = std::make_unique<brain::BrainNetwork>(0); break;
+        case BRAIN_MAGIC_LAYER: network = std::make_unique<brain::LayerNetwork>(0, 0); break;
+        default: throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unknown network kind in " + path.string());
+    }
+
+    // the actual network is replaced only when the data are valid
+    network->deserialize(data);
+    this->clear();
+    this->_network = std::move(network);
 }
 
 _cold void brain::NeuralNetwork::save(const std::filesystem::path& path) const
 {
-    /* Nothing */
+    // check inputs
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    checkExtension(path);
+
+    // write the file
+    const brain::Bytes data = this->_network->serialize();
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    if (!file) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "can't open " + path.string());
+    }
+    file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+    if (!file) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "can't write " + path.string());
+    }
 }
 
 _cold void brain::NeuralNetwork::clear(void)
