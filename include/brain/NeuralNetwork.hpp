@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 19/10/2026 by @author Tsukini
+##  @date 20/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NeuralNetwork.hpp
@@ -100,10 +100,6 @@ class NeuralNetwork: public utils::type::Freezable {
         /* init (clear any existing network, specialized in the .cpp where the network classes are known) */
         _cold inline void weightInit(const brain::FType fallback = 0.01) {this->_network->weightInit(fallback);}; // weights at 1.0 by default (not init -> dead network), fallback used on a result that falls on 0
         _cold inline void biasInit(const brain::FType fallback = 0.01)   {this->_network->biasInit(fallback);}; // bias at 0.0 by default, fallback used on a result that falls on 0
-
-        /* memory */
-        _cold inline void load(void)   {this->_network->load();}; // load the network into memory (gpu) if not already done (failsafe)
-        _cold inline void unload(void) {this->_network->unload();}; // unload the network memory if not already done (failsafe)
 
         /* training (manual) */
         _hot inline void inputs(const brain::Values& inputs) const   {this->_network->inputs(inputs);}; // load the inputs into the network

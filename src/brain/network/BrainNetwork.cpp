@@ -19,8 +19,10 @@ File Description:
 \**************************************************************/
 
 #define _Attribute
+#define _Exception
 #include <utils/utils.hpp>
 #include "brain/network/BrainNetwork.hpp"
+#include "brain/NetworkDefine.hpp"
 #include <utility>
 
 brain::BrainNetwork::BrainNetwork(const brain::UIType neuron, const std::pair<brain::FType, brain::FType>& size)
@@ -31,6 +33,21 @@ brain::BrainNetwork::BrainNetwork(const brain::UIType neuron, const std::pair<br
 
 _cold void brain::BrainNetwork::init_(void)
 {
+    /* Nothing */
+}
+
+_cold brain::Bytes brain::BrainNetwork::serialize(void) const
+{
+    /* Nothing */
+    return {static_cast<std::uint8_t>(BRAIN_MAGIC), static_cast<std::uint8_t>(BRAIN_MAGIC_BRAIN)};
+}
+
+_cold void brain::BrainNetwork::deserialize(const brain::Bytes& data)
+{
+    // check the magic bytes
+    if (data.size() < 2 || data[0] != static_cast<std::uint8_t>(BRAIN_MAGIC) || data[1] != static_cast<std::uint8_t>(BRAIN_MAGIC_BRAIN)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "bad magic bytes for a brain network");
+    }
     /* Nothing */
 }
 

@@ -20,6 +20,19 @@ File Description:
 #ifndef NETWORKDEFINE_H
     #define NETWORKDEFINE_H
 
+    //----------------------------------------------------------------//
+    /* DEFINE */
+
+    /* file extensions (a different one is accepted with a warning) */
+    #define BRAIN_EXTENSION_BRAIN ".bn" // brain network: BRAIN_MAGIC_BRAIN
+    #define BRAIN_EXTENSION_LAYER ".ln" // layer network: BRAIN_MAGIC_LAYER
+    #define BRAIN_EXTENSION_NETWORK ".net" // any network, the magic bytes tell which one
+
+    /* magic bytes (two first bytes of the serialized data: the common one, then one per kind of network) */
+    #define BRAIN_MAGIC 0x22 // common first byte
+    #define BRAIN_MAGIC_BRAIN 'b' // 0x62, second byte of a brain network
+    #define BRAIN_MAGIC_LAYER 'l' // 0x6C, second byte of a layer network
+
 namespace brain { // namespace start
 //----------------------------------------------------------------//
 /* ENUM */

@@ -47,6 +47,7 @@ static_assert(std::is_integral_v<brain::UIType> && std::is_unsigned_v<brain::UIT
 static_assert(std::is_floating_point_v<brain::FType>, "FType must be a floating point type");
 
 /* data */
+using Bytes = std::vector<std::uint8_t>; // raw data of a saved network
 using Values = std::vector<brain::FType>; // inputs / outputs / coefficients of one sample
 using Dataset = std::vector<brain::Values>; // several samples
 
@@ -72,8 +73,7 @@ struct _alignas(std::hardware_destructive_interference_size) BrainNeuron {
     brain::UIType id = 0; // identifier of the neuron (unique in its network)
     brain::FType bias = 0.0;
 
-    _hot _nodiscard brain::FType distance2(const BrainNeuron& other) const // squared distance between the positions (no sqrt: only the order matters, every distance stays squared and comparable)
-    {return (this->pos - other.pos).lengthSquared();};
+    _hot _nodiscard inline brain::FType distance2(const BrainNeuron& other) const        {return (this->pos - other.pos).lengthSquared();}; // squared distance between the positions (no sqrt: only the order matters, every distance stays squared and comparable)
     _hot _nodiscard inline brain::FType operator|(const BrainNeuron& other) const {return this->distance2(other);}; // squared distance (same as distance2)
     _hot _nodiscard inline bool operator==(const BrainNeuron& other) const        {return this->id == other.id;}; // same neuron: ids only
 };

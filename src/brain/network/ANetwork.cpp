@@ -26,13 +26,3 @@ _cold void brain::ANetwork::init_(void)
 {
     /* Nothing */
 }
-
-_cold void brain::ANetwork::load(void)
-{
-    /* Nothing */
-}
-
-_cold void brain::ANetwork::unload(void)
-{
-    /* Nothing */
-}

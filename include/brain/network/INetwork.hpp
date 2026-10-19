@@ -24,7 +24,7 @@ File Description:
     /* INCLUDE */
 
     /* type */
-    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values
+    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes
     #include <utility>              // std::pair
 
 namespace brain { // namespace start
@@ -38,9 +38,9 @@ class INetwork {
 
     public:
         // ---------- Pre-Function -------- //
-        /* memory */
-        virtual void load(void) = 0; // load the network into memory (gpu) if not already done (failsafe)
-        virtual void unload(void) = 0; // unload the network memory if not already done (failsafe)
+        /* serialization */
+        virtual brain::Bytes serialize(void) const = 0; // every info needed to rebuild the network (neurons, weights, bias...)
+        virtual void deserialize(const brain::Bytes& data) = 0; // rebuild the network from the data given by serialize()
 
         /* execution */
         virtual void inputs(const brain::Values& inputs) const = 0; // load the inputs into the network

@@ -24,7 +24,7 @@ File Description:
     /* INCLUDE */
 
     /* type */
-    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::LayerNeuron
+    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::LayerNeuron
     #include "ANetwork.hpp"         // brain::ANetwork
     #include <utility>              // std::pair
     #include <vector>               // std::vector
@@ -44,6 +44,10 @@ class LayerNetwork: public brain::ANetwork {
 
     public:
         // ---------- Pre-Function -------- //
+        /* serialization */
+        brain::Bytes serialize(void) const final;
+        void deserialize(const brain::Bytes& data) final;
+
         /* execution */
         brain::Values apply(void) const final;
         void backpropagation(const brain::FType coef) final;

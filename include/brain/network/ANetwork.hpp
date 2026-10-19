@@ -14,7 +14,7 @@ File Name:
 ##  @file ANetwork.hpp
 
 File Description:
-##  Abstract network: shared memory state, inputs storage and the default (empty) neurons init
+##  Abstract network: inputs storage and the default (empty) neurons init
 \**************************************************************/
 
 #ifndef ANETWORK_H
@@ -36,17 +36,11 @@ namespace brain { // namespace start
 class ANetwork: public brain::INetwork {
     protected:
         mutable brain::Values _inputs; // last inputs given to the network
-        bool _loaded = false; // true: in memory (gpu) | false: unloaded
 
         // ---------- Pre-Function -------- //
         void init_(void) override; // default: nothing (fallthrough), a child inits its neurons
 
     public:
-        // ---------- Pre-Function -------- //
-        /* memory */
-        void load(void) override; // failsafe: nothing when already loaded
-        void unload(void) override; // failsafe: nothing when already unloaded
-
         // ------------ Function ---------- //
         /* execution */
         _hot void inputs(const brain::Values& inputs) const final {this->_inputs = inputs;};
