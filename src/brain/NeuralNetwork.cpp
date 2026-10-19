@@ -53,12 +53,13 @@ _hot void brain::NeuralNetwork::checkDataset_(const brain::Dataset& inputs, cons
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the datasets can't be empty");
     }
 
-    // check each sample
+    // check each sample (the callers already checked the network)
+    const std::pair<brain::UIType, brain::UIType>& sizes = this->_network->size();
     for (std::size_t i = 0; i < size; ++i) {
-        if (this->_size.first != 0 && inputs[i].size() != this->_size.first) _unlikely {
-            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "given " + std::to_string(inputs[i].size()) + ", expected " + std::to_string(this->_size.first));
-        } else if (this->_size.second != 0 && expected_outputs[i].size() != this->_size.second) _unlikely {
-            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(expected_outputs[i].size()) + ", expected " + std::to_string(this->_size.second));
+        if (sizes.first != 0 && inputs[i].size() != sizes.first) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "given " + std::to_string(inputs[i].size()) + ", expected " + std::to_string(sizes.first));
+        } else if (sizes.second != 0 && expected_outputs[i].size() != sizes.second) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(expected_outputs[i].size()) + ", expected " + std::to_string(sizes.second));
         }
     }
 }
@@ -79,6 +80,57 @@ _cold void brain::NeuralNetwork::init<brain::NetworkType::Brain>(const brain::UI
     std::unique_ptr<brain::INetwork> network = std::make_unique<brain::BrainNetwork>(neurons, size); // the network checks its parameters, the actual one is kept on an error
     this->clear();
     this->_network = std::move(network);
+}
+
+_cold void brain::NeuralNetwork::size(const brain::UIType input, const brain::UIType output)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->size(input, output);
+}
+
+_cold void brain::NeuralNetwork::input(const brain::UIType input)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->input(input);
+}
+
+_cold void brain::NeuralNetwork::output(const brain::UIType output)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->output(output);
+}
+
+_cold brain::UIType brain::NeuralNetwork::input(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->input();
+}
+
+_cold brain::UIType brain::NeuralNetwork::output(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->output();
+}
+
+_cold const std::pair<brain::UIType, brain::UIType>& brain::NeuralNetwork::size(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->size();
 }
 
 _cold void brain::NeuralNetwork::rand(const brain::FType min, const brain::FType max)
@@ -347,8 +399,6 @@ _hot void brain::NeuralNetwork::backpropagation(const brain::Values& coefs)
     this->requireUnfrozen();
     if (!this->_network) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
-    } else if (this->_size.second != 0 && coefs.size() != this->_size.second) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(coefs.size()) + ", expected " + std::to_string(this->_size.second));
     }
     this->_network->backpropagation(coefs);
 }
@@ -375,8 +425,6 @@ _hot void brain::NeuralNetwork::inputs(const brain::Values& inputs) const
 {
     if (!this->_network) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
-    } else if (this->_size.first != 0 && inputs.size() != this->_size.first) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "given " + std::to_string(inputs.size()) + ", expected " + std::to_string(this->_size.first));
     }
     this->_network->inputs(inputs);
 }
@@ -401,8 +449,6 @@ _hot brain::Values brain::NeuralNetwork::exec(const brain::Values& inputs) const
 {
     if (!this->_network) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
-    } else if (this->_size.first != 0 && inputs.size() != this->_size.first) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "given " + std::to_string(inputs.size()) + ", expected " + std::to_string(this->_size.first));
     }
     this->_network->inputs(inputs);
     return this->_network->apply();
