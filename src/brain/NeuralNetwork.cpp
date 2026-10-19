@@ -42,9 +42,34 @@ _hot void brain::NeuralNetwork::decay_(void)
     if (++this->_steps % this->_decay == 0) this->_learningRateDecayed *= this->_decayCoef.second;
 }
 
+_hot void brain::NeuralNetwork::checkDataset_(const brain::Dataset& inputs, const brain::Dataset& expected_outputs) const
+{
+    std::size_t size = inputs.size();
+
+    // check the datasets
+    if (inputs.size() != expected_outputs.size()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "both inputs and expected dataset must be of the same size");
+    } else if (size == 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the datasets can't be empty");
+    }
+
+    // check each sample
+    for (std::size_t i = 0; i < size; ++i) {
+        if (this->_size.first != 0 && inputs[i].size() != this->_size.first) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "given " + std::to_string(inputs[i].size()) + ", expected " + std::to_string(this->_size.first));
+        } else if (this->_size.second != 0 && expected_outputs[i].size() != this->_size.second) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(expected_outputs[i].size()) + ", expected " + std::to_string(this->_size.second));
+        }
+    }
+}
+
 template<>
 _cold void brain::NeuralNetwork::init<brain::NetworkType::Layered>(const brain::UIType layer, const brain::UIType neuron_per_layer)
 {
+    this->requireUnfrozen();
+    if (layer == 0 || neuron_per_layer == 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the number of layers and of neurons per layer should be above 0");
+    }
     this->clear();
     this->_network = std::make_unique<brain::LayerNetwork>(layer, neuron_per_layer);
 }
@@ -52,12 +77,33 @@ _cold void brain::NeuralNetwork::init<brain::NetworkType::Layered>(const brain::
 template<>
 _cold void brain::NeuralNetwork::init<brain::NetworkType::Brain>(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size)
 {
+    this->requireUnfrozen();
+    if (neurons == 0 || !(size.first > 0) || !(size.second > 0)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the number of neurons and the size of the space should be above 0");
+    }
     this->clear();
     this->_network = std::make_unique<brain::BrainNetwork>(neurons, size);
 }
 
+_cold void brain::NeuralNetwork::rand(const brain::FType min, const brain::FType max)
+{
+    this->requireUnfrozen();
+    if (!(min <= max)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the min of the random range should be under or equal to the max");
+    }
+    this->_rand.first = {min, max};
+}
+
 _cold void brain::NeuralNetwork::learningRate(const brain::FType learning_rate, const brain::UIType learning_rate_decay, const std::pair<bool, brain::FType>& coef)
 {
+    // check inputs
+    this->requireUnfrozen();
+    if (!std::isfinite(learning_rate) || learning_rate <= 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidLearningRate, "the learning rate should be a finite number above 0");
+    } else if (!std::isfinite(coef.second) || coef.second <= 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidLearningRate, "the decay coef should be a finite number above 0");
+    }
+
     // setup
     this->_learningRate = learning_rate;
     this->_decay = learning_rate_decay;
@@ -74,6 +120,7 @@ _cold void brain::NeuralNetwork::learningRate(const brain::FType learning_rate, 
 
 _cold void brain::NeuralNetwork::resetLearningRate(void)
 {
+    this->requireUnfrozen();
     this->_learningRateDecayed = this->_learningRate;
     this->_steps = 0;
 }
@@ -90,9 +137,13 @@ _hot void brain::NeuralNetwork::train(const brain::UIType round, const brain::Da
     std::size_t size = inputs.size();
 
     // check inputs
-    if (inputs.size() != expected_outputs.size()) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "both inputs and expected dataset must be of the same size");
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    } else if (!this->_lossFunction.second && this->_lossFunction.first == brain::LossFunction::None) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no loss function set (lossFunction / internalLossFunction)");
     }
+    this->checkDataset_(inputs, expected_outputs);
 
     // execution
     for (std::size_t n = 0; n < round; ++n) {
@@ -111,9 +162,14 @@ _hot void brain::NeuralNetwork::train(const brain::FType loss, const brain::Data
     std::pair<brain::Values, brain::FType> actual_loss = {};
 
     // check inputs
-    if (inputs.size() != expected_outputs.size()) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "both inputs and expected dataset must be of the same size");
-    } else if (loss < 0) _unlikely {
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    } else if (!this->_lossFunction.second && this->_lossFunction.first == brain::LossFunction::None) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no loss function set (lossFunction / internalLossFunction)");
+    }
+    this->checkDataset_(inputs, expected_outputs);
+    if (!(loss >= 0)) _unlikely {
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the loss trigger should be above or equal to 0 (abs is used)");
     }
 
@@ -138,7 +194,7 @@ _hot brain::FType brain::NeuralNetwork::loss(const brain::FType output, const br
     switch (this->_lossFunction.first) {
         case brain::LossFunction::MSE:          return brain::tools::mse(output, expected);
         case brain::LossFunction::CrossEntropy: return brain::tools::cross_entropy(output, expected);
-        default: return {};
+        default: throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no loss function set (lossFunction / internalLossFunction)");
     }
 }
 
@@ -165,7 +221,7 @@ _hot brain::FType brain::NeuralNetwork::loss<true>(const brain::Values& outputs,
             case brain::LossFunction::CrossEntropy:
                 for (std::size_t i = 0; i < size; ++i) total += brain::tools::cross_entropy(outputs[i], expected[i]) * coef;
                 break;
-            default: return {};
+            default: throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no loss function set (lossFunction / internalLossFunction)");
         }
     }
     return total / static_cast<brain::FType>(size);
@@ -193,7 +249,7 @@ _hot brain::Values brain::NeuralNetwork::loss<false>(const brain::Values& output
             case brain::LossFunction::CrossEntropy:
                 for (std::size_t i = 0; i < size; ++i) values[i] = brain::tools::cross_entropy(outputs[i], expected[i]);
                 break;
-            default: break;
+            default: throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no loss function set (lossFunction / internalLossFunction)");
         }
     }
 
@@ -230,16 +286,87 @@ _hot std::pair<brain::Values, brain::FType> brain::NeuralNetwork::loss(const bra
         switch (this->_lossFunction.first) {
             case brain::LossFunction::MSE:          compute([](const brain::FType o, const brain::FType e) {return brain::tools::mse(o, e);}); break;
             case brain::LossFunction::CrossEntropy: compute([](const brain::FType o, const brain::FType e) {return brain::tools::cross_entropy(o, e);}); break;
-            default: return {std::move(values), {}};
+            default: throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no loss function set (lossFunction / internalLossFunction)");
         }
     }
     return {std::move(values), total / static_cast<brain::FType>(size)};
 }
 
+_hot void brain::NeuralNetwork::backpropagation(const brain::FType coef)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    } else if (!std::isfinite(coef)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "the coefficient should be a finite number");
+    }
+    this->_network->backpropagation(coef);
+}
+
+_hot void brain::NeuralNetwork::backpropagation(const brain::Values& coefs)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    } else if (this->_size.second != 0 && coefs.size() != this->_size.second) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(coefs.size()) + ", expected " + std::to_string(this->_size.second));
+    }
+    this->_network->backpropagation(coefs);
+}
+
+_cold void brain::NeuralNetwork::weightInit(const brain::FType fallback)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->weightInit(fallback);
+}
+
+_cold void brain::NeuralNetwork::biasInit(const brain::FType fallback)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->biasInit(fallback);
+}
+
+_hot void brain::NeuralNetwork::inputs(const brain::Values& inputs) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    } else if (this->_size.first != 0 && inputs.size() != this->_size.first) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "given " + std::to_string(inputs.size()) + ", expected " + std::to_string(this->_size.first));
+    }
+    this->_network->inputs(inputs);
+}
+
+_hot brain::Values brain::NeuralNetwork::apply(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->apply();
+}
+
+_cold std::pair<brain::UIType, brain::UIType> brain::NeuralNetwork::neurons(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->neurons();
+}
+
 _hot brain::Values brain::NeuralNetwork::exec(const brain::Values& inputs) const
 {
-    this->inputs(inputs);
-    return this->apply();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    } else if (this->_size.first != 0 && inputs.size() != this->_size.first) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "given " + std::to_string(inputs.size()) + ", expected " + std::to_string(this->_size.first));
+    }
+    this->_network->inputs(inputs);
+    return this->_network->apply();
 }
 
 // Warn (and continue) when the extension of the file is not a known one
@@ -258,6 +385,7 @@ _cold void brain::NeuralNetwork::load(const std::filesystem::path& path)
     brain::Bytes data;
 
     // read the file
+    this->requireUnfrozen();
     checkExtension(path);
     if (!file) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "can't open " + path.string());
@@ -302,6 +430,8 @@ _cold void brain::NeuralNetwork::save(const std::filesystem::path& path) const
 
 _cold void brain::NeuralNetwork::clear(void)
 {
+    this->requireUnfrozen();
+
     // network
     this->_network.reset();
 
