@@ -28,7 +28,9 @@ File Description:
     #define _Attribute
     #include <utils/utils.hpp>      // _hot, _cold, _nodiscard
     #include "../NetworkType.hpp"   // brain::IType, brain::UIType, brain::FType
-    #include <random>               // std::mt19937_64
+    #include <cstdint>              // std::uint64_t
+    #include <random>               // std::mt19937_64, std::random_device, std::generate_canonical
+    #include <limits>               // std::numeric_limits
 
     //----------------------------------------------------------------//
     /* DEFINE */
@@ -63,19 +65,19 @@ namespace brain::tools { // namespace start
 /* randomness (use the active generator) */
 _cold BRAIN_SEED_INLINE void rand(const brain::IType seed) // setup the seed of the generator (0 = random seed)
 {
-    /* Nothing */
+    std::random_device device;
+
+    brain::tools::generator.seed(seed == 0 ? static_cast<std::uint64_t>(device()) : static_cast<std::uint64_t>(seed));
 };
 
 _hot _nodiscard BRAIN_SEED_INLINE brain::UIType rand_unsigned_integer(void) // next unsigned integer of the generator
 {
-    /* Nothing */
-    return {};
+    return static_cast<brain::UIType>(brain::tools::generator());
 };
 
-_hot _nodiscard BRAIN_SEED_INLINE brain::FType rand_floating(void) // next floating value of the generator
+_hot _nodiscard BRAIN_SEED_INLINE brain::FType rand_floating(void) // next floating value of the generator, in [0, 1)
 {
-    /* Nothing */
-    return {};
+    return std::generate_canonical<brain::FType, std::numeric_limits<brain::FType>::digits>(brain::tools::generator);
 };
 
 } // namespace end
