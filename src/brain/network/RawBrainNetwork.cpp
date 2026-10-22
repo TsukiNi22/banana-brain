@@ -145,6 +145,33 @@ _cold brain::Bytes brain::RawBrainNetwork::serialize(void) const
     return out;
 }
 
+// Every link has its clone on the other neuron with the same weight: the inward one on the receiver and the outward one on the sender (the free slots, all at 0, are not links)
+_cold static bool clonesMatch(const std::vector<brain::RawBrainLink>& links, const brain::UIType neuron, const brain::UIType cap)
+{
+    std::vector<std::vector<std::pair<brain::UIType, brain::FType>>> inward(neuron);
+    std::vector<std::vector<std::pair<brain::UIType, brain::FType>>> outward(neuron);
+
+    for (brain::UIType owner = 0; owner < neuron; ++owner) {
+        for (brain::UIType slot = 0; slot < cap; ++slot) {
+            const brain::RawBrainLink& link = links[owner * cap + slot];
+
+            if (link.inward) inward[owner].push_back({link.id, link.weight});
+            else if (link.id != 0 || link.weight != 0) outward[owner].push_back({link.id, link.weight});
+        }
+        std::sort(inward[owner].begin(), inward[owner].end());
+        std::sort(outward[owner].begin(), outward[owner].end());
+    }
+    for (brain::UIType owner = 0; owner < neuron; ++owner) {
+        for (const std::pair<brain::UIType, brain::FType>& link: inward[owner]) {
+            if (!std::binary_search(outward[link.first].begin(), outward[link.first].end(), std::pair<brain::UIType, brain::FType>{owner, link.second})) return false;
+        }
+        for (const std::pair<brain::UIType, brain::FType>& link: outward[owner]) {
+            if (!std::binary_search(inward[link.first].begin(), inward[link.first].end(), std::pair<brain::UIType, brain::FType>{owner, link.second})) return false;
+        }
+    }
+    return true;
+}
+
 _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
 {
     brain::UIType offset = this->deserializeHeader_(data, static_cast<std::uint8_t>(BRAIN_MAGIC_RAW));
@@ -190,6 +217,8 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
     }
     if (offset != data.size()) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unexpected data after the links");
+    } else if (!links.empty() && !clonesMatch(links, neuron, cap)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "a link has no clone with the same weight on the other neuron");
     }
 
     // everything is valid: the network is replaced, then its reduced copy is rebuilt

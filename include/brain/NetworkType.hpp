@@ -80,7 +80,7 @@ struct BrainNeuron {
     brain::FType bias = 0.0;
 };
 
-// Link of a raw brain network neuron, a link between two neurons is found 2 times (one slot on each neuron: the sender '->' for the execution and the receiver '<-' for the backpropagation)
+// Link of a raw brain network neuron, a link between two neurons is found 2 times (one slot on each neuron: the receiver '<-' for the execution, the sender '->' a clone with the same weight for the backpropagation)
 struct RawBrainLink {
     brain::UIType id = 0; // id of the other neuron
     brain::FType weight = 0.0; // weight of the link

@@ -34,9 +34,12 @@ static bool throwsCode(const std::function<void()>& fn, const utils::exception::
     return false;
 }
 
-// A valid file of a raw network of 3 neurons with 2 link slots each
-static brain::Bytes rawData(void)
+// A valid file of a raw network of 3 neurons with 2 link slots each: 0 receives from 1 and sends to 2, 1 receives from 2, each link and its clone have the same weight (clone: the weight written in the file of the slot is changed)
+static brain::Bytes rawData(const brain::UIType broken = 6)
 {
+    // <id, weight, inward> of the 6 slots
+    const brain::RawBrainLink slots[6] = {{1, 0.5f, true}, {2, 0.75f, false}, {0, 0.5f, false}, {2, 0.25f, true}, {0, 0.75f, true}, {1, 0.25f, false}};
+
     brain::Bytes data = brain::RawBrainNetwork(1).serialize();
 
     data.resize(HEADER);
@@ -54,9 +57,9 @@ static brain::Bytes rawData(void)
     }
     brain::tools::put<std::uint64_t>(data, 6);
     for (std::uint64_t i = 0; i < 6; ++i) {
-        brain::tools::put<std::uint64_t>(data, (i + 1) % 3);
-        brain::tools::put<brain::FType>(data, 0.25f * static_cast<brain::FType>(i));
-        brain::tools::put<bool>(data, i % 2 == 0);
+        brain::tools::put<std::uint64_t>(data, slots[i].id);
+        brain::tools::put<brain::FType>(data, i == broken ? slots[i].weight + 1.0f : slots[i].weight);
+        brain::tools::put<bool>(data, slots[i].inward);
     }
     return data;
 }
@@ -197,6 +200,22 @@ TEST(RawBrainNetwork, DeserializeRefusesAnInvalidFile) {
     EXPECT_EQ(network.neurons().second, 1u); // nothing edited by a refused file
 }
 
+TEST(RawBrainNetwork, DeserializeRefusesALinkWithoutItsClone) {
+    brain::RawBrainNetwork network(1);
+
+    for (brain::UIType slot = 0; slot < 6; ++slot) // whichever side of whichever link has an other weight
+        EXPECT_TRUE(throwsCode([&] {network.deserialize(rawData(slot));}, utils::exception::ExternalCode::InvalidNetworkFile)) << "slot " << slot;
+    EXPECT_NO_THROW(network.deserialize(rawData()));
+}
+
+TEST(RawBrainNetwork, DeserializeRefusesABoolThatIsNotOneOrZero) {
+    brain::Bytes data = rawData();
+    brain::RawBrainNetwork network(1);
+
+    data[data.size() - 1] = 2; // the inward flag of the last slot
+    EXPECT_TRUE(throwsCode([&] {network.deserialize(data);}, utils::exception::ExternalCode::InvalidNetworkFile)); // read as true (no undefined bool): the link has no clone any more
+}
+
 TEST(RawBrainNetwork, ReduceGivesAnExecutionOnlyNetwork) {
     brain::RawBrainNetwork raw(1);
     std::unique_ptr<brain::BrainNetwork> reduced;
@@ -291,6 +310,18 @@ TEST(RawBrainNetwork, InitSetsTheReducedCopyUp) {
         used += brain::tools::get<brain::FType>(reduced, offset) != 0.0f;
     }
     EXPECT_EQ(used, inward); // only the inward links are kept
+}
+
+TEST(RawBrainNetwork, ANetworkAfterItsInitAndItsWeightInitIsAValidFile) {
+    brain::RawBrainNetwork network(30);
+    brain::RawBrainNetwork loaded(1);
+
+    ASSERT_NO_THROW(loaded.deserialize(network.serialize())); // the clones have the same weights
+    EXPECT_EQ(loaded.serialize(), network.serialize());
+    network.rand(0.25, 0.5);
+    network.weightInit();
+    ASSERT_NO_THROW(loaded.deserialize(network.serialize()));
+    EXPECT_EQ(loaded.serialize(), network.serialize());
 }
 
 TEST(RawBrainNetwork, ChangingTheLinksCapSetsTheLinksUpAgain) {
