@@ -95,8 +95,6 @@ add_compile_options(
 # Executable only (never in the library)
 set(SRC
     # Entry
-    src/brain/tools/loss.cpp
-    src/brain/tools/activation.cpp
 )
 
 # Shared by the executable and the library (the <name>_lib target when both exist)
@@ -113,6 +111,8 @@ set(SRC_SHARED
     src/brain/tools/dataset.cpp
     src/brain/tools/random.cpp
     src/brain/tools/neuron.cpp
+    src/brain/tools/loss.cpp
+    src/brain/tools/activation.cpp
 )
 
 # Library: compiled (.a / .so), or INTERFACE when only the headers are shipped (header-only)
