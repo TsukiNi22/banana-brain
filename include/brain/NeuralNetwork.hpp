@@ -62,9 +62,11 @@ class NeuralNetwork: public utils::type::Freezable {
         // ---------- Pre-Function -------- //
         /* init (clear any existing network, specialized in the .cpp where the network classes are known) */
         template<brain::NetworkType type> requires (type == brain::NetworkType::Layered)
-        void init(const brain::UIType layer, const brain::UIType neuron_per_layer); // normal usage with layers
+        void init(const brain::UIType layer, const brain::UIType neuron_per_layer); // normal usage with layers, the same number of neurons on every layer
+        template<brain::NetworkType type> requires (type == brain::NetworkType::Layered)
+        void init(const brain::Layers& layers); // normal usage with layers, the number of neurons of each layer
         template<brain::NetworkType type> requires (type == brain::NetworkType::Brain)
-        void init(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}); // custom network (more like a brain), size = 2d space of the neurons
+        void init(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}); // custom network (more like a brain, a brain::RawBrainNetwork: it trains and it can be reduced), size = 2d space of the neurons
 
         /* setter */
         void size(const brain::UIType input, const brain::UIType output); // number of inputs and outputs (named from 0 to n - 1), 0 = not set: the size is not checked, applied to the network
@@ -108,8 +110,8 @@ class NeuralNetwork: public utils::type::Freezable {
         void biasInit(const brain::FType fallback = 0.01); // bias at 0.0 by default, fallback used on a result that falls on 0
 
         /* training (manual) */
-        void inputs(const brain::Values& inputs) const; // load the inputs into the network
-        _nodiscard brain::Values apply(void) const; // execute the network with the given inputs
+        void inputs(const brain::Values& inputs); // training: load the inputs into the network
+        _nodiscard brain::Values apply(void); // training: execute the network with the loaded inputs (keeps what the backpropagation needs)
 
         /* getter */
         _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const; // <layers, neurons> of the network (NoNetwork without one)

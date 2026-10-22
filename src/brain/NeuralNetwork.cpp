@@ -23,16 +23,16 @@ File Description:
 #include <utils/utils.hpp>
 #include "brain/network/Network.hpp"
 #include "brain/NeuralNetwork.hpp"
-#include "brain/tools/loss.hpp"
 #include "brain/NetworkDefine.hpp"
+#include "brain/tools/loss.hpp"
 #include <filesystem>
 #include <algorithm>
 #include <iterator>
 #include <iostream>
 #include <fstream>
+#include <utility>
 #include <cctype>
 #include <string>
-#include <utility>
 #include <memory>
 #include <cmath>
 
@@ -65,19 +65,25 @@ _hot void brain::NeuralNetwork::checkDataset_(const brain::Dataset& inputs, cons
 }
 
 template<>
-_cold void brain::NeuralNetwork::init<brain::NetworkType::Layered>(const brain::UIType layer, const brain::UIType neuron_per_layer)
+_cold void brain::NeuralNetwork::init<brain::NetworkType::Layered>(const brain::Layers& layers)
 {
     this->requireUnfrozen();
-    std::unique_ptr<brain::INetwork> network = std::make_unique<brain::LayerNetwork>(layer, neuron_per_layer); // the network checks its parameters, the actual one is kept on an error
+    std::unique_ptr<brain::INetwork> network = std::make_unique<brain::LayerNetwork>(layers); // the network checks its parameters, the actual one is kept on an error
     this->clear();
     this->_network = std::move(network);
+}
+
+template<>
+_cold void brain::NeuralNetwork::init<brain::NetworkType::Layered>(const brain::UIType layer, const brain::UIType neuron_per_layer)
+{
+    this->init<brain::NetworkType::Layered>(brain::Layers(layer, neuron_per_layer));
 }
 
 template<>
 _cold void brain::NeuralNetwork::init<brain::NetworkType::Brain>(const brain::UIType neurons, const std::pair<brain::FType, brain::FType>& size)
 {
     this->requireUnfrozen();
-    std::unique_ptr<brain::INetwork> network = std::make_unique<brain::BrainNetwork>(neurons, size); // the network checks its parameters, the actual one is kept on an error
+    std::unique_ptr<brain::INetwork> network = std::make_unique<brain::RawBrainNetwork>(neurons, size); // the network checks its parameters, the actual one is kept on an error
     this->clear();
     this->_network = std::move(network);
 }
@@ -239,7 +245,8 @@ _hot void brain::NeuralNetwork::train(const brain::UIType round, const brain::Da
     // execution
     for (std::size_t n = 0; n < round; ++n) {
         for (std::size_t i = 0; i < size; ++i) {
-            brain::Values values = this->exec(inputs[i]);
+            this->inputs(inputs[i]);
+            brain::Values values = this->apply();
             this->backpropagation(this->loss<mean>(values, expected_outputs[i], this->_learningRateDecayed));
             this->decay_();
         }
@@ -266,7 +273,8 @@ _hot void brain::NeuralNetwork::train(const brain::FType loss, const brain::Data
 
     // execution (the stop check uses the loss without the learning rate)
     for (std::size_t i = 0; std::abs(actual_loss.second) > loss || i == 0; ++i) {
-        brain::Values values = this->exec(inputs[i % size]);
+        this->inputs(inputs[i % size]);
+        brain::Values values = this->apply();
         actual_loss = this->loss(values, expected_outputs[i % size]);
         if constexpr (mean) {
             this->backpropagation(actual_loss.second * this->_learningRateDecayed);
@@ -362,7 +370,7 @@ _hot std::pair<brain::Values, brain::FType> brain::NeuralNetwork::loss(const bra
     if (size == 0) _unlikely return {};
 
     // one pass over the values: each call of the generic lambda is its own instantiation (fn inlined), same code as a hand written loop
-    auto compute = [&](const auto& fn) {
+    auto compute = [&](const auto& fn) { // xstyle: ignore CPP-AUTO (generic lambda: one instantiation per loss function, inlined)
         for (std::size_t i = 0; i < size; ++i) {
             loss = fn(outputs[i], expected[i]) * coef;
             values[i] = loss;
@@ -421,16 +429,18 @@ _cold void brain::NeuralNetwork::biasInit(const brain::FType fallback)
     this->_network->biasInit(fallback);
 }
 
-_hot void brain::NeuralNetwork::inputs(const brain::Values& inputs) const
+_hot void brain::NeuralNetwork::inputs(const brain::Values& inputs)
 {
+    this->requireUnfrozen();
     if (!this->_network) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
     }
     this->_network->inputs(inputs);
 }
 
-_hot brain::Values brain::NeuralNetwork::apply(void) const
+_hot brain::Values brain::NeuralNetwork::apply(void)
 {
+    this->requireUnfrozen();
     if (!this->_network) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
     }
@@ -450,8 +460,7 @@ _hot brain::Values brain::NeuralNetwork::exec(const brain::Values& inputs) const
     if (!this->_network) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
     }
-    this->_network->inputs(inputs);
-    return this->_network->apply();
+    return this->_network->apply(inputs);
 }
 
 // Warn (and continue) when the extension of the file is not a known one
@@ -459,8 +468,8 @@ _cold static void checkExtension(const std::filesystem::path& path)
 {
     std::string extension = path.extension().string();
     std::transform(extension.begin(), extension.end(), extension.begin(), [](const unsigned char c) {return static_cast<char>(std::tolower(c));});
-    if (extension == BRAIN_EXTENSION_BRAIN || extension == BRAIN_EXTENSION_LAYER || extension == BRAIN_EXTENSION_NETWORK) return;
-    std::cerr << utils::exception::WarningException(utils::exception::ExternalCode::InvalidNetworkFile, "unknown extension '" + path.extension().string() + "' for " + path.string() + " (known: " BRAIN_EXTENSION_BRAIN ", " BRAIN_EXTENSION_LAYER ", " BRAIN_EXTENSION_NETWORK ")").formated() << std::endl;
+    if (extension == BRAIN_EXTENSION_BRAIN || extension == BRAIN_EXTENSION_RAW || extension == BRAIN_EXTENSION_LAYER || extension == BRAIN_EXTENSION_NETWORK) return;
+    std::cerr << utils::exception::WarningException(utils::exception::ExternalCode::InvalidNetworkFile, "unknown extension '" + path.extension().string() + "' for " + path.string() + " (known: " BRAIN_EXTENSION_BRAIN ", " BRAIN_EXTENSION_RAW ", " BRAIN_EXTENSION_LAYER ", " BRAIN_EXTENSION_NETWORK ")").formated() << std::endl;
 }
 
 _cold void brain::NeuralNetwork::load(const std::filesystem::path& path)
@@ -483,7 +492,8 @@ _cold void brain::NeuralNetwork::load(const std::filesystem::path& path)
     // the second magic byte gives the kind of network (the network checks both again)
     switch (data[1]) {
         case BRAIN_MAGIC_BRAIN: network = std::make_unique<brain::BrainNetwork>(1); break; // placeholder, deserialize() rebuilds it
-        case BRAIN_MAGIC_LAYER: network = std::make_unique<brain::LayerNetwork>(1, 1); break; // placeholder, deserialize() rebuilds it
+        case BRAIN_MAGIC_RAW:   network = std::make_unique<brain::RawBrainNetwork>(1); break;
+        case BRAIN_MAGIC_LAYER: network = std::make_unique<brain::LayerNetwork>(1, 1); break;
         default: throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unknown network kind in " + path.string());
     }
 
