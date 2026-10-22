@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 19/10/2026 by @author Tsukini
+##  @date 22/10/2026 by @author Tsukini
 
 File Name:
 ##  @file LayerNetwork.hpp
@@ -24,10 +24,12 @@ File Description:
     /* INCLUDE */
 
     /* type */
+    #define _Attribute
     #define _System
-    #include <utils/utils.hpp>      // utils::system::HybridMemory
-    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::LayerNeuron
+    #include <utils/utils.hpp>      // _cold, _nodiscard, utils::system::HybridMemory
+    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::Layers, brain::LayerNeuron
     #include "ANetwork.hpp"         // brain::ANetwork
+    #include <numeric>              // std::accumulate
     #include <utility>              // std::pair
 
 namespace brain { // namespace start
@@ -36,13 +38,13 @@ namespace brain { // namespace start
 
 class LayerNetwork: public brain::ANetwork {
     private:
-        utils::system::HybridMemory<brain::LayerNeuron> _neurons; // [layer * _neuronPerLayer + neuron] (gpu when available)
+        brain::Layers _layers; // number of neurons of each layer (the inputs are not a layer)
+        utils::system::HybridMemory<brain::LayerNeuron> _neurons; // every neuron, layer after layer (gpu when available)
         utils::system::HybridMemory<brain::FType> _weights; // the weights of every neuron, from LayerNeuron::incoming (LayerNeuron::count weights)
-        brain::UIType _neuronPerLayer = 0; // neurons of each layer
-        brain::UIType _layer = 0; // number of layers
 
         // ---------- Pre-Function -------- //
-        void init_(void) final; // create layer * neuron_per_layer neurons
+        void init_(void) final; // create the neurons of every layer
+        brain::Values compute_(const brain::Values& inputs) const final;
 
     public:
         // ---------- Pre-Function -------- //
@@ -51,7 +53,8 @@ class LayerNetwork: public brain::ANetwork {
         void deserialize(const brain::Bytes& data) final;
 
         /* execution */
-        brain::Values apply(void) const final;
+        using brain::ANetwork::apply;
+        brain::Values apply(void) final;
         void backpropagation(const brain::FType coef) final;
         void backpropagation(const brain::Values& coefs) final;
 
@@ -61,14 +64,16 @@ class LayerNetwork: public brain::ANetwork {
 
         // ------------ Function ---------- //
         /* getter */
-        _cold _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const final {return {this->_layer, this->_neuronPerLayer};}; // <layers, neuron_per_layer>
+        _cold _nodiscard inline const brain::Layers& layers(void) const                      {return this->_layers;}; // number of neurons of each layer
+        _cold _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const final {return {this->_layers.size(), std::accumulate(this->_layers.begin(), this->_layers.end(), brain::UIType{0})};}; // <layers, total neurons>
 
         // ------------ Operator ---------- //
         LayerNetwork& operator=(const LayerNetwork& other) = delete;
         LayerNetwork& operator=(LayerNetwork&& other) = delete;
 
         // ---------- Constructor --------- //
-        LayerNetwork(const brain::UIType layer, const brain::UIType neuron_per_layer); // calls init_ at the end
+        LayerNetwork(const brain::Layers& layers, const utils::system::MemoryMode mode = utils::system::MemoryMode::Auto); // the number of neurons of each layer, calls init_ at the end
+        LayerNetwork(const brain::UIType layer, const brain::UIType neuron_per_layer, const utils::system::MemoryMode mode = utils::system::MemoryMode::Auto); // the same number of neurons on every layer
         LayerNetwork(const LayerNetwork& other) = delete;
         LayerNetwork(LayerNetwork&& other) = delete;
 
