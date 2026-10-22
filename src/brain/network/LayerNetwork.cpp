@@ -46,9 +46,28 @@ brain::LayerNetwork::LayerNetwork(const brain::UIType layer, const brain::UIType
     /* Nothing */
 }
 
-_cold void brain::LayerNetwork::init_(void)
+_cold void brain::LayerNetwork::layout_(void)
 {
-    /* Nothing */
+    std::vector<brain::LayerNeuron> neurons;
+    brain::UIType previous = this->_ioSize.first; // a neuron has one weight per output of the previous layer (the inputs for the first)
+    brain::UIType weights = 0;
+    brain::UIType product;
+
+    // where the weights of each neuron start, layer after layer (a count that overflows the size is refused)
+    for (const brain::UIType layer: this->_layers) {
+        if (__builtin_mul_overflow(layer, previous, &product) || __builtin_add_overflow(weights, product, &product)) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::InternalCode::OutOfMemory, "the weights of the layers overflow the size");
+        }
+        for (brain::UIType neuron = 0; neuron < layer; ++neuron)
+            neurons.push_back({weights + neuron * previous, previous, 0.0});
+        weights = product;
+        previous = layer;
+    }
+    this->_neurons.allocate(neurons.size());
+    this->_neurons.store(neurons);
+    this->_weights.allocate(weights);
+    this->_weights.store(std::vector<brain::FType>(weights, 1.0)); // 1.0 by default: weightInit gives the random ones
+    this->_layoutInput = this->_ioSize.first;
 }
 
 _cold brain::Bytes brain::LayerNetwork::serialize(void) const
@@ -120,6 +139,7 @@ _cold void brain::LayerNetwork::deserialize(const brain::Bytes& data)
     this->_neurons.store(neurons);
     this->_weights.allocate(weights.size());
     this->_weights.store(weights);
+    this->_layoutInput = this->_ioSize.first;
 }
 
 _hot brain::Values brain::LayerNetwork::compute_(const brain::Values& inputs) const
@@ -160,18 +180,32 @@ _hot void brain::LayerNetwork::backpropagation(const brain::Values& coefs)
 
 _cold void brain::LayerNetwork::weightInit(const brain::FType fallback)
 {
+    std::vector<brain::FType> weights;
+
     // check inputs
     if (!std::isfinite(fallback) || fallback == 0) _unlikely {
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the fallback should be a finite number different from 0");
     }
-    /* Nothing */
+
+    // a random value for every weight
+    weights = this->_weights.toVector();
+    for (brain::FType& weight: weights)
+        weight = this->random_(fallback);
+    this->_weights.store(weights);
 }
 
 _cold void brain::LayerNetwork::biasInit(const brain::FType fallback)
 {
+    std::vector<brain::LayerNeuron> neurons;
+
     // check inputs
     if (!std::isfinite(fallback) || fallback == 0) _unlikely {
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the fallback should be a finite number different from 0");
     }
-    /* Nothing */
+
+    // a random value for every bias
+    neurons = this->_neurons.toVector();
+    for (brain::LayerNeuron& neuron: neurons)
+        neuron.bias = this->random_(fallback);
+    this->_neurons.store(neurons);
 }

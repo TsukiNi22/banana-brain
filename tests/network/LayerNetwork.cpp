@@ -21,8 +21,11 @@ File Description:
 #include "brain/network/Network.hpp"
 #include "brain/tools/bytes.hpp"
 #include <gtest/gtest.h>
+#include <functional>
 #include <cstdint>
+#include <limits>
 #include <memory>
+#include <vector>
 
 static constexpr brain::UIType HEADER = 28; // magic (2) + activation (1) + sizes (16) + random range (8) + random mode (1)
 
@@ -51,6 +54,35 @@ static brain::Bytes layerData(void)
     for (std::uint64_t i = 0; i < 6; ++i)
         brain::tools::put<brain::FType>(data, 0.25f * static_cast<brain::FType>(i));
     return data;
+}
+
+struct ParsedLayer {
+    brain::Layers layers;
+    std::vector<brain::LayerNeuron> neurons;
+    std::vector<brain::FType> weights;
+};
+
+// What a network stores, read from its file
+static ParsedLayer parseLayer(const brain::Bytes& data)
+{
+    ParsedLayer parsed;
+    brain::UIType offset = HEADER;
+    brain::UIType count = brain::tools::get<std::uint64_t>(data, offset);
+
+    for (brain::UIType i = 0; i < count; ++i)
+        parsed.layers.push_back(brain::tools::get<std::uint64_t>(data, offset));
+    count = brain::tools::get<std::uint64_t>(data, offset);
+    for (brain::UIType i = 0; i < count; ++i) {
+        brain::LayerNeuron neuron;
+        neuron.incoming = brain::tools::get<std::uint64_t>(data, offset);
+        neuron.count = brain::tools::get<std::uint64_t>(data, offset);
+        neuron.bias = brain::tools::get<brain::FType>(data, offset);
+        parsed.neurons.push_back(neuron);
+    }
+    count = brain::tools::get<std::uint64_t>(data, offset);
+    for (brain::UIType i = 0; i < count; ++i)
+        parsed.weights.push_back(brain::tools::get<brain::FType>(data, offset));
+    return parsed;
 }
 
 /* ------------------------------- LayerNetwork ------------------------------- */
@@ -162,4 +194,84 @@ TEST(LayerNetwork, DeserializeRefusesAHugeCount) {
     data.resize(HEADER);
     brain::tools::put<std::uint64_t>(data, ~std::uint64_t{0}); // billions of layers announced, nothing behind
     EXPECT_TRUE(throwsCode([&] {brain::LayerNetwork(1, 1).deserialize(data);}, utils::exception::ExternalCode::InvalidNetworkFile));
+}
+
+/* ------------------------------- init ------------------------------- */
+TEST(LayerNetwork, InitSetsEveryNeuronAtItsDefault) {
+    brain::LayerNetwork network(brain::Layers{2, 3});
+    ParsedLayer parsed;
+
+    network.input(4); // the first layer has one weight per input
+    parsed = parseLayer(network.serialize());
+    ASSERT_EQ(parsed.neurons.size(), 5u);
+    ASSERT_EQ(parsed.weights.size(), 14u); // 2 * 4 + 3 * 2
+    EXPECT_EQ(parsed.neurons[0].incoming, 0u);
+    EXPECT_EQ(parsed.neurons[1].incoming, 4u);
+    EXPECT_EQ(parsed.neurons[2].incoming, 8u);
+    EXPECT_EQ(parsed.neurons[4].incoming, 12u);
+    EXPECT_EQ(parsed.neurons[0].count, 4u);
+    EXPECT_EQ(parsed.neurons[2].count, 2u); // one weight per neuron of the previous layer
+    for (const brain::LayerNeuron& neuron: parsed.neurons)
+        EXPECT_EQ(neuron.bias, 0.0f);
+    for (const brain::FType weight: parsed.weights)
+        EXPECT_EQ(weight, 1.0f);
+}
+
+TEST(LayerNetwork, ChangingTheInputSizeSetsTheWeightsUpAgain) {
+    brain::LayerNetwork network(brain::Layers{2});
+
+    EXPECT_TRUE(parseLayer(network.serialize()).weights.empty()); // no input size yet: no weight
+    network.input(3);
+    EXPECT_EQ(parseLayer(network.serialize()).weights.size(), 6u);
+    network.input(5);
+    EXPECT_EQ(parseLayer(network.serialize()).weights.size(), 10u);
+    network.output(7); // the outputs do not change the weights
+    EXPECT_EQ(parseLayer(network.serialize()).weights.size(), 10u);
+}
+
+TEST(LayerNetwork, TooManyWeightsOverflowTheSize) {
+    brain::LayerNetwork network(brain::Layers{4, 4});
+
+    EXPECT_THROW(network.input(std::numeric_limits<brain::UIType>::max() / 2), utils::exception::IException);
+}
+
+TEST(LayerNetwork, WeightInitUsesTheRandomRange) {
+    brain::LayerNetwork network(brain::Layers{2, 2});
+
+    network.input(3);
+    network.rand(0.25, 0.25);
+    network.weightInit();
+    for (const brain::FType weight: parseLayer(network.serialize()).weights)
+        EXPECT_FLOAT_EQ(weight, 0.25f);
+    network.rand(0.0, 0.0); // a result that falls on 0 is the fallback
+    network.weightInit(0.5);
+    for (const brain::FType weight: parseLayer(network.serialize()).weights)
+        EXPECT_FLOAT_EQ(weight, 0.5f);
+}
+
+TEST(LayerNetwork, RandomFunctionWinsOverTheRange) {
+    brain::LayerNetwork network(brain::Layers{2});
+
+    network.input(2);
+    network.rand(0.25, 0.25);
+    network.rand([](const brain::IType) {return 0.75f;});
+    network.weightInit();
+    network.biasInit();
+    for (const brain::FType weight: parseLayer(network.serialize()).weights)
+        EXPECT_FLOAT_EQ(weight, 0.75f);
+    for (const brain::LayerNeuron& neuron: parseLayer(network.serialize()).neurons)
+        EXPECT_FLOAT_EQ(neuron.bias, 0.75f);
+    network.rand([](const brain::IType) {return std::nanf("");});
+    EXPECT_THROW(network.weightInit(), utils::exception::IException); // a non finite value is refused
+}
+
+TEST(LayerNetwork, BiasInitStaysInTheRange) {
+    brain::LayerNetwork network(brain::Layers{20});
+
+    network.rand(0.5, 1.0);
+    network.biasInit();
+    for (const brain::LayerNeuron& neuron: parseLayer(network.serialize()).neurons) {
+        EXPECT_GE(neuron.bias, 0.5f);
+        EXPECT_LE(neuron.bias, 1.0f);
+    }
 }

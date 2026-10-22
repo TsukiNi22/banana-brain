@@ -41,10 +41,15 @@ class LayerNetwork: public brain::ANetwork {
         brain::Layers _layers; // number of neurons of each layer (the inputs are not a layer)
         utils::system::HybridMemory<brain::LayerNeuron> _neurons; // every neuron, layer after layer (gpu when available)
         utils::system::HybridMemory<brain::FType> _weights; // the weights of every neuron, from LayerNeuron::incoming (LayerNeuron::count weights)
+        brain::UIType _layoutInput = 0; // number of inputs the memories were set up for
 
         // ---------- Pre-Function -------- //
-        void init_(void) final; // create the neurons of every layer
         brain::Values compute_(const brain::Values& inputs) const final;
+        void layout_(void); // allocate the neurons and the weights, every one at its default (the weights are lost)
+
+        // ------------ Function ---------- //
+        _cold void init_(void) final    {this->layout_();}; // set the memories up: the neurons of every layer, the weights at 1.0 and the bias at 0.0
+        _cold void resized_(void) final {if (this->_ioSize.first != this->_layoutInput) this->layout_();}; // the number of inputs gives the weights of the first layer: set the memories up again when it changes
 
     public:
         // ---------- Pre-Function -------- //
