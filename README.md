@@ -3,11 +3,11 @@
 > [!TIP]
 > Technical documentation and project graph: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v0.0.0).
 
-C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling several kinds of networks (layered, brain, banana), their configuration, training and usage, plus the dataset and randomness tools.
+C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling several kinds of networks (layered, brain), their configuration, training and usage, plus the dataset, randomness and serialization tools.
 Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
 
 > [!NOTE]
-> The library is an architecture for now: every class, function and exception code exists with its final signature, the logic comes with the next versions.
+> The library is in progress (the tag `v0.0.0` was the architecture only). Written: the checks and errors of every function, the memories of the neurons (`utils::system::HybridMemory`, GPU when available), the default setup of the three networks, the serialization (`save` / `load`) and the tools. **Not written yet**: the forward pass (`compute_`, `apply()`) and the backpropagation of the networks.
 
 ### Table of Contents
  - [Dependencies](#dependencies)
@@ -177,13 +177,15 @@ A missing package stops the configuration with the name of the package to instal
 | Include | Content |
 | ------- | ------- |
 | `brain/brain.hpp` | Global include of the library (+ `brain::version`), without the network classes: they are internal, created by `NeuralNetwork::init<...>` |
-| `brain/NeuralNetwork.hpp` | `brain::NeuralNetwork` (`utils::type::Freezable`): `init<NetworkType>(...)`, `weightInit`, `biasInit`, setters / getters (`seed`, `size`, `rand`, `learningRate`, `activationFunction`, `lossFunction`...), `train(round | loss, inputs, expected, backpropagation)`, manual training (`load`, `inputs`, `apply`, `backpropagation`, `loss`), `exec`, `load(path)` / `save(path)`, `clear` |
-| `brain/NetworkDefine.hpp` | `brain::NetworkType` (`Layered`, `Brain`, `Banana`), `brain::ActivationFunction`, `brain::LossFunction` |
-| `brain/NetworkType.hpp` | `brain::IType` / `UIType` / `FType`, `brain::Values` / `Dataset`, the hooks `ActivationFn` / `LossFn` / `RandFn` / `BackpropagationFn` / `BackpropagationsFn`, `brain::LayerNeuron` / `BrainNeuron` (cache line aligned; `BrainNeuron`: `id`, `ordered` <id, squared distance> list, `operator==` on the ids, `distance2()` / `operator|` squared distance) |
-| `brain/network/Network.hpp` | `brain::INetwork` -> `brain::ANetwork` -> `brain::LayerNetwork(layer, neuron_per_layer)` / `brain::BrainNetwork(neuron, size)` (not in `brain.hpp`: include it only when the network classes are needed) |
+| `brain/NeuralNetwork.hpp` | `brain::NeuralNetwork` (`utils::type::Freezable`): `init<NetworkType>(...)` (`Layered`: `(layer, neuron_per_layer)` or `(Layers)`, `Brain`: `(neurons, size)`), `weightInit`, `biasInit`, the settings of the network (`size`, `rand`, `activationFunction`... applied to it: `init` first), `learningRate`, `lossFunction`, `train<mean>(round \| loss, inputs, expected)`, manual training (`inputs`, `apply`, `backpropagation`, `loss<mean>`), `exec`, `save(path)` / `load(path)`, `clear` |
+| `brain/NetworkDefine.hpp` | `brain::NetworkType` (`Layered`, `Brain`), `ActivationFunction`, `LossFunction`, `TextMode` (`Normal`, `Compact`), the defines of the files (`BRAIN_EXTENSION_*`, `BRAIN_MAGIC*`, `BRAIN_ACTIVATION_*`) and of the links limit (`BRAIN_LINKS_CAP_*`) |
+| `brain/NetworkType.hpp` | `brain::IType` / `UIType` / `FType`, `Values` / `Dataset` / `Layers` / `Bytes`, the hooks `ActivationFn` / `LossFn` / `RandFn` / `LinksCapFn`, the trivially copyable neurons and links stored in a `HybridMemory`: `LayerNeuron`, `BrainNeuron` / `BrainLink` (reduced), `RawBrainNeuron` (`distance2()` / `operator\|` squared distance) / `RawBrainLink` |
+| `brain/network/Network.hpp` | `brain::INetwork` -> `brain::ANetwork` -> `brain::LayerNetwork(Layers)` / `brain::BrainNetwork(neuron, cap)` (reduced, execution only) -> `brain::RawBrainNetwork(neuron, size)` (training, `reduce()`) (not in `brain.hpp`: include it only when the network classes are needed) |
 | `brain/tools/random.hpp` | `brain::tools::generator` (`std::mt19937_64`, scope chosen by `BRAIN_SEED_GLOBAL` / `BRAIN_SEED_LOCAL`), `rand(seed)`, `rand_unsigned_integer()`, `rand_floating()` |
-| `brain/tools/dataset.hpp` | `brain::tools::shuffle`, `rand_sets`, `text_to_input`, `input_to_text` |
-| `brain/tools/neuron.hpp` | `brain::tools::sort(neuron, neurons)`: fills `neuron.ordered` with every other neuron sorted from the closest (squared distances, stored in both neurons) |
+| `brain/tools/dataset.hpp` | `brain::tools::shuffle`, `rand_sets`, `text_to_input<mode>`, `input_to_text<mode, round>` |
+| `brain/tools/neuron.hpp` | `brain::tools::sort(index, neurons, cap)`: the ids of the `cap` nearest neurons of a neuron, closest first (squared distances computed again, nothing stored) |
+| `brain/tools/loss.hpp` / `activation.hpp` | The internal losses (`mse`, `cross_entropy`) and activations (`sigmoid`, `linear`, `relu`) of one value |
+| `brain/tools/bytes.hpp` | `brain::tools::put<T>` / `get<T>` / `fits`: numbers as little endian bytes (the serialization) |
 
 The random generator of the library (`brain::tools::generator`, used by every randomness call) has a scope chosen at compile time, with a define set **before** the include (`-DBRAIN_SEED_LOCAL` in the CMake, or `#define` on the line before):
 
@@ -196,9 +198,36 @@ The random generator of the library (`brain::tools::generator`, used by every ra
 > Defining both at once is a compile error (`#error`). The helpers `rand(seed)`, `rand_unsigned_integer()` and `rand_floating()` stay the same and use whichever generator is active.
 
 > [!IMPORTANT]
-> The `train` overloads only accept a `brain::UIType` (number of rounds) or a `brain::FType` (loss to reach): any other type (`int`, `double`...) is refused at compile time, no implicit conversion.
+> The first argument of `train` must be exactly a `brain::UIType` (number of rounds) or a `brain::FType` (loss to reach): `train(10, ...)` with an `int` is ambiguous, write `brain::UIType{10}` or `0.1f`. `train<false>` (default) gives the backpropagation one coefficient per output, `train<true>` a single one.
 
-The errors are libutils exceptions with the codes of the library (`utils::exception::ExternalCode::NoNetwork`, `NetworkNotLoaded`, `FrozenNetwork`, `InvalidInputSize`, `InvalidCoefficient`...), generated from `cmake/config/exceptions/brain.json` and installed with the headers:
+> [!NOTE]
+> The size, random and activation settings belong to the network: they throw `NoNetwork` before `init<...>`. `exec` executes without storing anything in the network (thread-safe) and is the only call allowed once the network is frozen (`freeze()`).
+
+### Save / load
+`save(path)` / `load(path)` write and read the network (`NeuralNetwork`), `serialize()` / `deserialize(bytes)` do it in memory (each network).
+
+| Extension | Network | Magic bytes |
+| --------- | ------- | ----------- |
+| `.ln` | `LayerNetwork` | `0x22` `'l'` |
+| `.bn` | `BrainNetwork` (reduced, execution only) | `0x22` `'b'` |
+| `.rbn` | `RawBrainNetwork` (training) | `0x22` `'r'` |
+| `.net` | any of them (the magic bytes tell which) | the one of the network |
+
+An other extension only warns. The third byte tells the activation (`0x00` none, `0xFF` an external function, otherwise the internal `ActivationFunction`). An external function (activation, random, links cap) can't be saved: the load warns (`CustomActivationRequired`, `CustomRandomRequired`, `CustomLinksCapRequired`) and it has to be given again. A bad, truncated or inconsistent file throws `InvalidNetworkFile` and the current network is kept.
+
+```cpp
+brain::NeuralNetwork network;
+network.init<brain::NetworkType::Layered>(brain::Layers{8, 4, 1});   // or init<Layered>(3, 8): 3 layers of 8 neurons
+network.size(2, 1);                                                  // 2 inputs, 1 output
+network.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+network.internalLossFunction(brain::LossFunction::MSE);
+network.weightInit();
+network.biasInit();
+network.save("network.ln");                                          // .ln, .bn, .rbn or .net
+brain::Values outputs = network.exec({0.0, 1.0});
+```
+
+The errors are libutils exceptions with the codes of the library (`utils::exception::ExternalCode::NoNetwork`, `InvalidInputSize`, `InvalidOutputSize`, `InvalidCoefficient`, `InvalidLearningRate`, `InvalidNetworkFile`, `ReadOnlyNetwork`...), generated from `cmake/config/exceptions/brain.json` and installed with the headers:
 
 ```cpp
 #define _Exception
@@ -207,8 +236,7 @@ The errors are libutils exceptions with the codes of the library (`utils::except
 
 try {
     brain::NeuralNetwork network;
-    network.init<brain::NetworkType::Layered>(2, 3);
-    network.exec({0.0, 1.0});
+    network.exec({0.0, 1.0});   // no init<...>() before
 } catch (const utils::exception::IException& e) {
     std::cerr << e.formated() << std::endl;   // [Error] ... -> No network initialized, call init<NetworkType>() first
 }
