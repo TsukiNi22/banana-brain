@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 19/10/2026 by @author Tsukini
+##  @date 22/10/2026 by @author Tsukini
 
 File Name:
 ##  @file INetwork.hpp
