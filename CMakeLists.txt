@@ -106,6 +106,7 @@ set(SRC_SHARED
     src/brain/network/ANetwork.cpp
     src/brain/network/LayerNetwork.cpp
     src/brain/network/BrainNetwork.cpp
+    src/brain/network/RawBrainNetwork.cpp
 
     ## Brain (sub-part: tools)
     src/brain/tools/dataset.cpp

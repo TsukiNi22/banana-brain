@@ -43,6 +43,7 @@ set(SRC
     # Brain (sub-part: network)
     network/LayerNetwork.cpp
     network/BrainNetwork.cpp
+    network/RawBrainNetwork.cpp
 
     # Brain (sub-part: tools)
     tools/Random.cpp

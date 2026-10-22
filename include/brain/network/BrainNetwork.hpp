@@ -14,7 +14,7 @@ File Name:
 ##  @file BrainNetwork.hpp
 
 File Description:
-##  Custom network (more like a brain): neurons placed in a 2d space, linked by ids
+##  Reduced custom network (more like a brain), execution only: the bias of the neurons and their input links, the training is done by brain::RawBrainNetwork
 \**************************************************************/
 
 #ifndef BRAINNETWORK_H
@@ -24,10 +24,12 @@ File Description:
     /* INCLUDE */
 
     /* type */
+    #define _Attribute
     #define _System
-    #include <utils/utils.hpp>      // utils::system::HybridMemory
-    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::BrainNeuron, brain::BrainLink, brain::LinksCapFn
-    #include "../NetworkDefine.hpp" // BRAIN_LINKS_CAP_PERCENTAGE, BRAIN_LINKS_CAP_COMPUTING
+    #define _Exception
+    #include <utils/utils.hpp>      // _cold, _nodiscard, utils::system::HybridMemory
+    #include "../NetworkDefine.hpp" // BRAIN_MAGIC_BRAIN
+    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::BrainNeuron, brain::BrainLink
     #include "ANetwork.hpp"         // brain::ANetwork
     #include <utility>              // std::pair
 
@@ -35,40 +37,46 @@ namespace brain { // namespace start
 //----------------------------------------------------------------//
 /* CLASS */
 
+// The smallest network to execute a trained brain network: no position, no link for the backpropagation (every training call throws ReadOnlyNetwork)
 class BrainNetwork: public brain::ANetwork {
-    private:
-        utils::system::HybridMemory<brain::BrainNeuron> _neurons; // every neuron of the 2d space (gpu when available)
-        utils::system::HybridMemory<brain::BrainLink> _links; // the links of every neuron, from BrainNeuron::incoming (BrainNeuron::incomingCount links)
-        std::pair<brain::FType, brain::FType> _size = {1.0, 1.0}; // <width, height> of the 2d space (could be applied in 3d in the future)
+    protected:
+        utils::system::HybridMemory<brain::BrainNeuron> _neurons; // [neuron] (gpu when available)
+        utils::system::HybridMemory<brain::BrainLink> _links; // [neuron * _cap + slot] the input links of every neuron (a free slot is all at 0)
         brain::UIType _neuron = 0; // number of neurons
-        sd::pair<brain::FType, brain::LinksCapFn> _limit = {BRAIN_LINKS_CAP_PERCENTAGE, [](const brain::UIType n){return BRAIN_LINKS_CAP_COMPUTING(n);}}; // <percentage, hook> limits of linking
-        brain::UIType _links = 0; // limit of the number of link allowed for each neuron
+        brain::UIType _cap = 0; // slots of links of each neuron (the limit of the links of a neuron)
 
         // ---------- Pre-Function -------- //
-        void init_(void) final; // place _neuron neurons in the _size space
+        void init_(void) override; // nothing to place, the neurons and the links come from deserialize
+        brain::Values compute_(const brain::Values& inputs) const override;
+        void serializeBody_(brain::Bytes& out) const; // the neurons and the links
+        void deserializeBody_(const brain::Bytes& data, brain::UIType offset); // read the neurons and the links, the end of the data included (nothing is edited on an invalid data)
+
+        // ---------- Constructor --------- //
+        BrainNetwork(const brain::UIType neuron, const brain::UIType cap, const utils::system::MemoryMode mode, const bool setup); // setup: calls init_ at the end (false: the child does it)
 
     public:
         // ---------- Pre-Function -------- //
         /* serialization */
-        brain::Bytes serialize(void) const final;
-        void deserialize(const brain::Bytes& data) final;
+        brain::Bytes serialize(void) const override;
 
         /* execution */
-        brain::Values apply(void) const final;
-        void backpropagation(const brain::FType coef) final;
-        void backpropagation(const brain::Values& coefs) final;
-
-        /* setup */
-        void weightInit(const brain::FType fallback = 0.01) final;
-        void biasInit(const brain::FType fallback = 0.01) final;
+        using brain::ANetwork::apply;
 
         // ------------ Function ---------- //
-        /* setter (links) */
-        _cold inline void linksCap(const brain::FType percentage) {this->_limit.first = percentage;}; // set the maximum allowed links using percentage
-        _cold inline void linksCap(const brain::LinksCapFn& fn)   {this->_limit.second = fn;}; // replace the function to compute the number of allowed links
-        _cold inline void resetLinksCap(void)                     {this->_limit = {BRAIN_LINKS_CAP_PERCENTAGE, [](const brain::UIType n){return BRAIN_LINKS_CAP_COMPUTING(n);}};}; // reset the links cap used
+        /* serialization */
+        _cold void deserialize(const brain::Bytes& data) override {this->deserializeBody_(data, this->deserializeHeader_(data, static_cast<std::uint8_t>(BRAIN_MAGIC_BRAIN)));};
+
+        /* execution (the training is refused) */
+        _hot brain::Values apply(void) override                            {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+        _hot void backpropagation(const brain::FType coef) override        {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+        _hot void backpropagation(const brain::Values& coefs) override     {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+
+        /* setup (the training is refused) */
+        _cold void weightInit(const brain::FType fallback = 0.01) override {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+        _cold void biasInit(const brain::FType fallback = 0.01) override   {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
 
         /* getter */
+        _cold _nodiscard inline brain::UIType links(void) const                            {return this->_cap;}; // slots of links of each neuron
         _cold _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const final {return {0, this->_neuron};}; // <0, total neurons> (no layer)
 
         // ------------ Operator ---------- //
@@ -76,7 +84,7 @@ class BrainNetwork: public brain::ANetwork {
         BrainNetwork& operator=(BrainNetwork&& other) = delete;
 
         // ---------- Constructor --------- //
-        BrainNetwork(const brain::UIType neuron, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}); // size = 2d space of the neurons, calls init_ at the end
+        BrainNetwork(const brain::UIType neuron, const brain::UIType cap = 0, const utils::system::MemoryMode mode = utils::system::MemoryMode::Auto); // cap = slots of links of each neuron, calls init_ at the end
         BrainNetwork(const BrainNetwork& other) = delete;
         BrainNetwork(BrainNetwork&& other) = delete;
 

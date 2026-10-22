@@ -30,7 +30,8 @@ File Description:
     #include "ANetwork.hpp"       // brain::ANetwork
 
     /* network */
-    #include "LayerNetwork.hpp"   // brain::LayerNetwork
-    #include "BrainNetwork.hpp"   // brain::BrainNetwork
+    #include "RawBrainNetwork.hpp" // brain::RawBrainNetwork (execution and training)
+    #include "LayerNetwork.hpp"    // brain::LayerNetwork
+    #include "BrainNetwork.hpp"    // brain::BrainNetwork (reduced, execution only)
 
 #endif /* NETWORK_H */

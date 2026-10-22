@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 19/10/2026 by @author Tsukini
+##  @date 22/10/2026 by @author Tsukini
 
 File Name:
 ##  @file BrainNetwork.cpp
@@ -20,19 +20,27 @@ File Description:
 
 #define _Attribute
 #define _Exception
+#define _System
 #include <utils/utils.hpp>
 #include "brain/network/BrainNetwork.hpp"
 #include "brain/NetworkDefine.hpp"
-#include <utility>
-#include <cmath>
+#include "brain/tools/bytes.hpp"
+#include <cstdint>
+#include <vector>
 
-brain::BrainNetwork::BrainNetwork(const brain::UIType neuron, const std::pair<brain::FType, brain::FType>& size)
-: _size{size}, _neuron{neuron}
+brain::BrainNetwork::BrainNetwork(const brain::UIType neuron, const brain::UIType cap, const utils::system::MemoryMode mode, const bool setup)
+: ANetwork{mode}, _neurons{this->makeMemory_<brain::BrainNeuron>()}, _links{this->makeMemory_<brain::BrainLink>()}, _neuron{neuron}, _cap{cap}
 {
     // check inputs
-    if (neuron == 0 || !(size.first > 0) || !(size.second > 0)) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the number of neurons and the size of the space should be above 0");
+    if (neuron == 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the number of neurons should be above 0");
     }
+    if (setup) this->init_();
+}
+
+brain::BrainNetwork::BrainNetwork(const brain::UIType neuron, const brain::UIType cap, const utils::system::MemoryMode mode)
+: BrainNetwork{neuron, cap, mode, true}
+{
     /* Nothing */
 }
 
@@ -41,66 +49,77 @@ _cold void brain::BrainNetwork::init_(void)
     /* Nothing */
 }
 
+_cold void brain::BrainNetwork::serializeBody_(brain::Bytes& out) const
+{
+    const std::vector<brain::BrainNeuron> neurons = this->_neurons.toVector();
+    const std::vector<brain::BrainLink> links = this->_links.toVector();
+
+    brain::tools::put<std::uint64_t>(out, this->_neuron);
+    brain::tools::put<std::uint64_t>(out, this->_cap);
+    brain::tools::put<std::uint64_t>(out, neurons.size());
+    for (const brain::BrainNeuron& neuron: neurons)
+        brain::tools::put<brain::FType>(out, neuron.bias);
+    brain::tools::put<std::uint64_t>(out, links.size());
+    for (const brain::BrainLink& link: links) {
+        brain::tools::put<std::uint64_t>(out, link.id);
+        brain::tools::put<brain::FType>(out, link.weight);
+    }
+}
+
+_cold void brain::BrainNetwork::deserializeBody_(const brain::Bytes& data, brain::UIType offset)
+{
+    const brain::UIType neuron = brain::tools::get<std::uint64_t>(data, offset);
+    const brain::UIType cap = brain::tools::get<std::uint64_t>(data, offset);
+    brain::UIType count = brain::tools::get<std::uint64_t>(data, offset);
+
+    // the neurons (none: not allocated yet)
+    if (neuron == 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "the number of neurons should be above 0");
+    } else if ((count != 0 && count != neuron) || !brain::tools::fits(data, offset, count, sizeof(brain::FType))) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "invalid neurons");
+    }
+    std::vector<brain::BrainNeuron> neurons(count);
+    for (brain::BrainNeuron& value: neurons)
+        value.bias = brain::tools::get<brain::FType>(data, offset);
+
+    // the links (none: not allocated yet)
+    count = brain::tools::get<std::uint64_t>(data, offset);
+    if ((count != 0 && (cap == 0 || count / cap != neuron || count % cap != 0)) || !brain::tools::fits(data, offset, count, sizeof(std::uint64_t) + sizeof(brain::FType))) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "invalid links");
+    }
+    std::vector<brain::BrainLink> links(count);
+    for (brain::BrainLink& link: links) {
+        link.id = brain::tools::get<std::uint64_t>(data, offset);
+        link.weight = brain::tools::get<brain::FType>(data, offset);
+        if (link.id >= neuron) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "a link goes to the neuron " + std::to_string(link.id) + " of " + std::to_string(neuron));
+        }
+    }
+
+    if (offset != data.size()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unexpected data after the links");
+    }
+
+    // everything is valid: the memories are replaced
+    this->_neuron = neuron;
+    this->_cap = cap;
+    this->_neurons.allocate(neurons.size());
+    this->_neurons.store(neurons);
+    this->_links.allocate(links.size());
+    this->_links.store(links);
+}
+
 _cold brain::Bytes brain::BrainNetwork::serialize(void) const
 {
-    /* Nothing */
-    return {static_cast<std::uint8_t>(BRAIN_MAGIC), static_cast<std::uint8_t>(BRAIN_MAGIC_BRAIN), this->serializeActivation_()};
+    brain::Bytes out;
+
+    this->serializeHeader_(out, static_cast<std::uint8_t>(BRAIN_MAGIC_BRAIN));
+    this->serializeBody_(out);
+    return out;
 }
 
-_cold void brain::BrainNetwork::deserialize(const brain::Bytes& data)
+_hot brain::Values brain::BrainNetwork::compute_(const brain::Values& inputs) const
 {
-    // check the magic bytes
-    if (data.size() < 3 || data[0] != static_cast<std::uint8_t>(BRAIN_MAGIC) || data[1] != static_cast<std::uint8_t>(BRAIN_MAGIC_BRAIN)) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "bad magic bytes for a brain network");
-    }
-    this->deserializeActivation_(data[2]);
-    /* Nothing */
-}
-
-_hot brain::Values brain::BrainNetwork::apply(void) const
-{
-    // check inputs
-    if (this->_inputs.empty()) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "no inputs loaded (call inputs() first)");
-    }
     /* Nothing */
     return {};
-}
-
-_hot void brain::BrainNetwork::backpropagation(const brain::FType coef)
-{
-    // check inputs
-    if (!std::isfinite(coef)) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "the coefficient should be a finite number");
-    }
-    /* Nothing */
-}
-
-_hot void brain::BrainNetwork::backpropagation(const brain::Values& coefs)
-{
-    // check inputs
-    if (coefs.empty()) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "no coefficients given");
-    } else if (this->_ioSize.second != 0 && coefs.size() != this->_ioSize.second) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(coefs.size()) + ", expected " + std::to_string(this->_ioSize.second));
-    }
-    /* Nothing */
-}
-
-_cold void brain::BrainNetwork::weightInit(const brain::FType fallback)
-{
-    // check inputs
-    if (!std::isfinite(fallback) || fallback == 0) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the fallback should be a finite number different from 0");
-    }
-    /* Nothing */
-}
-
-_cold void brain::BrainNetwork::biasInit(const brain::FType fallback)
-{
-    // check inputs
-    if (!std::isfinite(fallback) || fallback == 0) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the fallback should be a finite number different from 0");
-    }
-    /* Nothing */
 }
