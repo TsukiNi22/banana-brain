@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [pre-release]
 ### In Progress
-- The backpropagation of the networks (`backpropagation`), still empty (`/* Nothing */`)
+- `train` sends the loss (always positive for the mean squared error) as the coefficient: a layered network needs the signed error (output - expected) and a brain network a score, `backpropagation` can be called by hand with them
 
 ### Changed
 - **[MAJOR]** The brain network is split in `brain::BrainNetwork` (reduced, execution only: the training calls throw `ReadOnlyNetwork`) and `brain::RawBrainNetwork` (execution and training, derives from it and gives a reduced copy with `reduce()`); `init<Brain>` creates the raw one
@@ -49,10 +49,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exception codes `ReadOnlyNetwork`, `CustomActivationRequired`, `CustomRandomRequired`, `CustomLinksCapRequired`
 - Tools: the losses (`mse`, `cross_entropy`), the activations (`sigmoid`, `linear`, `relu`), the little endian bytes (`put`, `get`, `fits`), `shuffle`, `rand_sets`, the generator used by the positions and the random weights
 - Unit tests of the types, the checks, the three networks, the files, `NeuralNetwork` and the tools
+- Backpropagation: `LayerNetwork` goes down the gradient of the error of each output (activation derivatives, estimated for an external function); `RawBrainNetwork` goes back through the time steps and reinforces (positive score) or weakens (negative) the links that made the outputs, a link and its clone keeping the same weight
+- Links of a raw brain network that change with the weights: the farthest link of a neuron is removed when the absolute value of its weight falls to `weightMin()` (never its last link, nor the last inward link of an output or hidden neuron, nor the last outward link of an input) and the next nearest neuron is linked when it rises to `weightMax()` (`BRAIN_WEIGHT_MIN` 0.01, `BRAIN_WEIGHT_MAX` 2.0), `allowOrphans()` / `disallowOrphans()` (default) lets the last links be removed
+- Warning `ErrorLossOnBrain` when the mean squared error is the loss of a brain network (an error to minimize, not a score)
 - Forward pass of the networks: `LayerNetwork` layer after layer, `BrainNetwork` / `RawBrainNetwork` by time steps (`compute_` without state for `exec`, `apply()` that keeps the sums, the outputs and the states for the training)
-- Computing on the gpu that stores the memories (`brain::tools::gpu`, `include/brain/tools/compute.hpp`): the layers, the time steps of the brain networks and the training forward run as kernels on the device buffers of the `HybridMemory` (CUDA driver and NVRTC loaded at runtime, compiled once per context), the host computes instead without the CUDA headers (optional, found by the cmake; the driver and NVRTC stay loaded at runtime), with an external activation function or on a failure
+- Computing on the gpu that stores the memories (`brain::tools::gpu`, `include/brain/tools/compute.hpp`): the layers, the time steps of the brain networks and the training forward run as kernels on the device buffers of the `HybridMemory` (CUDA driver and NVRTC loaded at runtime, compiled once per context), the backpropagation too (`layersBack`, `stepsBack`: the gradient and the update of the weights, the clones and the biases are made on the device, only the links changing (`relink_`) is done on the host), the host computes instead without the CUDA headers (optional, found by the cmake; the driver and NVRTC stay loaded at runtime), with an external activation function or on a failure
 - Memory information of a network: `onGpu()`, `memoryMode()`, `requestedMode()`, `gpu()`, `gpuName()`, `gpuMemory()` (what `HybridMemory` / the shared gpu handler provide) and `memory()` (bytes of the memories of the network)
-- Time steps of a brain network: `stepsCap(percentage | fn)`, `resetStepsCap()` and the getters `stepsCap()` / `linksCap()` (`BRAIN_STEPS_CAP_*`: 25 % of the neurons, `2 log2(n)`), the signal `threshold()` (`BRAIN_SIGNAL_THRESHOLD`, a placeholder at 0) and the exception code `CustomStepsCapRequired`
+- Time steps of a brain network: `stepsCap(percentage | fn)`, `resetStepsCap()` and the getters `stepsCap()` / `linksCap()` (`BRAIN_STEPS_CAP_*`: 25 % of the neurons, `4 log2(n)`), the signal `threshold()` (`BRAIN_SIGNAL_THRESHOLD`, a placeholder at 0) and the exception code `CustomStepsCapRequired`
 
 ### Removed
 - `NetworkType::Banana`, the hooks `BackpropagationFn` / `BackpropagationsFn`, `NeuralNetwork::seed` and the memory `load()` / `unload()` of the networks (the codes `NetworkNotLoaded`, `NetworkAlreadyLoaded`, `FrozenNetwork`, `DeadNetwork` and `InvalidPercentage` stay reserved, not thrown yet)
