@@ -44,10 +44,13 @@ class BrainNetwork: public brain::ANetwork {
         utils::system::HybridMemory<brain::BrainLink> _links; // [neuron * _cap + slot] the input links of every neuron (a free slot is all at 0)
         brain::UIType _neuron = 0; // number of neurons
         brain::UIType _cap = 0; // slots of links of each neuron (the limit of the links of a neuron)
+        brain::UIType _steps = 1; // time steps of the execution (the outputs are read after the last one)
+        brain::FType _threshold = BRAIN_SIGNAL_THRESHOLD; // a signal whose absolute value is under it is cancelled (set to 0) at each time step
 
         // ---------- Pre-Function -------- //
         void init_(void) override; // nothing to place, the neurons and the links come from deserialize
-        brain::Values compute_(const brain::Values& inputs) const override;
+        brain::Values compute_(const brain::Values& inputs) const override; // time steps: the first `input` neurons hold the inputs, the others compute from the previous step, the last `output` neurons are the outputs
+        void resized_(void) override; // the inputs and the outputs have to fit in the neurons
         void serializeBody_(brain::Bytes& out) const; // the neurons and the links
         void deserializeBody_(const brain::Bytes& data, brain::UIType offset); // read the neurons and the links, the end of the data included (nothing is edited on an invalid data)
 
@@ -59,21 +62,28 @@ class BrainNetwork: public brain::ANetwork {
         /* serialization */
         brain::Bytes serialize(void) const override;
 
+        /* execution */
+        using brain::ANetwork::apply;
+        void threshold(const brain::FType threshold); // a signal under it (absolute value) is cancelled at each time step, to stop the signals that are too weak to matter (>= 0, 0 = none)
+
         // ------------ Function ---------- //
         /* serialization */
         _cold void deserialize(const brain::Bytes& data) override {this->deserializeBody_(data, this->deserializeHeader_(data, static_cast<std::uint8_t>(BRAIN_MAGIC_BRAIN)));};
 
         /* execution (the training is refused) */
-        _hot brain::Values apply(void) override                            {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
-        _hot void backpropagation(const brain::FType coef) override        {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
-        _hot void backpropagation(const brain::Values& coefs) override     {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+        _hot brain::Values apply(void) override                  {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+        _hot void backpropagation(const brain::FType) override   {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+        _hot void backpropagation(const brain::Values&) override {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
 
         /* setup (the training is refused) */
-        _cold void weightInit(const brain::FType fallback = 0.01) override {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
-        _cold void biasInit(const brain::FType fallback = 0.01) override   {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+        _cold void weightInit(const brain::FType = 0.01) override {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
+        _cold void biasInit(const brain::FType = 0.01) override   {throw utils::exception::ErrorException(utils::exception::ExternalCode::ReadOnlyNetwork);}; // ReadOnlyNetwork
 
         /* getter */
+        _cold _nodiscard inline brain::FType threshold(void) const                         {return this->_threshold;}; // the signal threshold
+        _cold _nodiscard inline brain::UIType steps(void) const                            {return this->_steps;}; // time steps of the execution
         _cold _nodiscard inline brain::UIType links(void) const                            {return this->_cap;}; // slots of links of each neuron
+        _cold _nodiscard std::size_t memory(void) const override {return this->_neurons.bytes() + this->_links.bytes();}; // neurons and links
         _cold _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const final {return {0, this->_neuron};}; // <0, total neurons> (no layer)
 
         // ------------ Operator ---------- //

@@ -135,6 +135,33 @@ TEST(NeuralNetwork, ExecChecksTheInputs) {
     EXPECT_NO_THROW((void)network.exec({1.0, 2.0}));
 }
 
+TEST(NeuralNetwork, ExecRunsTheNetworks) {
+    brain::NeuralNetwork layered;
+    brain::NeuralNetwork brain;
+
+    layered.init<brain::NetworkType::Layered>(brain::Layers{2, 1});
+    layered.size(2, 1);
+    EXPECT_EQ(layered.exec({1.0, 1.0}), (brain::Values{4.0})); // weights 1.0, bias 0.0: 2, 2 then 4
+    layered.internalActivationFunction(brain::ActivationFunction::ReLU);
+    EXPECT_EQ(layered.exec({-1.0, 0.5}), (brain::Values{0.0}));
+    brain.init<brain::NetworkType::Brain>(20);
+    brain.size(3, 2);
+    EXPECT_EQ(brain.exec({0.1, 0.2, 0.3}).size(), 2u);
+}
+
+TEST(NeuralNetwork, TrainingUsesTheStatefulForward) {
+    brain::NeuralNetwork network;
+    const brain::Dataset inputs = {{1.0, 1.0}};
+    const brain::Dataset expected = {{1.0}};
+
+    network.init<brain::NetworkType::Layered>(brain::Layers{2, 1});
+    network.size(2, 1);
+    network.internalLossFunction(brain::LossFunction::MSE);
+    network.inputs({1.0, 1.0});
+    EXPECT_EQ(network.apply(), (brain::Values{4.0}));
+    EXPECT_NO_THROW(network.train(brain::UIType(1), inputs, expected));
+}
+
 TEST(NeuralNetwork, FrozenOnlyExecutes) {
     brain::NeuralNetwork network;
 

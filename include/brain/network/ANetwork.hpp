@@ -32,7 +32,9 @@ File Description:
     #include "INetwork.hpp"         // brain::INetwork
     #include <utility>              // std::pair
     #include <cstdint>              // std::uint8_t
+    #include <cstddef>              // std::size_t
     #include <memory>               // std::shared_ptr
+    #include <string>               // std::string
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -53,6 +55,7 @@ class ANetwork: public brain::INetwork {
         void serializeHeader_(brain::Bytes& out, const std::uint8_t kind) const; // magic bytes, kind, activation mode, sizes and random range (the common part of every network)
         brain::UIType deserializeHeader_(const brain::Bytes& data, const std::uint8_t kind); // check the magic bytes and the kind, read the common part, returns the offset after it
         virtual brain::Values compute_(const brain::Values& inputs) const = 0; // execution of the network (the inputs are already checked)
+        brain::FType activate_(const brain::FType value) const; // the activation function of the network on a value (the external function when set, else the internal one, None: the value)
         brain::FType random_(const brain::FType fallback) const; // a random value for a weight / bias: the random function when set, else in the random range, the fallback on a result that falls on 0 (non finite: error)
 
         // ------------ Function ---------- //
@@ -68,6 +71,9 @@ class ANetwork: public brain::INetwork {
         void inputs(const brain::Values& inputs) override;
         brain::Values apply(const brain::Values& inputs) const final;
 
+        /* setter (size) */
+        void size(const brain::UIType input, const brain::UIType output) final; // the sizes are restored when resized_() refuses them
+
         /* setter (random) */
         void rand(const brain::FType min, const brain::FType max) final;
         void rand(const brain::RandFn& fn) final;
@@ -78,9 +84,8 @@ class ANetwork: public brain::INetwork {
 
         // ------------ Function ---------- //
         /* setter (size) */
-        _cold inline void size(const brain::UIType input, const brain::UIType output) final {this->_ioSize = {input, output}; this->resized_();};
-        _cold inline void input(const brain::UIType input) final                            {this->_ioSize.first = input; this->resized_();};
-        _cold inline void output(const brain::UIType output) final                          {this->_ioSize.second = output; this->resized_();};
+        _cold inline void input(const brain::UIType input) final   {this->size(input, this->_ioSize.second);};
+        _cold inline void output(const brain::UIType output) final {this->size(this->_ioSize.first, output);};
 
         /* getter */
         _cold _nodiscard inline brain::UIType input(void) const final                                  {return this->_ioSize.first;};
@@ -88,6 +93,14 @@ class ANetwork: public brain::INetwork {
         _cold _nodiscard inline const std::pair<brain::UIType, brain::UIType>& size(void) const final {return this->_ioSize;};
         _cold _nodiscard inline const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& rand(void) const final {return this->_rand;};
         _cold _nodiscard inline const std::pair<brain::ActivationFunction, brain::ActivationFn>& activationFunction(void) const final {return this->_activationFunction;};
+
+        /* getter (memory) */
+        _cold _nodiscard inline bool onGpu(void) const                                        {return this->_gpu != nullptr && this->_gpu->isAvailable();}; // the memories are stored by a gpu (else the ram)
+        _cold _nodiscard inline utils::system::MemoryMode memoryMode(void) const              {return this->onGpu() ? this->_gpu->getMode() : utils::system::MemoryMode::Ram;}; // backend really used
+        _cold _nodiscard inline utils::system::MemoryMode requestedMode(void) const           {return this->_mode;}; // mode asked at the construction
+        _cold _nodiscard inline const std::shared_ptr<utils::system::IGpu>& gpu(void) const   {return this->_gpu;}; // the shared handler (nullptr = ram)
+        _cold _nodiscard inline std::string gpuName(void) const                               {return this->onGpu() ? this->_gpu->getName() : "[None]";}; // name of the device
+        _cold _nodiscard inline std::size_t gpuMemory(void) const                             {return this->onGpu() ? this->_gpu->getMemory() : 0;}; // memory of the device in bytes (0 = unknown or ram)
 
         // ------------ Operator ---------- //
         ANetwork& operator=(const ANetwork& other) = delete;

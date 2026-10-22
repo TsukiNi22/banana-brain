@@ -27,6 +27,7 @@ File Description:
     #include "../NetworkDefine.hpp"   // brain::ActivationFunction
     #include "../NetworkType.hpp"     // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::RandFn, brain::ActivationFn
     #include <utility>                // std::pair
+    #include <cstddef>                // std::size_t
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -73,6 +74,7 @@ class INetwork {
         virtual const std::pair<brain::UIType, brain::UIType>& size(void) const = 0; // <input, output>
         virtual const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& rand(void) const = 0; // <<min, max>, function>
         virtual const std::pair<brain::ActivationFunction, brain::ActivationFn>& activationFunction(void) const = 0; // internal first, the function when set, raw values when none
+        virtual std::size_t memory(void) const = 0; // bytes of the memories of the network (on the gpu or in the ram)
         virtual std::pair<brain::UIType, brain::UIType> neurons(void) const = 0; // <layers, neurons>: layers = 0 on a brain network, neurons = total number of neurons
 
         // ------------ Operator ---------- //

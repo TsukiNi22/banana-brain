@@ -50,6 +50,10 @@ File Description:
     #define BRAIN_LINKS_CAP_PERCENTAGE 0.1 // (default value) percentage of the total number of neurons
     #define BRAIN_LINKS_CAP_COMPUTING(n) (2.0 * std::log2(static_cast<double>(n)) * std::log(static_cast<double>(n)) / std::log(1.1)) // (default value) computing of the default limits of links: log1.1(x^(2log2(x))) written without the pow (no overflow on a big network)
 
+    #define BRAIN_SIGNAL_THRESHOLD 0.0 // (default value, placeholder to give) a signal under it (absolute value) is cancelled in a brain network: 0 = nothing is cancelled
+    #define BRAIN_STEPS_CAP_PERCENTAGE 0.25 // (default value) percentage of the total number of neurons
+    #define BRAIN_STEPS_CAP_COMPUTING(n) (2.0 * std::log2(static_cast<double>(n))) // (default value) computing of the default number of time steps of a brain network from the number of neurons n: a signal crosses the network in about log2(n) hops, twice for the loops
+
 namespace brain { // namespace start
 //----------------------------------------------------------------//
 /* ENUM */

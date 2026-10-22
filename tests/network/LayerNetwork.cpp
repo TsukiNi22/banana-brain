@@ -23,9 +23,12 @@ File Description:
 #include <gtest/gtest.h>
 #include <functional>
 #include <cstdint>
+#include <atomic>
+#include <thread>
 #include <limits>
 #include <memory>
 #include <vector>
+#include <cmath>
 
 static constexpr brain::UIType HEADER = 28; // magic (2) + activation (1) + sizes (16) + random range (8) + random mode (1)
 
@@ -35,10 +38,12 @@ static bool throwsCode(const std::function<void()>& fn, const utils::exception::
     return false;
 }
 
-// A valid file of a network of two layers of two neurons: 4 neurons and 6 weights stored
+// A valid file of a network of two layers of two neurons and two inputs: 4 neurons and 8 weights stored
 static brain::Bytes layerData(void)
 {
-    brain::Bytes data = brain::LayerNetwork(1, 1).serialize();
+    brain::LayerNetwork base(1, 1);
+    base.input(2);
+    brain::Bytes data = base.serialize();
 
     data.resize(HEADER);
     brain::tools::put<std::uint64_t>(data, 2);
@@ -50,8 +55,8 @@ static brain::Bytes layerData(void)
         brain::tools::put<std::uint64_t>(data, 2);
         brain::tools::put<brain::FType>(data, 0.5f * static_cast<brain::FType>(i));
     }
-    brain::tools::put<std::uint64_t>(data, 6);
-    for (std::uint64_t i = 0; i < 6; ++i)
+    brain::tools::put<std::uint64_t>(data, 8);
+    for (std::uint64_t i = 0; i < 8; ++i)
         brain::tools::put<brain::FType>(data, 0.25f * static_cast<brain::FType>(i));
     return data;
 }
@@ -83,6 +88,39 @@ static ParsedLayer parseLayer(const brain::Bytes& data)
     for (brain::UIType i = 0; i < count; ++i)
         parsed.weights.push_back(brain::tools::get<brain::FType>(data, offset));
     return parsed;
+}
+
+// The file of a network whose weights (neuron after neuron) and biases are given
+static brain::Bytes layerBytes(const brain::Layers& layers, const brain::UIType input, const std::vector<brain::FType>& weights, const std::vector<brain::FType>& biases,
+    const brain::ActivationFunction activation = brain::ActivationFunction::None)
+{
+    brain::LayerNetwork base(layers);
+    brain::UIType previous = input;
+    brain::UIType first = 0;
+    brain::UIType index = 0;
+    brain::Bytes data;
+
+    base.input(input);
+    base.internalActivationFunction(activation);
+    data = base.serialize();
+    data.resize(HEADER);
+    brain::tools::put<std::uint64_t>(data, layers.size());
+    for (const brain::UIType layer: layers)
+        brain::tools::put<std::uint64_t>(data, layer);
+    brain::tools::put<std::uint64_t>(data, biases.size());
+    for (const brain::UIType layer: layers) {
+        for (brain::UIType k = 0; k < layer; ++k, ++index) {
+            brain::tools::put<std::uint64_t>(data, first);
+            brain::tools::put<std::uint64_t>(data, previous);
+            brain::tools::put<brain::FType>(data, biases[index]);
+            first += previous;
+        }
+        previous = layer;
+    }
+    brain::tools::put<std::uint64_t>(data, weights.size());
+    for (const brain::FType weight: weights)
+        brain::tools::put<brain::FType>(data, weight);
+    return data;
 }
 
 /* ------------------------------- LayerNetwork ------------------------------- */
@@ -274,4 +312,70 @@ TEST(LayerNetwork, BiasInitStaysInTheRange) {
         EXPECT_GE(neuron.bias, 0.5f);
         EXPECT_LE(neuron.bias, 1.0f);
     }
+}
+
+/* ------------------------------- execution ------------------------------- */
+TEST(LayerNetwork, ExecutesLayerAfterLayer) {
+    brain::LayerNetwork network(brain::Layers{2, 1});
+
+    // neuron 0: 0.5 + 1 + 2 = 3.5, neuron 1: 0 + 3 + 4 = 7, output: 1 + 0.5 * 3.5 + 0.25 * 7 = 4.5
+    network.deserialize(layerBytes({2, 1}, 2, {1.0, 2.0, 3.0, 4.0, 0.5, 0.25}, {0.5, 0.0, 1.0}));
+    EXPECT_EQ(network.apply(brain::Values{1.0, 1.0}), (brain::Values{4.5}));
+}
+
+TEST(LayerNetwork, ExecutesWithTheActivation) {
+    brain::LayerNetwork network(brain::Layers{1});
+    const brain::Values inputs = {1.0, 1.0};
+
+    network.deserialize(layerBytes({1}, 2, {1.0, -3.0}, {0.0})); // the sum is -2
+    EXPECT_EQ(network.apply(inputs), (brain::Values{-2.0}));
+    network.internalActivationFunction(brain::ActivationFunction::ReLU);
+    EXPECT_EQ(network.apply(inputs), (brain::Values{0.0}));
+    network.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+    EXPECT_NEAR(network.apply(inputs)[0], 1.0 / (1.0 + std::exp(2.0)), 1e-6);
+    network.activationFunction([](const brain::FType value) {return value * 2;}); // the external function wins
+    EXPECT_EQ(network.apply(inputs), (brain::Values{-4.0}));
+}
+
+TEST(LayerNetwork, TrainingForwardGivesTheSameOutputsAndKeepsTheLayers) {
+    brain::LayerNetwork network(brain::Layers{2, 1});
+    const brain::Values inputs = {1.0, 0.5};
+
+    network.deserialize(layerBytes({2, 1}, 2, {1.0, 2.0, 3.0, 4.0, 0.5, 0.25}, {0.5, 0.0, 1.0}));
+    network.inputs(inputs);
+    EXPECT_EQ(network.apply(), network.apply(inputs));
+}
+
+TEST(LayerNetwork, ExecutionNeedsTheNumberOfInputs) {
+    brain::LayerNetwork network(2, 2);
+
+    EXPECT_TRUE(throwsCode([&] {(void)network.apply(brain::Values{1.0, 2.0});}, utils::exception::ExternalCode::InvalidInputSize));
+    network.input(2);
+    EXPECT_NO_THROW((void)network.apply(brain::Values{1.0, 2.0}));
+}
+
+TEST(LayerNetwork, SeveralThreadsExecuteTheSameNetwork) {
+    brain::LayerNetwork network(brain::Layers{2, 1});
+    const brain::Values expected = {4.5};
+    std::vector<std::thread> threads; // xstyle: ignore LU-THREADS (raw threads on purpose: the test of the concurrent calls)
+    std::atomic<int> wrong = 0;
+
+    network.deserialize(layerBytes({2, 1}, 2, {1.0, 2.0, 3.0, 4.0, 0.5, 0.25}, {0.5, 0.0, 1.0}));
+    for (int i = 0; i < 8; ++i)
+        threads.emplace_back([&] {
+            for (int round = 0; round < 200; ++round)
+                if (network.apply(brain::Values{1.0, 1.0}) != expected) ++wrong;
+        });
+    for (std::thread& thread: threads)
+        thread.join();
+    EXPECT_EQ(wrong, 0);
+}
+
+TEST(LayerNetwork, DeserializeRefusesNeuronsThatDontMatchTheLayers) {
+    brain::LayerNetwork network(brain::Layers{2, 1});
+    brain::Bytes bad = layerBytes({2, 1}, 2, {1.0, 2.0, 3.0, 4.0, 0.5, 0.25}, {0.5, 0.0, 1.0});
+
+    EXPECT_NO_THROW(network.deserialize(bad));
+    bad = layerBytes({2, 1}, 2, {1.0, 2.0, 3.0, 4.0, 0.5}, {0.5, 0.0, 1.0}); // a neuron reads a weight that does not exist
+    EXPECT_TRUE(throwsCode([&] {network.deserialize(bad);}, utils::exception::ExternalCode::InvalidNetworkFile));
 }

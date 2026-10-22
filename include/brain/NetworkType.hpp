@@ -55,6 +55,7 @@ using Dataset = std::vector<brain::Values>; // several samples
 
 /* hook */
 using LinksCapFn = std::function<brain::UIType(const brain::UIType n)>; // external links limit computing function
+using StepsCapFn = std::function<brain::UIType(const brain::UIType n)>; // external time steps limit computing function (brain network)
 using ActivationFn = std::function<brain::FType(const brain::FType value)>; // external activation function
 using LossFn = std::function<brain::FType(const brain::FType output, const brain::FType expected)>; // external loss function
 using RandFn = std::function<brain::FType(const brain::IType seed)>; // weight / bias generator from the seed

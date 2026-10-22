@@ -76,6 +76,19 @@ if (CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
 endif()
 
+# Headers of the CUDA toolkit (optional): without them the networks always compute on the host (see src/brain/tools/compute.cpp)
+set(BRAIN_CUDA_HINTS /usr/local/cuda/include /usr/local/cuda/targets/x86_64-linux/include /opt/cuda/include)
+find_path(BRAIN_CUDA_INCLUDE cuda.h HINTS ${BRAIN_CUDA_HINTS})
+find_path(BRAIN_NVRTC_INCLUDE nvrtc.h HINTS ${BRAIN_CUDA_HINTS})
+set(BRAIN_CUDA_INCLUDES "")
+if(BRAIN_CUDA_INCLUDE AND BRAIN_NVRTC_INCLUDE)
+    set(BRAIN_CUDA_INCLUDES ${BRAIN_CUDA_INCLUDE} ${BRAIN_NVRTC_INCLUDE})
+    list(REMOVE_DUPLICATES BRAIN_CUDA_INCLUDES)
+    message(STATUS "CUDA headers found (${BRAIN_CUDA_INCLUDE}): the networks can compute on a CUDA gpu")
+else()
+    message(STATUS "CUDA headers not found: the networks compute on the host")
+endif()
+
 # =========================
 # Warnings
 # =========================
@@ -114,6 +127,7 @@ set(SRC_SHARED
     src/brain/tools/neuron.cpp
     src/brain/tools/loss.cpp
     src/brain/tools/activation.cpp
+    src/brain/tools/compute.cpp
 )
 
 # Library: compiled (.a / .so), or INTERFACE when only the headers are shipped (header-only)
@@ -269,6 +283,7 @@ endif()
 # =========================
 if(BRAIN_PACKAGE_BIN)
     target_include_directories(${TARGET} PRIVATE include)
+    target_include_directories(${TARGET} SYSTEM PRIVATE ${BRAIN_CUDA_INCLUDES})
 endif()
 if(TARGET ${TARGET_LIB})
     if(BRAIN_PACKAGE_LIB)
@@ -276,6 +291,7 @@ if(TARGET ${TARGET_LIB})
     else()
         set(INCLUDE_SCOPE INTERFACE)
     endif()
+    target_include_directories(${TARGET_LIB} SYSTEM PRIVATE ${BRAIN_CUDA_INCLUDES})
     target_include_directories(${TARGET_LIB} ${INCLUDE_SCOPE}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/brain/exception> # found by libutils with __has_include

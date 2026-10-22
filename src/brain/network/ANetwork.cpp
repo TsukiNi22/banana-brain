@@ -23,6 +23,7 @@ File Description:
 #define _System
 #include <utils/utils.hpp>
 #include "brain/network/ANetwork.hpp"
+#include "brain/tools/activation.hpp"
 #include "brain/NetworkDefine.hpp"
 #include "brain/tools/random.hpp"
 #include "brain/tools/bytes.hpp"
@@ -178,4 +179,28 @@ _hot brain::FType brain::ANetwork::random_(const brain::FType fallback) const
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the random value should be a finite number");
     }
     return value == 0 ? fallback : value;
+}
+
+_hot brain::FType brain::ANetwork::activate_(const brain::FType value) const
+{
+    if (this->_activationFunction.second) return this->_activationFunction.second(value);
+    switch (this->_activationFunction.first) {
+        case brain::ActivationFunction::Sigmoid: return brain::tools::sigmoid(value);
+        case brain::ActivationFunction::Linear:  return brain::tools::linear(value);
+        case brain::ActivationFunction::ReLU:    return brain::tools::relu(value);
+        default: return value;
+    }
+}
+
+_cold void brain::ANetwork::size(const brain::UIType input, const brain::UIType output)
+{
+    const std::pair<brain::UIType, brain::UIType> previous = this->_ioSize;
+
+    this->_ioSize = {input, output};
+    try {
+        this->resized_();
+    } catch (...) {
+        this->_ioSize = previous;
+        throw;
+    }
 }

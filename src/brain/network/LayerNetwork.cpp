@@ -23,9 +23,11 @@ File Description:
 #define _System
 #include <utils/utils.hpp>
 #include "brain/network/LayerNetwork.hpp"
+#include "brain/tools/compute.hpp"
 #include "brain/NetworkDefine.hpp"
 #include "brain/tools/bytes.hpp"
 #include <algorithm>
+#include <numeric>
 #include <cstdint>
 #include <vector>
 #include <cmath>
@@ -127,6 +129,24 @@ _cold void brain::LayerNetwork::deserialize(const brain::Bytes& data)
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unexpected data after the weights");
     }
 
+    // the neurons match the layers and the weights they read (none stored yet: nothing to check)
+    if (!neurons.empty()) {
+        brain::UIType previous = this->_ioSize.first; // the header is read: the number of inputs
+        brain::UIType index = 0;
+
+        if (neurons.size() != std::accumulate(layers.begin(), layers.end(), brain::UIType{0})) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "the number of neurons does not match the layers");
+        }
+        for (const brain::UIType layer: layers) {
+            for (brain::UIType k = 0; k < layer; ++k, ++index) {
+                if (neurons[index].count != previous || neurons[index].incoming > weights.size() || neurons[index].count > weights.size() - neurons[index].incoming) _unlikely {
+                    throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "the neuron " + std::to_string(index) + " does not match its layer or its weights");
+                }
+            }
+            previous = layer;
+        }
+    }
+
     // everything is valid: the network is replaced
     this->_layers = layers;
     this->_neurons.allocate(neurons.size());
@@ -136,10 +156,57 @@ _cold void brain::LayerNetwork::deserialize(const brain::Bytes& data)
     this->_layoutInput = this->_ioSize.first;
 }
 
-_hot brain::Values brain::LayerNetwork::compute_(const brain::Values& inputs) const
+_hot brain::Values brain::LayerNetwork::forward_(const brain::Values& inputs, std::vector<brain::Values>* sums, std::vector<brain::Values>* outputs) const
 {
-    /* Nothing */
-    return {};
+    // check inputs (the number of inputs gives the weights of the first layer)
+    if (this->_ioSize.first == 0 || this->_neurons.empty()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "the number of inputs of the network is not set (size() / input())");
+    }
+
+    // the memories stored on the gpu are computed there (an external activation function can only run on the host)
+    if (this->_neurons.isOnGpu() && !this->_activationFunction.second) {
+        std::vector<brain::Values> gpuSums;
+        std::vector<brain::Values> gpuOutputs;
+
+        if (brain::tools::gpu::layers(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), this->_layers, this->_activationFunction.first, inputs, gpuSums, gpuOutputs)) {
+            brain::Values result = gpuOutputs.back();
+
+            if (sums) *sums = std::move(gpuSums);
+            if (outputs) *outputs = std::move(gpuOutputs);
+            return result;
+        }
+    }
+
+    // the memories are read on the host (a gpu memory is fetched once)
+    std::vector<brain::LayerNeuron> fetchedNeurons;
+    std::vector<brain::FType> fetchedWeights;
+    const brain::LayerNeuron* neurons = this->_neurons.data();
+    const brain::FType* weights = this->_weights.data();
+    if (neurons == nullptr) {fetchedNeurons = this->_neurons.toVector(); neurons = fetchedNeurons.data();}
+    if (weights == nullptr && !this->_weights.empty()) {fetchedWeights = this->_weights.toVector(); weights = fetchedWeights.data();}
+
+    // each neuron: bias + the weights times the outputs of the previous layer, then the activation
+    brain::Values previous = inputs;
+    brain::UIType index = 0;
+    if (sums) sums->clear();
+    if (outputs) outputs->clear();
+    for (const brain::UIType layer: this->_layers) {
+        brain::Values sum(layer);
+        brain::Values output(layer);
+
+        for (brain::UIType k = 0; k < layer; ++k, ++index) {
+            const brain::LayerNeuron& neuron = neurons[index];
+
+            sum[k] = neuron.bias;
+            for (brain::UIType j = 0; j < neuron.count; ++j)
+                sum[k] += weights[neuron.incoming + j] * previous[j];
+            output[k] = this->activate_(sum[k]);
+        }
+        if (sums) sums->push_back(sum);
+        if (outputs) outputs->push_back(output);
+        previous = std::move(output);
+    }
+    return previous;
 }
 
 _hot brain::Values brain::LayerNetwork::apply(void)
@@ -148,8 +215,7 @@ _hot brain::Values brain::LayerNetwork::apply(void)
     if (this->_inputs.empty()) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "no inputs loaded (call inputs() first)");
     }
-    /* Nothing */
-    return {};
+    return this->forward_(this->_inputs, &this->_sums, &this->_outputs);
 }
 
 _hot void brain::LayerNetwork::backpropagation(const brain::FType coef)

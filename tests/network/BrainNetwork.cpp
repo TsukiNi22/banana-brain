@@ -24,6 +24,8 @@ File Description:
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <vector>
+#include <cmath>
 
 static constexpr brain::UIType HEADER = 28; // magic (2) + activation (1) + sizes (16) + random range (8) + random mode (1)
 
@@ -41,6 +43,8 @@ static brain::Bytes brainData(void)
     data.resize(HEADER);
     brain::tools::put<std::uint64_t>(data, 3);
     brain::tools::put<std::uint64_t>(data, 2);
+    brain::tools::put<std::uint64_t>(data, 4);
+    brain::tools::put<brain::FType>(data, 0.0f); // signal threshold
     brain::tools::put<std::uint64_t>(data, 3);
     for (std::uint64_t i = 0; i < 3; ++i)
         brain::tools::put<brain::FType>(data, 0.5f * static_cast<brain::FType>(i));
@@ -50,6 +54,37 @@ static brain::Bytes brainData(void)
         brain::tools::put<brain::FType>(data, 0.25f * static_cast<brain::FType>(i));
     }
     return data;
+}
+
+// The file of a reduced network: its neurons, the biases and the slots of links (id, weight) of each neuron
+static brain::Bytes brainBytes(const brain::UIType neurons, const brain::UIType cap, const brain::UIType steps, const brain::UIType input, const brain::UIType output,
+    const std::vector<brain::FType>& biases, const std::vector<std::pair<brain::UIType, brain::FType>>& links, const brain::FType threshold = 0.0)
+{
+    brain::BrainNetwork base(neurons, cap);
+    brain::Bytes data;
+
+    base.size(input, output);
+    data = base.serialize();
+    data.resize(HEADER);
+    brain::tools::put<std::uint64_t>(data, neurons);
+    brain::tools::put<std::uint64_t>(data, cap);
+    brain::tools::put<std::uint64_t>(data, steps);
+    brain::tools::put<brain::FType>(data, threshold);
+    brain::tools::put<std::uint64_t>(data, biases.size());
+    for (const brain::FType bias: biases)
+        brain::tools::put<brain::FType>(data, bias);
+    brain::tools::put<std::uint64_t>(data, links.size());
+    for (const std::pair<brain::UIType, brain::FType>& link: links) {
+        brain::tools::put<std::uint64_t>(data, link.first);
+        brain::tools::put<brain::FType>(data, link.second);
+    }
+    return data;
+}
+
+// A chain: the input 0 feeds 1 (x2), 1 feeds 2 (x3), 2 feeds the output 3 (x0.5), one slot of link each
+static brain::Bytes chain(const brain::UIType steps, const brain::FType threshold = 0.0)
+{
+    return brainBytes(4, 1, steps, 1, 1, {0.0, 0.0, 0.0, 0.0}, {{0, 0.0}, {0, 2.0}, {1, 3.0}, {2, 0.5}}, threshold);
 }
 
 /* ------------------------------- BrainNetwork ------------------------------- */
@@ -70,6 +105,7 @@ TEST(BrainNetwork, NeuronsAndLinks) {
 TEST(BrainNetwork, UsableAsINetwork) {
     std::unique_ptr<brain::INetwork> network = std::make_unique<brain::BrainNetwork>(10);
     ASSERT_NE(network, nullptr);
+    network->size(2, 1);
     EXPECT_NO_THROW(network->inputs({0.0, 1.0}));
     EXPECT_NO_THROW((void)network->apply(brain::Values{0.0, 1.0}));
 }
@@ -126,6 +162,8 @@ TEST(BrainNetwork, InitAllocatesFreeNeuronsAndSlots) {
 
     EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 5u);
     EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 3u);
+    EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 1u); // time steps (placeholder default of a reduced network built alone)
+    EXPECT_EQ(brain::tools::get<brain::FType>(data, offset), static_cast<brain::FType>(BRAIN_SIGNAL_THRESHOLD)); // signal threshold
     EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 5u); // a neuron each
     for (brain::UIType i = 0; i < 5; ++i)
         EXPECT_EQ(brain::tools::get<brain::FType>(data, offset), 0.0f);
@@ -139,4 +177,100 @@ TEST(BrainNetwork, InitAllocatesFreeNeuronsAndSlots) {
 
 TEST(BrainNetwork, TooManySlotsOverflowTheSize) {
     EXPECT_THROW(brain::BrainNetwork network(std::numeric_limits<brain::UIType>::max() / 2, 4), utils::exception::IException);
+}
+
+/* ------------------------------- execution ------------------------------- */
+TEST(BrainNetwork, EachTimeStepReadsThePreviousOne) {
+    brain::BrainNetwork network(1);
+    const brain::Values inputs = {1.0};
+
+    // the signal needs 3 steps to cross the chain: 1 * 2 * 3 * 0.5
+    network.deserialize(chain(1));
+    EXPECT_EQ(network.apply(inputs), (brain::Values{0.0}));
+    network.deserialize(chain(2));
+    EXPECT_EQ(network.apply(inputs), (brain::Values{0.0}));
+    network.deserialize(chain(3));
+    EXPECT_EQ(network.apply(inputs), (brain::Values{3.0}));
+    network.deserialize(chain(10)); // stable once it crossed
+    EXPECT_EQ(network.apply(inputs), (brain::Values{3.0}));
+    EXPECT_EQ(network.steps(), 10u);
+}
+
+TEST(BrainNetwork, TheInputStaysAtItsValueAndTheBiasIsAdded) {
+    brain::BrainNetwork network(1);
+
+    network.deserialize(brainBytes(3, 1, 2, 1, 1, {0.0, 1.0, 0.0}, {{0, 0.0}, {0, 2.0}, {1, 1.0}})); // 1 = 1 + 2 * in, output = 1
+    EXPECT_EQ(network.apply(brain::Values{2.0}), (brain::Values{5.0}));
+    network.internalActivationFunction(brain::ActivationFunction::ReLU);
+    EXPECT_EQ(network.apply(brain::Values{-2.0}), (brain::Values{0.0})); // 1 - 4 under 0
+}
+
+TEST(BrainNetwork, ExecutionNeedsTheInputsAndTheOutputs) {
+    brain::BrainNetwork network(4, 1);
+
+    EXPECT_TRUE(throwsCode([&] {(void)network.apply(brain::Values{1.0});}, utils::exception::ExternalCode::InvalidInputSize));
+    network.input(1);
+    EXPECT_TRUE(throwsCode([&] {(void)network.apply(brain::Values{1.0});}, utils::exception::ExternalCode::InvalidOutputSize));
+    network.output(1);
+    EXPECT_NO_THROW((void)network.apply(brain::Values{1.0}));
+}
+
+TEST(BrainNetwork, InputsAndOutputsHaveToFitInTheNeurons) {
+    brain::BrainNetwork network(4);
+
+    EXPECT_THROW(network.size(3, 3), utils::exception::IException);
+    EXPECT_EQ(network.size(), (std::pair<brain::UIType, brain::UIType>{0, 0})); // the sizes are restored
+    EXPECT_NO_THROW(network.size(2, 2));
+    EXPECT_THROW(network.output(3), utils::exception::IException);
+    EXPECT_EQ(network.output(), 2u);
+}
+
+TEST(BrainNetwork, StepsAreSerialized) {
+    brain::BrainNetwork network(1);
+    brain::BrainNetwork other(1);
+
+    network.deserialize(chain(7));
+    other.deserialize(network.serialize());
+    EXPECT_EQ(other.steps(), 7u);
+    EXPECT_EQ(other.serialize(), network.serialize());
+    EXPECT_THROW(other.deserialize(chain(0)), utils::exception::IException); // at least one step
+}
+
+TEST(BrainNetwork, AWeakSignalIsCancelled) {
+    brain::BrainNetwork network(1);
+    const brain::Values inputs = {1.0};
+
+    network.deserialize(chain(3, 2.5)); // the neuron 1 gets 2 (under 2.5): cancelled, nothing crosses the chain
+    EXPECT_EQ(network.apply(inputs), (brain::Values{0.0}));
+    network.deserialize(chain(3, 1.0)); // 2, 6 and 3 are over 1
+    EXPECT_EQ(network.apply(inputs), (brain::Values{3.0}));
+    network.deserialize(chain(3, 2.0)); // the absolute value is compared with "under": 2 is kept
+    EXPECT_EQ(network.apply(inputs), (brain::Values{3.0}));
+    EXPECT_EQ(network.apply(brain::Values{-1.0}), (brain::Values{-3.0})); // a negative signal too
+}
+
+TEST(BrainNetwork, ThresholdSetterAndGetter) {
+    brain::BrainNetwork network(1);
+
+    EXPECT_FLOAT_EQ(network.threshold(), static_cast<brain::FType>(BRAIN_SIGNAL_THRESHOLD));
+    network.deserialize(chain(3));
+    network.threshold(2.5);
+    EXPECT_FLOAT_EQ(network.threshold(), 2.5f);
+    EXPECT_EQ(network.apply(brain::Values{1.0}), (brain::Values{0.0}));
+    network.threshold(0.0);
+    EXPECT_EQ(network.apply(brain::Values{1.0}), (brain::Values{3.0}));
+    EXPECT_THROW(network.threshold(-0.1), utils::exception::IException);
+    EXPECT_THROW(network.threshold(std::nanf("")), utils::exception::IException);
+    EXPECT_FLOAT_EQ(network.threshold(), 0.0f);
+}
+
+TEST(BrainNetwork, ThresholdIsSerialized) {
+    brain::BrainNetwork network(1);
+    brain::BrainNetwork other(1);
+
+    network.deserialize(chain(3, 0.75));
+    other.deserialize(network.serialize());
+    EXPECT_FLOAT_EQ(other.threshold(), 0.75f);
+    EXPECT_EQ(other.serialize(), network.serialize());
+    EXPECT_TRUE(throwsCode([&] {other.deserialize(chain(3, -1.0));}, utils::exception::ExternalCode::InvalidNetworkFile));
 }

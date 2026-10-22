@@ -69,6 +69,12 @@
             "restrictions": ["Error", "Warning"]
         },
         {
+            "code": "CustomStepsCapRequired",
+            "message": "The network used a custom steps cap function, it can't be restored from a file",
+            "info": "Give it again with stepsCap()",
+            "restrictions": ["Error", "Warning"]
+        },
+        {
             "code": "CustomLinksCapRequired",
             "message": "The network used a custom links cap function, it can't be restored from a file",
             "info": "Give it again with linksCap()",

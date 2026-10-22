@@ -31,6 +31,7 @@ File Description:
     #include "ANetwork.hpp"         // brain::ANetwork
     #include <numeric>              // std::accumulate
     #include <utility>              // std::pair
+    #include <vector>               // std::vector
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -42,12 +43,15 @@ class LayerNetwork: public brain::ANetwork {
         utils::system::HybridMemory<brain::LayerNeuron> _neurons; // every neuron, layer after layer (gpu when available)
         utils::system::HybridMemory<brain::FType> _weights; // the weights of every neuron, from LayerNeuron::incoming (LayerNeuron::count weights)
         brain::UIType _layoutInput = 0; // number of inputs the memories were set up for
+        std::vector<brain::Values> _sums; // training: the sum (before the activation) of each neuron, layer by layer, of the last apply()
+        std::vector<brain::Values> _outputs; // training: the output of each layer (the inputs are not in it), of the last apply()
 
         // ---------- Pre-Function -------- //
-        brain::Values compute_(const brain::Values& inputs) const final;
+        brain::Values forward_(const brain::Values& inputs, std::vector<brain::Values>* sums, std::vector<brain::Values>* outputs) const; // layer after layer, what each layer computed is kept when asked (training)
         void layout_(void); // allocate the neurons and the weights, every one at its default (the weights are lost)
 
         // ------------ Function ---------- //
+        _hot brain::Values compute_(const brain::Values& inputs) const final {return this->forward_(inputs, nullptr, nullptr);}; // execution: nothing kept
         _cold void init_(void) final    {this->layout_();}; // set the memories up: the neurons of every layer, the weights at 1.0 and the bias at 0.0
         _cold void resized_(void) final {if (this->_ioSize.first != this->_layoutInput) this->layout_();}; // the number of inputs gives the weights of the first layer: set the memories up again when it changes
 
@@ -70,6 +74,7 @@ class LayerNetwork: public brain::ANetwork {
         // ------------ Function ---------- //
         /* getter */
         _cold _nodiscard inline const brain::Layers& layers(void) const                    {return this->_layers;}; // number of neurons of each layer
+        _cold _nodiscard std::size_t memory(void) const final {return this->_neurons.bytes() + this->_weights.bytes();}; // neurons and weights
         _cold _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const final {return {this->_layers.size(), std::accumulate(this->_layers.begin(), this->_layers.end(), brain::UIType{0})};}; // <layers, total neurons>
 
         // ------------ Operator ---------- //

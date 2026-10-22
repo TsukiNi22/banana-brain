@@ -51,6 +51,7 @@ set(SRC
     tools/Dataset.cpp
     tools/Neuron.cpp
     tools/Bytes.cpp
+    tools/Compute.cpp
 )
 add_executable(${TARGET} ${SRC} ${SRC_PROJECT})
 
@@ -58,6 +59,7 @@ add_executable(${TARGET} ${SRC} ${SRC_PROJECT})
 # Dependencies
 # =========================
 target_include_directories(${TARGET} PRIVATE ../include/ ../include/brain/exception/ .)
+target_include_directories(${TARGET} SYSTEM PRIVATE ${BRAIN_CUDA_INCLUDES}) # the CUDA headers of the project (empty without the toolkit)
 target_link_libraries(${TARGET} PRIVATE utils::utils GTest::gtest GTest::gtest_main)
 if(BRAIN_PACKAGE_LIB)
     target_link_libraries(${TARGET} PRIVATE ${TARGET_LIB})

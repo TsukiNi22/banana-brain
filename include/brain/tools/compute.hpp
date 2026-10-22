@@ -1,0 +1,46 @@
+/**************************************************************\
+
+ ██╗  ██╗ █████╗ ██████╗ ████████╗ █████╗ ███╗   ██╗██╗ █████╗
+ ╚██╗██╔╝██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗████╗  ██║██║██╔══██╗
+  ╚███╔╝ ███████║██████╔╝   ██║   ███████║██╔██╗ ██║██║███████║
+  ██╔██╗ ██╔══██║██╔══██╗   ██║   ██╔══██║██║╚██╗██║██║██╔══██║
+ ██╔╝ ██╗██║  ██║██║  ██║   ██║   ██║  ██║██║ ╚████║██║██║  ██║
+ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
+
+Edition:
+##  @date 22/10/2026 by @author Tsukini
+
+File Name:
+##  @file compute.hpp
+
+File Description:
+##  Computing of the networks on the gpu that stores their memories (CUDA driver + NVRTC loaded at runtime)
+\**************************************************************/
+
+#ifndef COMPUTE_H
+    #define COMPUTE_H
+
+    //----------------------------------------------------------------//
+    /* INCLUDE */
+
+    /* type */
+    #define _Attribute
+    #define _System
+    #include <utils/utils.hpp>      // _hot, _cold, _nodiscard, utils::system::HybridMemory, utils::system::IGpu
+    #include "../NetworkDefine.hpp" // brain::ActivationFunction
+    #include "../NetworkType.hpp"   // brain::FType, brain::UIType, brain::Values, brain::Layers
+    #include <vector>               // std::vector
+
+namespace brain::tools::gpu { // namespace start
+//----------------------------------------------------------------//
+/* PROTOTYPE */
+
+/* availability */
+_cold _nodiscard bool available(const utils::system::IGpu* handler); // the memories are stored by a CUDA gpu and the driver and NVRTC are loaded (else the caller computes on the host)
+
+/* computing (false: nothing computed, the caller computes on the host; the pointers are the ones of the memories stored on the gpu) */
+_hot bool layers(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, const brain::Values& inputs, std::vector<brain::Values>& sums, std::vector<brain::Values>& outputs); // layer after layer: every sum and every output of each layer
+_hot bool steps(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const bool raw, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::UIType steps, const brain::ActivationFunction activation, const brain::FType threshold, const brain::Values& inputs, std::vector<brain::Values>& states, const bool keep); // time steps of a brain network (raw: the RawBrain structs, only the inward links): the last state, or every state when keep
+
+} // namespace end
+#endif /* COMPUTE_H */
