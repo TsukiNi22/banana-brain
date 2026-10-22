@@ -26,11 +26,6 @@ File Description:
 #include <iostream>
 #include <cmath>
 
-_cold void brain::ANetwork::init_(void)
-{
-    /* Nothing */
-}
-
 _cold std::uint8_t brain::ANetwork::serializeActivation_(void) const
 {
     if (this->_activationFunction.second) return static_cast<std::uint8_t>(BRAIN_ACTIVATION_CUSTOM);

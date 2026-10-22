@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 19/10/2026 by @author Tsukini
+##  @date 21/10/2026 by @author Tsukini
 
 File Name:
 ##  @file ANetwork.hpp
@@ -44,9 +44,11 @@ class ANetwork: public brain::INetwork {
         mutable brain::Values _inputs; // last inputs given to the network
 
         // ---------- Pre-Function -------- //
-        void init_(void) override; // default: nothing (fallthrough), a child inits its neurons
         std::uint8_t serializeActivation_(void) const; // BRAIN_ACTIVATION_NONE | BRAIN_ACTIVATION_CUSTOM | the internal mode
         void deserializeActivation_(const std::uint8_t mode); // setup the internal mode, a custom one is only warned (to give again)
+
+        // ------------ Function ---------- //
+        _cold void init_(void) override { /* Nothing */ }; // default: nothing (fallthrough), a child inits its neurons
 
     public:
         // ---------- Pre-Function -------- //
