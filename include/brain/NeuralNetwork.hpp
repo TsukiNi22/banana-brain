@@ -14,7 +14,7 @@ File Name:
 ##  @file NeuralNetwork.hpp
 
 File Description:
-##  Neural network handling every kind of network (layered, brain, banana): configuration, training and usage
+##  Neural network handling every kind of network (layered, brain): configuration, training and usage
 \**************************************************************/
 
 #ifndef NEURALNETWORK_H
