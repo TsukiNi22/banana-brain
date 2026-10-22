@@ -49,50 +49,42 @@ TEST(LayerNeuron, DefaultState) {
     EXPECT_EQ(neuron.bias, 0.0);
 }
 
-TEST(LayerNeuron, CacheLineAligned) {
-    EXPECT_EQ(alignof(brain::LayerNeuron), std::hardware_destructive_interference_size);
-    EXPECT_EQ(sizeof(brain::LayerNeuron) % std::hardware_destructive_interference_size, 0u);
-}
-
-TEST(BrainNeuron, DefaultState) {
+TEST(BrainNeuron, ReducedNeuronIsOnlyTheBias) {
     brain::BrainNeuron neuron;
-    EXPECT_EQ(neuron.incoming, 0u);
-    EXPECT_EQ(neuron.incomingCount, 0u);
-    EXPECT_EQ(neuron.ordered, 0u);
-    EXPECT_EQ(neuron.orderedCount, 0u);
-    EXPECT_EQ(neuron.id, 0u);
+    brain::BrainLink link;
+
     EXPECT_EQ(neuron.bias, 0.0);
+    EXPECT_EQ(sizeof(brain::BrainNeuron), sizeof(brain::FType)); // nothing else, no padding: the smallest neuron
+    EXPECT_EQ(link.id, 0u);
+    EXPECT_EQ(link.weight, 0.0); // a free slot is all at 0
 }
 
-TEST(BrainNeuron, EqualityOnIdsOnly) {
-    brain::BrainNeuron a;
-    brain::BrainNeuron b;
-    a.id = 1; a.pos = {0.0, 0.0};
-    b.id = 1; b.pos = {1.0, 1.0}; b.bias = 0.5;
-    EXPECT_TRUE(a == b); // same id, different position / bias
-    b.id = 2;
-    EXPECT_FALSE(a == b);
+TEST(RawBrainNeuron, DefaultState) {
+    brain::RawBrainNeuron neuron;
+    brain::RawBrainLink link;
+
+    EXPECT_EQ(neuron.bias, 0.0);
+    EXPECT_EQ(link.id, 0u);
+    EXPECT_EQ(link.weight, 0.0);
+    EXPECT_FALSE(link.inward);
 }
 
 // The squared distance is exposed by distance2() and by operator| (same result, an FType)
-static_assert(std::is_same_v<decltype(std::declval<const brain::BrainNeuron&>() | std::declval<const brain::BrainNeuron&>()), brain::FType>);
-static_assert(std::is_same_v<decltype(std::declval<const brain::BrainNeuron&>().distance2(std::declval<const brain::BrainNeuron&>())), brain::FType>);
+static_assert(std::is_same_v<decltype(std::declval<const brain::RawBrainNeuron&>() | std::declval<const brain::RawBrainNeuron&>()), brain::FType>);
+static_assert(std::is_same_v<decltype(std::declval<const brain::RawBrainNeuron&>().distance2(std::declval<const brain::RawBrainNeuron&>())), brain::FType>);
 
-TEST(BrainNeuron, SquaredDistanceOperator) {
-    brain::BrainNeuron a;
-    brain::BrainNeuron b;
+TEST(RawBrainNeuron, SquaredDistanceOperator) {
+    brain::RawBrainNeuron a;
+    brain::RawBrainNeuron b;
     a.pos = {0.0, 0.0};
     b.pos = {3.0, 4.0};
-    EXPECT_EQ(a | b, a.distance2(b)); // the operator forwards to distance2 (squared: 25 once implemented, never 5)
+    EXPECT_EQ(a | b, a.distance2(b));
+    EXPECT_FLOAT_EQ(a | b, 25.0); // squared: 25, never 5
 }
 
-// The neurons, the links and the distances are stored in a utils::system::HybridMemory: bytes copied to the gpu
+// The neurons and the links are stored in a utils::system::HybridMemory: bytes copied to the gpu
 static_assert(std::is_trivially_copyable_v<brain::LayerNeuron>);
 static_assert(std::is_trivially_copyable_v<brain::BrainNeuron>);
 static_assert(std::is_trivially_copyable_v<brain::BrainLink>);
-static_assert(std::is_trivially_copyable_v<brain::BrainDistance>);
-
-TEST(BrainNeuron, CacheLineAligned) {
-    EXPECT_EQ(alignof(brain::BrainNeuron), std::hardware_destructive_interference_size);
-    EXPECT_EQ(sizeof(brain::BrainNeuron) % std::hardware_destructive_interference_size, 0u);
-}
+static_assert(std::is_trivially_copyable_v<brain::RawBrainNeuron>);
+static_assert(std::is_trivially_copyable_v<brain::RawBrainLink>);
