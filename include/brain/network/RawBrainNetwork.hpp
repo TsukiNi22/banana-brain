@@ -47,7 +47,7 @@ class RawBrainNetwork: public brain::BrainNetwork {
         bool _customLimit = false; // true: the hook was replaced (can't be saved)
 
         // ---------- Pre-Function -------- //
-        void init_(void) final; // compute the number of links of each neuron (_cap)
+        void init_(void) final; // set the memories up: neurons placed randomly in the space, each one linked to its nearest neurons (weights at 1.0, bias at 0.0)
         brain::UIType linksCap_(void) const; // number of links allowed for a neuron: min(percentage * neurons, hook(neurons)), between 1 and neurons - 1 (0 with a single neuron)
         void sync_(void); // rebuild the reduced memories (biases and inward links) from the raw ones
 
@@ -71,9 +71,9 @@ class RawBrainNetwork: public brain::BrainNetwork {
         void biasInit(const brain::FType fallback = 0.01) final;
 
         /* setter (links) */
-        void linksCap(const brain::FType percentage); // set the maximum allowed links using the percentage of the neurons (0 < percentage <= 1)
-        void linksCap(const brain::LinksCapFn& fn); // replace the function to compute the number of allowed links
-        void resetLinksCap(void); // reset the links cap used
+        void linksCap(const brain::FType percentage); // set the maximum allowed links using the percentage of the neurons (0 < percentage <= 1), sets the neurons and the links up again
+        void linksCap(const brain::LinksCapFn& fn); // replace the function to compute the number of allowed links, sets the neurons and the links up again
+        void resetLinksCap(void); // reset the links cap used, sets the neurons and the links up again
 
         /* reduction */
         std::unique_ptr<brain::BrainNetwork> reduce(void); // the reduced network (execution only), from the inward links and the biases

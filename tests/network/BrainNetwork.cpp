@@ -22,6 +22,7 @@ File Description:
 #include "brain/tools/bytes.hpp"
 #include <gtest/gtest.h>
 #include <cstdint>
+#include <limits>
 #include <memory>
 
 static constexpr brain::UIType HEADER = 28; // magic (2) + activation (1) + sizes (16) + random range (8) + random mode (1)
@@ -117,4 +118,25 @@ TEST(BrainNetwork, DeserializeRefusesAnInvalidFile) {
     bad[bad.size() - 4 - 8] = 9;
     EXPECT_TRUE(throwsCode([&] {network.deserialize(bad);}, utils::exception::ExternalCode::InvalidNetworkFile));
     EXPECT_EQ(network.neurons().second, 1u); // nothing edited by a refused file
+}
+
+TEST(BrainNetwork, InitAllocatesFreeNeuronsAndSlots) {
+    const brain::Bytes data = brain::BrainNetwork(5, 3).serialize();
+    brain::UIType offset = HEADER;
+
+    EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 5u);
+    EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 3u);
+    EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 5u); // a neuron each
+    for (brain::UIType i = 0; i < 5; ++i)
+        EXPECT_EQ(brain::tools::get<brain::FType>(data, offset), 0.0f);
+    EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 15u); // 3 slots of links for each neuron, all free
+    for (brain::UIType i = 0; i < 15; ++i) {
+        EXPECT_EQ(brain::tools::get<std::uint64_t>(data, offset), 0u);
+        EXPECT_EQ(brain::tools::get<brain::FType>(data, offset), 0.0f);
+    }
+    EXPECT_EQ(offset, data.size());
+}
+
+TEST(BrainNetwork, TooManySlotsOverflowTheSize) {
+    EXPECT_THROW(brain::BrainNetwork network(std::numeric_limits<brain::UIType>::max() / 2, 4), utils::exception::IException);
 }

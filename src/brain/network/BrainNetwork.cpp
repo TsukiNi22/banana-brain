@@ -46,7 +46,18 @@ brain::BrainNetwork::BrainNetwork(const brain::UIType neuron, const brain::UITyp
 
 _cold void brain::BrainNetwork::init_(void)
 {
-    /* Nothing */
+    brain::UIType links;
+
+    // check inputs (the memories are allocated in bytes, a count that overflows is refused here)
+    if (__builtin_mul_overflow(this->_neuron, this->_cap, &links)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::OutOfMemory, "the links of the neurons overflow the size");
+    }
+
+    // every neuron at 0 and every slot of link free (all at 0: no effect), the weights come from deserialize or from the reduction of a raw network
+    this->_neurons.allocate(this->_neuron);
+    this->_neurons.clear();
+    this->_links.allocate(links);
+    this->_links.clear();
 }
 
 _cold void brain::BrainNetwork::serializeBody_(brain::Bytes& out) const

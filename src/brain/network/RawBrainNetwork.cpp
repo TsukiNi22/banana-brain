@@ -24,6 +24,8 @@ File Description:
 #include <utils/utils.hpp>
 #include "brain/network/RawBrainNetwork.hpp"
 #include "brain/NetworkDefine.hpp"
+#include "brain/tools/neuron.hpp"
+#include "brain/tools/random.hpp"
 #include "brain/tools/bytes.hpp"
 #include <algorithm>
 #include <iostream>
@@ -41,10 +43,43 @@ brain::RawBrainNetwork::RawBrainNetwork(const brain::UIType neuron, const std::p
     this->init_();
 }
 
-_cold void brain::RawBrainNetwork::init_(void) // xstyle: ignore CPP-SINGLE-STATEMENT (the allocation of the memories goes here)
+_cold void brain::RawBrainNetwork::init_(void)
 {
+    std::vector<brain::RawBrainNeuron> neurons(this->_neuron);
+    std::vector<brain::RawBrainLink> links;
+    std::vector<brain::UIType> used(this->_neuron, 0); // slots of links used by each neuron
+    brain::UIType total;
+
+    // check inputs (the memories are allocated in bytes, a count that overflows is refused here)
     this->_cap = this->linksCap_();
-    /* Nothing */
+    if (__builtin_mul_overflow(this->_neuron, this->_cap, &total)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::OutOfMemory, "the links of the neurons overflow the size");
+    }
+    links.resize(total);
+
+    // the neurons are placed in the space (with the generator of the library: brain::tools::rand(seed) to choose the seed)
+    for (brain::RawBrainNeuron& neuron: neurons)
+        neuron.pos = {brain::tools::rand_floating() * this->_size.first, brain::tools::rand_floating() * this->_size.second};
+
+    // each neuron receives from its nearest neurons (they send to it), a link takes a slot on both of them
+    for (brain::UIType receiver = 0; receiver < neurons.size(); ++receiver) {
+        for (const brain::UIType sender: brain::tools::sort(receiver, neurons, this->_cap)) {
+            bool linked = false;
+
+            if (used[receiver] >= this->_cap) break;
+            if (used[sender] >= this->_cap) continue;
+            for (brain::UIType slot = 0; slot < used[receiver] && !linked; ++slot)
+                linked = links[receiver * this->_cap + slot].id == sender;
+            if (linked) continue;
+            links[receiver * this->_cap + used[receiver]++] = {sender, 1.0, true}; // weight at 1.0 by default: weightInit gives the random ones
+            links[sender * this->_cap + used[sender]++] = {receiver, 1.0, false};
+        }
+    }
+    this->_rawNeurons.allocate(neurons.size());
+    this->_rawNeurons.store(neurons);
+    this->_rawLinks.allocate(links.size());
+    this->_rawLinks.store(links);
+    this->sync_();
 }
 
 _cold brain::UIType brain::RawBrainNetwork::linksCap_(void) const
@@ -206,20 +241,50 @@ _hot void brain::RawBrainNetwork::backpropagation(const brain::Values& coefs)
 
 _cold void brain::RawBrainNetwork::weightInit(const brain::FType fallback)
 {
+    std::vector<brain::RawBrainLink> links;
+
     // check inputs
     if (!std::isfinite(fallback) || fallback == 0) _unlikely {
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the fallback should be a finite number different from 0");
     }
-    /* Nothing */
+
+    // a random value for every link, the same one on the receiver (inward) and on the sender (outward)
+    links = this->_rawLinks.toVector();
+    for (brain::UIType receiver = 0; receiver * this->_cap < links.size(); ++receiver) {
+        for (brain::UIType slot = 0; slot < this->_cap; ++slot) {
+            brain::RawBrainLink& link = links[receiver * this->_cap + slot];
+
+            if (!link.inward) continue;
+            link.weight = this->random_(fallback);
+            for (brain::UIType other = 0; other < this->_cap; ++other) {
+                brain::RawBrainLink& mirror = links[link.id * this->_cap + other];
+
+                if (!mirror.inward && mirror.id == receiver) {
+                    mirror.weight = link.weight;
+                    break;
+                }
+            }
+        }
+    }
+    this->_rawLinks.store(links);
+    this->sync_();
 }
 
 _cold void brain::RawBrainNetwork::biasInit(const brain::FType fallback)
 {
+    std::vector<brain::RawBrainNeuron> neurons;
+
     // check inputs
     if (!std::isfinite(fallback) || fallback == 0) _unlikely {
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the fallback should be a finite number different from 0");
     }
-    /* Nothing */
+
+    // a random value for every bias
+    neurons = this->_rawNeurons.toVector();
+    for (brain::RawBrainNeuron& neuron: neurons)
+        neuron.bias = this->random_(fallback);
+    this->_rawNeurons.store(neurons);
+    this->sync_();
 }
 
 _cold void brain::RawBrainNetwork::linksCap(const brain::FType percentage)
@@ -229,7 +294,7 @@ _cold void brain::RawBrainNetwork::linksCap(const brain::FType percentage)
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the percentage of links should be above 0 and under or equal to 1");
     }
     this->_limit.first = percentage;
-    this->_cap = this->linksCap_();
+    this->init_(); // the slots of the links changed: the neurons and the links are set up again
 }
 
 _cold void brain::RawBrainNetwork::linksCap(const brain::LinksCapFn& fn)
@@ -240,14 +305,14 @@ _cold void brain::RawBrainNetwork::linksCap(const brain::LinksCapFn& fn)
     }
     this->_limit.second = fn;
     this->_customLimit = true;
-    this->_cap = this->linksCap_();
+    this->init_(); // the slots of the links changed: the neurons and the links are set up again
 }
 
 _cold void brain::RawBrainNetwork::resetLinksCap(void)
 {
     this->_limit = {BRAIN_LINKS_CAP_PERCENTAGE, &brain::RawBrainNetwork::defaultCap_};
     this->_customLimit = false;
-    this->_cap = this->linksCap_();
+    this->init_(); // the slots of the links changed: the neurons and the links are set up again
 }
 
 _cold std::unique_ptr<brain::BrainNetwork> brain::RawBrainNetwork::reduce(void)
