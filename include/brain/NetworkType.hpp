@@ -69,15 +69,22 @@ struct LayerNeuron {
     brain::FType bias = 0.0;
 };
 
+// Input link of a reduced brain network neuron: the output of the neuron id times the weight (a free slot is all at 0: no effect)
+struct BrainLink {
+    brain::UIType id = 0; // id of the neuron sending its output
+    brain::FType weight = 0.0;
+};
+
 // Neuron of a reduced brain network (execution only): the bias, its input links are in the links memory of the network
 struct BrainNeuron {
     brain::FType bias = 0.0;
 };
 
-// Input link of a reduced brain network neuron: the output of the neuron id times the weight (a free slot is all at 0: no effect)
-struct BrainLink {
-    brain::UIType id = 0; // id of the neuron sending its output
-    brain::FType weight = 0.0;
+// Link of a raw brain network neuron, a link between two neurons is found 2 times (one slot on each neuron: the sender '->' for the execution and the receiver '<-' for the backpropagation)
+struct RawBrainLink {
+    brain::UIType id = 0; // id of the other neuron
+    brain::FType weight = 0.0; // weight of the link
+    bool inward = false; // true: input from the other neuron (execution) | false: output to the other neuron (only used for the backpropagation)
 };
 
 // Neuron of a raw brain network (execution and training), placed in a 2d space
@@ -92,13 +99,6 @@ struct RawBrainNeuron {
     RawBrainNeuron() = default;
     RawBrainNeuron(const RawBrainNeuron& other) = default;
     RawBrainNeuron& operator=(const RawBrainNeuron& other) = default;
-};
-
-// Link of a raw brain network neuron, a link between two neurons is found 2 times (one slot on each neuron: the sender '->' for the execution and the receiver '<-' for the backpropagation)
-struct RawBrainLink {
-    brain::UIType id = 0; // id of the other neuron
-    brain::FType weight = 0.0; // weight of the link
-    bool inward = false; // true: input from the other neuron (execution) | false: output to the other neuron (only used for the backpropagation)
 };
 
 // Everything stored in a utils::system::HybridMemory is copied as bytes
