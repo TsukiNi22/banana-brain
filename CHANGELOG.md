@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [pre-release]
 ### In Progress
-- The forward pass (`compute_`, `apply()`) and the backpropagation of the networks, still empty (`/* Nothing */`)
+- The backpropagation of the networks (`backpropagation`), still empty (`/* Nothing */`)
 
 ### Changed
 - **[MAJOR]** The brain network is split in `brain::BrainNetwork` (reduced, execution only: the training calls throw `ReadOnlyNetwork`) and `brain::RawBrainNetwork` (execution and training, derives from it and gives a reduced copy with `reduce()`); `init<Brain>` creates the raw one
@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `text_to_input` / `input_to_text` have the modes `Normal` (one value per character, byte / 255) and `Compact` (the bytes copied in the values)
 - `brain::tools::sort(index, neurons, cap)` returns the ids of the `cap` nearest neurons, closest first, instead of filling a list in the neurons
 - The networks share one GPU handler per mode for the whole program (finding a GPU takes a few hundred ms)
+- **[MAJOR]** The inputs of a brain network are its first neurons and the outputs its last ones (`size(input, output)`); the raw network places them on the left and right edges of its space and the input neurons receive no link while the output ones send none
+- The file of a brain network (`.bn`, `.rbn`) holds the number of time steps and the signal threshold, a `.rbn` also the percentages of its links and steps limits; a file with a layer that does not match its neurons or weights is refused
+- `size()`, `input()` and `output()` restore the previous sizes when the network refuses the new ones
 
 ### Fixed
 - `loss.cpp` and `activation.cpp` were only in the sources of the executable: they are in the library
@@ -41,11 +44,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Every function checks the frozen state, the network, the sizes, the datasets and its parameters (`NoNetwork`, `InvalidInputSize`, `InvalidOutputSize`, `InvalidCoefficient`, `InvalidLearningRate`, `InvalidArgument`...)
-- Default setup of the networks (`init_`): the layers and the weights, the reduced neurons and slots, the neurons of the raw network placed randomly and linked to their nearest ones (limit `linksCap`: the smallest of a percentage of the neurons and a function of their number), and the random `weightInit` / `biasInit` (range or function, `fallback` on 0)
+- Default setup of the networks (`init_`): the layers and the weights, the reduced neurons and slots, the neurons of the raw network placed randomly and linked to a random number (1 to `cap`) of their nearest ones, closest first, in a random direction (the inputs only send, the outputs only receive) (limit `linksCap`: the smallest of a percentage of the neurons and a function of their number), and the random `weightInit` / `biasInit` (range or function, `fallback` on 0)
 - Serialization and files: `serialize()` / `deserialize()` of every network, `NeuralNetwork::save(path)` / `load(path)` (`.ln`, `.bn`, `.rbn`, `.net`, magic bytes `0x22` + `'l'` / `'b'` / `'r'`, activation byte), the refusal of a bad, truncated or inconsistent file, and the warning for the functions that can't be saved
 - Exception codes `ReadOnlyNetwork`, `CustomActivationRequired`, `CustomRandomRequired`, `CustomLinksCapRequired`
 - Tools: the losses (`mse`, `cross_entropy`), the activations (`sigmoid`, `linear`, `relu`), the little endian bytes (`put`, `get`, `fits`), `shuffle`, `rand_sets`, the generator used by the positions and the random weights
 - Unit tests of the types, the checks, the three networks, the files, `NeuralNetwork` and the tools
+- Forward pass of the networks: `LayerNetwork` layer after layer, `BrainNetwork` / `RawBrainNetwork` by time steps (`compute_` without state for `exec`, `apply()` that keeps the sums, the outputs and the states for the training)
+- Computing on the gpu that stores the memories (`brain::tools::gpu`, `include/brain/tools/compute.hpp`): the layers, the time steps of the brain networks and the training forward run as kernels on the device buffers of the `HybridMemory` (CUDA driver and NVRTC loaded at runtime, compiled once per context), the host computes instead without the CUDA headers (optional, found by the cmake; the driver and NVRTC stay loaded at runtime), with an external activation function or on a failure
+- Memory information of a network: `onGpu()`, `memoryMode()`, `requestedMode()`, `gpu()`, `gpuName()`, `gpuMemory()` (what `HybridMemory` / the shared gpu handler provide) and `memory()` (bytes of the memories of the network)
+- Time steps of a brain network: `stepsCap(percentage | fn)`, `resetStepsCap()` and the getters `stepsCap()` / `linksCap()` (`BRAIN_STEPS_CAP_*`: 25 % of the neurons, `2 log2(n)`), the signal `threshold()` (`BRAIN_SIGNAL_THRESHOLD`, a placeholder at 0) and the exception code `CustomStepsCapRequired`
 
 ### Removed
 - `NetworkType::Banana`, the hooks `BackpropagationFn` / `BackpropagationsFn`, `NeuralNetwork::seed` and the memory `load()` / `unload()` of the networks (the codes `NetworkNotLoaded`, `NetworkAlreadyLoaded`, `FrozenNetwork`, `DeadNetwork` and `InvalidPercentage` stay reserved, not thrown yet)
