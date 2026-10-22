@@ -18,7 +18,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [pre-release] (empty)
+## [pre-release]
+### In Progress
+- The forward pass (`compute_`, `apply()`) and the backpropagation of the networks, still empty (`/* Nothing */`)
+
+### Changed
+- **[MAJOR]** The brain network is split in `brain::BrainNetwork` (reduced, execution only: the training calls throw `ReadOnlyNetwork`) and `brain::RawBrainNetwork` (execution and training, derives from it and gives a reduced copy with `reduce()`); `init<Brain>` creates the raw one
+- **[MAJOR]** The neurons and the links are trivially copyable structs stored in `utils::system::HybridMemory` (GPU when available, else the RAM): `LayerNeuron` (`incoming`, `count`, `bias`) with the weights in their own memory, `BrainNeuron` / `BrainLink` (reduced), `RawBrainNeuron` / `RawBrainLink` (raw, a link is found twice with the same weight: the receiver for the execution, the clone on the sender for the backpropagation); no cache line alignment any more
+- **[MAJOR]** The input / output sizes, the random range / function and the activation function belong to the network (`INetwork` / `ANetwork`) and `NeuralNetwork` applies its setters to it: they throw `NoNetwork` before `init<...>`
+- **[MAJOR]** `train` is `train<mean>(round | loss, inputs, expected_outputs)` without hook: the loss of the outputs (times the learning rate) is the coefficient of the backpropagation, one per output (`mean = false`) or the mean (`mean = true`)
+- `exec` executes without storing anything in the network (`apply(inputs) const`, thread-safe); `inputs()` / `apply()` are the non const forward of the training
+- `init<Layered>` also takes the number of neurons of each layer (`brain::Layers`), the networks check their parameters and the current network is kept when they are invalid
+- `loss` has the versions `loss<true>` (mean), `loss<false>` (each output) and the pair of both, with an optional coefficient
+- `text_to_input` / `input_to_text` have the modes `Normal` (one value per character, byte / 255) and `Compact` (the bytes copied in the values)
+- `brain::tools::sort(index, neurons, cap)` returns the ids of the `cap` nearest neurons, closest first, instead of filling a list in the neurons
+- The networks share one GPU handler per mode for the whole program (finding a GPU takes a few hundred ms)
+
+### Fixed
+- `loss.cpp` and `activation.cpp` were only in the sources of the executable: they are in the library
+- `BRAIN_LINKS_CAP_COMPUTING` overflowed on a big network (`pow`): written as `2 log2(n) ln(n) / ln(1.1)`
+- `brain::tools::get<bool>` read an undefined `bool` from a byte other than 0 or 1
+
+### Added
+- Every function checks the frozen state, the network, the sizes, the datasets and its parameters (`NoNetwork`, `InvalidInputSize`, `InvalidOutputSize`, `InvalidCoefficient`, `InvalidLearningRate`, `InvalidArgument`...)
+- Default setup of the networks (`init_`): the layers and the weights, the reduced neurons and slots, the neurons of the raw network placed randomly and linked to their nearest ones (limit `linksCap`: the smallest of a percentage of the neurons and a function of their number), and the random `weightInit` / `biasInit` (range or function, `fallback` on 0)
+- Serialization and files: `serialize()` / `deserialize()` of every network, `NeuralNetwork::save(path)` / `load(path)` (`.ln`, `.bn`, `.rbn`, `.net`, magic bytes `0x22` + `'l'` / `'b'` / `'r'`, activation byte), the refusal of a bad, truncated or inconsistent file, and the warning for the functions that can't be saved
+- Exception codes `ReadOnlyNetwork`, `CustomActivationRequired`, `CustomRandomRequired`, `CustomLinksCapRequired`
+- Tools: the losses (`mse`, `cross_entropy`), the activations (`sigmoid`, `linear`, `relu`), the little endian bytes (`put`, `get`, `fits`), `shuffle`, `rand_sets`, the generator used by the positions and the random weights
+- Unit tests of the types, the checks, the three networks, the files, `NeuralNetwork` and the tools
+
+### Removed
+- `NetworkType::Banana`, the hooks `BackpropagationFn` / `BackpropagationsFn`, `NeuralNetwork::seed` and the memory `load()` / `unload()` of the networks (the codes `NetworkNotLoaded`, `NetworkAlreadyLoaded`, `FrozenNetwork`, `DeadNetwork` and `InvalidPercentage` stay reserved, not thrown yet)
 
 ## v0.0.0 - 2026-10-17
 ### Added
