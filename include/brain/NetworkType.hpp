@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 19/10/2026 by @author Tsukini
+##  @date 22/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NetworkType.hpp
@@ -53,24 +53,13 @@ using Values = std::vector<brain::FType>; // inputs / outputs / coefficients of 
 using Dataset = std::vector<brain::Values>; // several samples
 
 /* hook */
+using LinksCapFn = std::function<brain::UIType(const brain::UIType n)>; // external links limit computing function
 using ActivationFn = std::function<brain::FType(const brain::FType value)>; // external activation function
 using LossFn = std::function<brain::FType(const brain::FType output, const brain::FType expected)>; // external loss function
 using RandFn = std::function<brain::FType(const brain::IType seed)>; // weight / bias generator from the seed
 
 //----------------------------------------------------------------//
 /* STRUCT */
-
-// Link of a brain network neuron (trivially copyable: stored in a utils::system::HybridMemory)
-struct BrainLink {
-    brain::FType weight = 0.0; // weight of the link
-    brain::UIType id = 0; // id of the incoming neuron linked to this weight
-};
-
-// Distance of a brain network neuron to another one (trivially copyable: stored in a utils::system::HybridMemory)
-struct BrainDistance {
-    brain::UIType id = 0; // id of the other neuron
-    brain::FType distance = 0.0; // squared distance (no sqrt: only the order matters)
-};
 
 // Neuron of a layered network, aligned on the cache line: no false sharing when the neurons are edited concurrently (cpu / gpu) during the backpropagation
 // Trivially copyable (stored in a utils::system::HybridMemory), its weights are in the weights memory of the network
@@ -80,20 +69,21 @@ struct _alignas(std::hardware_destructive_interference_size) LayerNeuron {
     brain::FType bias = 0.0;
 };
 
+// Link of a brain network neuron (trivially copyable: stored in a utils::system::HybridMemory)
+struct BrainLink { // can be found 2 time, one on each neuron using this link (for execution '->' and backpropagation '<-')
+    brain::UIType id = 0; // id of the other neuron
+    brain::FType weight = 0.0; // weight of the links
+    bool inward = false; // does the link is an input from another neuron (true) or only used for backpropagation (false)
+};
+
 // Neuron of a brain network (2d space), same alignment as brain::LayerNeuron
 // Trivially copyable (stored in a utils::system::HybridMemory), its links and distances are in the memories of the network
 struct _alignas(std::hardware_destructive_interference_size) BrainNeuron {
     utils::type::OVector2<brain::FType> pos; // position in the 2d space of the network
-    brain::UIType incoming = 0; // index of the first brain::BrainLink in the links memory
-    brain::UIType incomingCount = 0; // number of links
-    brain::UIType ordered = 0; // index of the first brain::BrainDistance in the distances memory (every other neuron, closest first once set up with brain::tools::sort)
-    brain::UIType orderedCount = 0; // number of distances
-    brain::UIType id = 0; // identifier of the neuron (unique in its network)
     brain::FType bias = 0.0;
 
-    _hot _nodiscard inline brain::FType distance2(const BrainNeuron& other) const        {return (this->pos - other.pos).lengthSquared();}; // squared distance between the positions (no sqrt: only the order matters, every distance stays squared and comparable)
+    _hot _nodiscard inline brain::FType distance2(const BrainNeuron& other) const {return (this->pos - other.pos).lengthSquared();}; // squared distance between the positions (no sqrt: only the order matters, every distance stays squared and comparable)
     _hot _nodiscard inline brain::FType operator|(const BrainNeuron& other) const {return this->distance2(other);}; // squared distance (same as distance2)
-    _hot _nodiscard inline bool operator==(const BrainNeuron& other) const        {return this->id == other.id;}; // same neuron: ids only
 
     // Copy only (defaulted): without move operations, the non trivial move assignment of utils::type::OVector2 doesn't make the neuron non trivially copyable
     BrainNeuron() = default;

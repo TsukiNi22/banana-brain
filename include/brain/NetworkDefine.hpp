@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 20/10/2026 by @author Tsukini
+##  @date 21/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NetworkDefine.hpp
@@ -19,6 +19,12 @@ File Description:
 
 #ifndef NETWORKDEFINE_H
     #define NETWORKDEFINE_H
+
+    //----------------------------------------------------------------//
+    /* INCLUDE */
+    
+    /* type */
+    #include <cmath>    // std::log, std::pow
 
     //----------------------------------------------------------------//
     /* DEFINE */
@@ -37,6 +43,10 @@ File Description:
     #define BRAIN_ACTIVATION_NONE 0x00 // no activation function (raw values, default)
     #define BRAIN_ACTIVATION_CUSTOM 0xFF // external function (std::function): can't be saved, to give again after the load
     // 0x01 -> 0xFE: internal mode, the value of brain::ActivationFunction
+
+    /* limits */
+    #define BRAIN_LINKS_CAP_PERCENTAGE 0.1 // (default value) percentage of the total number of neurons
+    #define BRAIN_LINKS_CAP_COMPUTING(n) (std::log(std::pow(n, 2 * std::log2(n))) / std::log(1.1)) // (default value) computing of the default limits of links: log1.1(x^(2log2(x)))
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
