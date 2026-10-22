@@ -7,7 +7,7 @@ C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling se
 Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
 
 > [!NOTE]
-> The library is in progress (the tag `v0.0.0` was the architecture only). Written: the checks and errors of every function, the memories of the neurons (`utils::system::HybridMemory`, GPU when available), the default setup of the three networks, the serialization (`save` / `load`) and the tools. **Not written yet**: the forward pass (`compute_`, `apply()`) and the backpropagation of the networks.
+> The library is in progress (the tag `v0.0.0` was the architecture only). Written: the checks and errors of every function, the memories of the neurons (`utils::system::HybridMemory`, GPU when available), the default setup of the three networks, the serialization (`save` / `load`) and the tools. The forward pass of the three networks is written (`apply`, `exec`); **not written yet**: the backpropagation of the networks.
 
 ### Table of Contents
  - [Dependencies](#dependencies)
@@ -178,7 +178,7 @@ A missing package stops the configuration with the name of the package to instal
 | ------- | ------- |
 | `brain/brain.hpp` | Global include of the library (+ `brain::version`), without the network classes: they are internal, created by `NeuralNetwork::init<...>` |
 | `brain/NeuralNetwork.hpp` | `brain::NeuralNetwork` (`utils::type::Freezable`): `init<NetworkType>(...)` (`Layered`: `(layer, neuron_per_layer)` or `(Layers)`, `Brain`: `(neurons, size)`), `weightInit`, `biasInit`, the settings of the network (`size`, `rand`, `activationFunction`... applied to it: `init` first), `learningRate`, `lossFunction`, `train<mean>(round \| loss, inputs, expected)`, manual training (`inputs`, `apply`, `backpropagation`, `loss<mean>`), `exec`, `save(path)` / `load(path)`, `clear` |
-| `brain/NetworkDefine.hpp` | `brain::NetworkType` (`Layered`, `Brain`), `ActivationFunction`, `LossFunction`, `TextMode` (`Normal`, `Compact`), the defines of the files (`BRAIN_EXTENSION_*`, `BRAIN_MAGIC*`, `BRAIN_ACTIVATION_*`) and of the links limit (`BRAIN_LINKS_CAP_*`) |
+| `brain/NetworkDefine.hpp` | `brain::NetworkType` (`Layered`, `Brain`), `ActivationFunction`, `LossFunction`, `TextMode` (`Normal`, `Compact`), the defines of the files (`BRAIN_EXTENSION_*`, `BRAIN_MAGIC*`, `BRAIN_ACTIVATION_*`) and of the brain network limits (`BRAIN_LINKS_CAP_*`, `BRAIN_STEPS_CAP_*`, `BRAIN_SIGNAL_THRESHOLD`) |
 | `brain/NetworkType.hpp` | `brain::IType` / `UIType` / `FType`, `Values` / `Dataset` / `Layers` / `Bytes`, the hooks `ActivationFn` / `LossFn` / `RandFn` / `LinksCapFn`, the trivially copyable neurons and links stored in a `HybridMemory`: `LayerNeuron`, `BrainNeuron` / `BrainLink` (reduced), `RawBrainNeuron` (`distance2()` / `operator\|` squared distance) / `RawBrainLink` |
 | `brain/network/Network.hpp` | `brain::INetwork` -> `brain::ANetwork` -> `brain::LayerNetwork(Layers)` / `brain::BrainNetwork(neuron, cap)` (reduced, execution only) -> `brain::RawBrainNetwork(neuron, size)` (training, `reduce()`) (not in `brain.hpp`: include it only when the network classes are needed) |
 | `brain/tools/random.hpp` | `brain::tools::generator` (`std::mt19937_64`, scope chosen by `BRAIN_SEED_GLOBAL` / `BRAIN_SEED_LOCAL`), `rand(seed)`, `rand_unsigned_integer()`, `rand_floating()` |
@@ -203,6 +203,11 @@ The random generator of the library (`brain::tools::generator`, used by every ra
 > [!NOTE]
 > The size, random and activation settings belong to the network: they throw `NoNetwork` before `init<...>`. `exec` executes without storing anything in the network (thread-safe) and is the only call allowed once the network is frozen (`freeze()`).
 
+### Execution
+- `LayerNetwork`: layer after layer, each neuron is `activation(bias + Σ weight × output of the previous layer)`; the inputs feed the first layer and the outputs are the last layer.
+- `BrainNetwork` / `RawBrainNetwork`: **time steps**. The first `input` neurons (ids `0..input-1`) hold the inputs, the last `output` neurons (ids `n-output..n-1`) are the outputs (`size(input, output)` is needed), and at each step every other neuron computes `activation(bias + Σ weight × output of the neuron it is linked to, at the previous step)`; the outputs are read after the last step. On a `RawBrainNetwork` the input neurons are placed on the left edge of the space and the output ones on the right edge, evenly spread; changing the sizes places the neurons again.
+- The number of steps is `min(percentage × neurons, hook(neurons))`, at least 1 (`stepsCap(percentage | fn)`, `resetStepsCap()`, getter `stepsCap()`, same as `linksCap`; default: 25 % of the neurons and `2 log2(n)`, `BRAIN_STEPS_CAP_*`). `threshold(value)` / `threshold()` cancel (set to 0) a signal whose absolute value is under it at each step, to stop signals too weak to matter (`BRAIN_SIGNAL_THRESHOLD`, a placeholder at 0 = nothing cancelled).
+
 ### Save / load
 `save(path)` / `load(path)` write and read the network (`NeuralNetwork`), `serialize()` / `deserialize(bytes)` do it in memory (each network).
 
@@ -213,7 +218,7 @@ The random generator of the library (`brain::tools::generator`, used by every ra
 | `.rbn` | `RawBrainNetwork` (training) | `0x22` `'r'` |
 | `.net` | any of them (the magic bytes tell which) | the one of the network |
 
-An other extension only warns. The third byte tells the activation (`0x00` none, `0xFF` an external function, otherwise the internal `ActivationFunction`). An external function (activation, random, links cap) can't be saved: the load warns (`CustomActivationRequired`, `CustomRandomRequired`, `CustomLinksCapRequired`) and it has to be given again. A bad, truncated or inconsistent file throws `InvalidNetworkFile` and the current network is kept.
+A brain file (`.bn`, `.rbn`) also holds the number of time steps and the signal threshold, a `.rbn` the percentage of its links and steps limits too. An other extension only warns. The third byte tells the activation (`0x00` none, `0xFF` an external function, otherwise the internal `ActivationFunction`). An external function (activation, random, links cap) can't be saved: the load warns (`CustomActivationRequired`, `CustomRandomRequired`, `CustomLinksCapRequired`, `CustomStepsCapRequired`) and it has to be given again. A bad, truncated or inconsistent file throws `InvalidNetworkFile` and the current network is kept.
 
 ```cpp
 brain::NeuralNetwork network;
