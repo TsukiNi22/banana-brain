@@ -69,7 +69,7 @@ class LayerNetwork: public brain::ANetwork {
 
         // ------------ Function ---------- //
         /* getter */
-        _cold _nodiscard inline const brain::Layers& layers(void) const                      {return this->_layers;}; // number of neurons of each layer
+        _cold _nodiscard inline const brain::Layers& layers(void) const                    {return this->_layers;}; // number of neurons of each layer
         _cold _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const final {return {this->_layers.size(), std::accumulate(this->_layers.begin(), this->_layers.end(), brain::UIType{0})};}; // <layers, total neurons>
 
         // ------------ Operator ---------- //
@@ -78,7 +78,7 @@ class LayerNetwork: public brain::ANetwork {
 
         // ---------- Constructor --------- //
         LayerNetwork(const brain::Layers& layers, const utils::system::MemoryMode mode = utils::system::MemoryMode::Auto); // the number of neurons of each layer, calls init_ at the end
-        LayerNetwork(const brain::UIType layer, const brain::UIType neuron_per_layer, const utils::system::MemoryMode mode = utils::system::MemoryMode::Auto); // the same number of neurons on every layer
+        LayerNetwork(const brain::UIType layer, const brain::UIType neuron_per_layer, const utils::system::MemoryMode mode = utils::system::MemoryMode::Auto): LayerNetwork(brain::Layers(layer, neuron_per_layer), mode) { /* Nothing */ }; // the same number of neurons on every layer, no layer: the empty list is refused
         LayerNetwork(const LayerNetwork& other) = delete;
         LayerNetwork(LayerNetwork&& other) = delete;
 

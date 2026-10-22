@@ -40,12 +40,6 @@ brain::LayerNetwork::LayerNetwork(const brain::Layers& layers, const utils::syst
     this->init_();
 }
 
-brain::LayerNetwork::LayerNetwork(const brain::UIType layer, const brain::UIType neuron_per_layer, const utils::system::MemoryMode mode)
-: LayerNetwork{brain::Layers(layer, neuron_per_layer), mode} // no layer: the empty list is refused
-{
-    /* Nothing */
-}
-
 _cold void brain::LayerNetwork::layout_(void)
 {
     std::vector<brain::LayerNeuron> neurons;
