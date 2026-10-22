@@ -25,33 +25,55 @@ File Description:
 
     /* type */
     #define _Attribute
-    #include <utils/utils.hpp>      // _hot, _cold, _nodiscard
-    #include "../NetworkType.hpp"   // brain::IType, brain::FType, brain::Values, brain::Dataset
-    #include <utility>              // std::pair
-    #include <cstring>              // std::memcpy
-    #include <string>               // std::string
+    #include <utils/utils.hpp>         // _hot, _cold, _nodiscard
+    #include "../NetworkDefine.hpp"    // brain::TextMode
+    #include "../NetworkType.hpp"      // brain::IType, brain::FType, brain::Values, brain::Dataset
+    #include <algorithm>               // std::clamp
+    #include <utility>                 // std::pair
+    #include <cstring>                 // std::memcpy
+    #include <string>                  // std::string
+    #include <cmath>                   // std::isfinite, std::lround
 
 namespace brain::tools { // namespace start
 //----------------------------------------------------------------//
 /* PROTOTYPE */
 
 /* conversion */
-_hot _nodiscard inline brain::Values text_to_input(const std::string& s) // can be not what you want
+template<brain::TextMode mode = brain::TextMode::Normal>
+_hot _nodiscard inline brain::Values text_to_input(const std::string& text) // Normal: one value per character (byte / 255), Compact: the bytes copied as is in the values (4 per value, can be not what you want)
 {
-    brain::Values input((s.size() + sizeof(brain::FType) - 1) / sizeof(brain::FType));
-    std::memcpy(input.data(), s.data(), s.size());
-    return input;
+    if constexpr (mode == brain::TextMode::Normal) {
+        brain::Values input(text.size());
+
+        for (std::size_t i = 0; i < text.size(); ++i)
+            input[i] = static_cast<brain::FType>(static_cast<unsigned char>(text[i])) / static_cast<brain::FType>(255.0);
+        return input;
+    } else {
+        brain::Values input((text.size() + sizeof(brain::FType) - 1) / sizeof(brain::FType));
+
+        std::memcpy(input.data(), text.data(), text.size());
+        return input;
+    }
 }
 
-template<bool round = false>
-_hot _nodiscard inline std::string input_to_text(const brain::Values& input) // doesn't ensure the validity of the output
+template<brain::TextMode mode = brain::TextMode::Normal, bool round = false>
+_hot _nodiscard inline std::string input_to_text(const brain::Values& input) // doesn't ensure the validity of the output, round: Compact only, removes the '\0' of the end (the padding of the last value)
 {
-    std::string s(input.size() * sizeof(brain::FType), '\0');
-    std::memcpy(s.data(), input.data(), input.size() * sizeof(brain::FType));
-    if constexpr (round) {
-        while (!s.empty() && s.back() == '\0') s.pop_back();
+    if constexpr (mode == brain::TextMode::Normal) {
+        std::string text(input.size(), '\0');
+
+        for (std::size_t i = 0; i < input.size(); ++i)
+            text[i] = std::isfinite(input[i]) ? static_cast<char>(static_cast<unsigned char>(std::clamp<long>(std::lround(input[i] * static_cast<brain::FType>(255.0)), 0, 255))) : '\0';
+        return text;
+    } else {
+        std::string text(input.size() * sizeof(brain::FType), '\0');
+
+        std::memcpy(text.data(), input.data(), input.size() * sizeof(brain::FType));
+        if constexpr (round) {
+            while (!text.empty() && text.back() == '\0') text.pop_back();
+        }
+        return text;
     }
-    return s;
 }
 
 /* dataset */
