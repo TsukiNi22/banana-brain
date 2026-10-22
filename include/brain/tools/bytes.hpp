@@ -60,7 +60,8 @@ _hot _nodiscard inline T get(const brain::Bytes& data, brain::UIType& offset) //
     std::copy_n(data.begin() + static_cast<std::ptrdiff_t>(offset), sizeof(T), bytes.begin());
     offset += sizeof(T);
     if constexpr (std::endian::native == std::endian::big) std::reverse(bytes.begin(), bytes.end());
-    return std::bit_cast<T>(bytes);
+    if constexpr (std::is_same_v<T, bool>) return bytes[0] != 0; // any other byte than 0 / 1 is not a valid bool for a bit_cast
+    else return std::bit_cast<T>(bytes);
 }
 
 _hot _nodiscard inline bool fits(const brain::Bytes& data, const brain::UIType offset, const brain::UIType count, const brain::UIType size) // do count elements of size bytes fit in the data after the offset (no overflow)
