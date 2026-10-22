@@ -24,6 +24,7 @@ File Description:
 #include <utils/utils.hpp>
 #include "brain/network/ANetwork.hpp"
 #include "brain/NetworkDefine.hpp"
+#include "brain/tools/random.hpp"
 #include "brain/tools/bytes.hpp"
 #include <iostream>
 #include <mutex>
@@ -164,4 +165,17 @@ _cold brain::UIType brain::ANetwork::deserializeHeader_(const brain::Bytes& data
         std::cerr << utils::exception::WarningException(utils::exception::ExternalCode::CustomRandomRequired).formated() << std::endl;
     }
     return offset;
+}
+
+_hot brain::FType brain::ANetwork::random_(const brain::FType fallback) const
+{
+    brain::FType value;
+
+    // the random function wins over the range (the seed given to it comes from the generator of the library)
+    if (this->_rand.second) value = this->_rand.second(static_cast<brain::IType>(brain::tools::rand_unsigned_integer()));
+    else value = this->_rand.first.first + brain::tools::rand_floating() * (this->_rand.first.second - this->_rand.first.first);
+    if (!std::isfinite(value)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the random value should be a finite number");
+    }
+    return value == 0 ? fallback : value;
 }

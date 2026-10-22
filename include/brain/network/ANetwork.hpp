@@ -53,9 +53,11 @@ class ANetwork: public brain::INetwork {
         void serializeHeader_(brain::Bytes& out, const std::uint8_t kind) const; // magic bytes, kind, activation mode, sizes and random range (the common part of every network)
         brain::UIType deserializeHeader_(const brain::Bytes& data, const std::uint8_t kind); // check the magic bytes and the kind, read the common part, returns the offset after it
         virtual brain::Values compute_(const brain::Values& inputs) const = 0; // execution of the network (the inputs are already checked)
+        brain::FType random_(const brain::FType fallback) const; // a random value for a weight / bias: the random function when set, else in the random range, the fallback on a result that falls on 0 (non finite: error)
 
         // ------------ Function ---------- //
         _cold void init_(void) override { /* Nothing */ }; // default: nothing (fallthrough), a child inits its neurons
+        _cold virtual void resized_(void) { /* Nothing */ }; // the sizes of the network changed: a child that depends on them sets its memory up again
         template<typename T>
         _cold _nodiscard inline utils::system::HybridMemory<T> makeMemory_(const brain::UIType size = 0) const // a memory on the gpu of the network (ram without one)
         {return this->_gpu ? utils::system::HybridMemory<T>(size, this->_gpu) : utils::system::HybridMemory<T>(size, utils::system::MemoryMode::Ram);};
@@ -76,9 +78,9 @@ class ANetwork: public brain::INetwork {
 
         // ------------ Function ---------- //
         /* setter (size) */
-        _cold inline void size(const brain::UIType input, const brain::UIType output) final {this->_ioSize = {input, output};};
-        _cold inline void input(const brain::UIType input) final                            {this->_ioSize.first = input;};
-        _cold inline void output(const brain::UIType output) final                          {this->_ioSize.second = output;};
+        _cold inline void size(const brain::UIType input, const brain::UIType output) final {this->_ioSize = {input, output}; this->resized_();};
+        _cold inline void input(const brain::UIType input) final                            {this->_ioSize.first = input; this->resized_();};
+        _cold inline void output(const brain::UIType output) final                          {this->_ioSize.second = output; this->resized_();};
 
         /* getter */
         _cold _nodiscard inline brain::UIType input(void) const final                                  {return this->_ioSize.first;};
