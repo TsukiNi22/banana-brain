@@ -56,6 +56,7 @@ class ANetwork: public brain::INetwork {
         brain::UIType deserializeHeader_(const brain::Bytes& data, const std::uint8_t kind); // check the magic bytes and the kind, read the common part, returns the offset after it
         virtual brain::Values compute_(const brain::Values& inputs) const = 0; // execution of the network (the inputs are already checked)
         brain::FType activate_(const brain::FType value) const; // the activation function of the network on a value (the external function when set, else the internal one, None: the value)
+        brain::FType derivative_(const brain::FType sum, const brain::FType output) const; // derivative of the activation function at the sum (output = activation of the sum): the exact one of an internal function, estimated for an external one
         brain::FType random_(const brain::FType fallback) const; // a random value for a weight / bias: the random function when set, else in the random range, the fallback on a result that falls on 0 (non finite: error)
 
         // ------------ Function ---------- //

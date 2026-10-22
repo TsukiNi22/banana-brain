@@ -307,3 +307,27 @@ TEST(NeuralNetwork, LoadRefusesABadFile) {
     EXPECT_EQ(network.neurons(), (std::pair<brain::UIType, brain::UIType>{2, 4})); // the network is kept
     std::filesystem::remove(path);
 }
+
+TEST(NeuralNetwork, MeanSquaredErrorWarnsOnABrainNetwork) {
+    brain::NeuralNetwork layered;
+    brain::NeuralNetwork brain;
+
+    layered.init<brain::NetworkType::Layered>(brain::Layers{2, 1});
+    testing::internal::CaptureStderr();
+    layered.internalLossFunction(brain::LossFunction::MSE);
+    EXPECT_TRUE(testing::internal::GetCapturedStderr().empty()); // an error to minimize is what a layered network wants
+
+    brain.init<brain::NetworkType::Brain>(10);
+    testing::internal::CaptureStderr();
+    brain.internalLossFunction(brain::LossFunction::MSE);
+    EXPECT_NE(testing::internal::GetCapturedStderr().find("squared error"), std::string::npos);
+    testing::internal::CaptureStderr();
+    brain.internalLossFunction(brain::LossFunction::CrossEntropy);
+    EXPECT_TRUE(testing::internal::GetCapturedStderr().empty());
+
+    // the loss was set first
+    brain.internalLossFunction(brain::LossFunction::MSE);
+    testing::internal::CaptureStderr();
+    brain.init<brain::NetworkType::Brain>(10);
+    EXPECT_NE(testing::internal::GetCapturedStderr().find("squared error"), std::string::npos);
+}

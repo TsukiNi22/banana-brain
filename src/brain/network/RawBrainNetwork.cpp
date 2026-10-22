@@ -32,6 +32,7 @@ File Description:
 #include <iostream>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <vector>
 #include <cmath>
 
@@ -127,10 +128,8 @@ _cold brain::UIType brain::RawBrainNetwork::linksCap_(void) const
     return std::clamp<brain::UIType>(cap, 1, this->_neuron - 1);
 }
 
-_cold void brain::RawBrainNetwork::sync_(void)
+_cold void brain::RawBrainNetwork::sync_(const std::vector<brain::RawBrainNeuron>& rawNeurons, const std::vector<brain::RawBrainLink>& rawLinks)
 {
-    const std::vector<brain::RawBrainNeuron> rawNeurons = this->_rawNeurons.toVector();
-    const std::vector<brain::RawBrainLink> rawLinks = this->_rawLinks.toVector();
     std::vector<brain::BrainNeuron> neurons(rawNeurons.size());
     std::vector<brain::BrainLink> links(rawLinks.size()); // free slots at 0: no effect
 
@@ -168,6 +167,9 @@ _cold brain::Bytes brain::RawBrainNetwork::serialize(void) const
     brain::tools::put<std::uint8_t>(out, this->_customSteps ? static_cast<std::uint8_t>(BRAIN_ACTIVATION_CUSTOM) : static_cast<std::uint8_t>(BRAIN_ACTIVATION_NONE));
     brain::tools::put<std::uint64_t>(out, this->_steps);
     brain::tools::put<brain::FType>(out, this->_threshold);
+    brain::tools::put<brain::FType>(out, this->_weightLimits.first);
+    brain::tools::put<brain::FType>(out, this->_weightLimits.second);
+    brain::tools::put<std::uint8_t>(out, this->_orphans ? 1 : 0);
     brain::tools::put<std::uint64_t>(out, neurons.size());
     for (const brain::RawBrainNeuron& neuron: neurons) {
         brain::tools::put<brain::FType>(out, neuron.pos.x);
@@ -223,6 +225,9 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
     const std::uint8_t stepsCustom = brain::tools::get<std::uint8_t>(data, offset);
     const brain::UIType steps = brain::tools::get<std::uint64_t>(data, offset);
     const brain::FType threshold = brain::tools::get<brain::FType>(data, offset);
+    const brain::FType weightMin = brain::tools::get<brain::FType>(data, offset);
+    const brain::FType weightMax = brain::tools::get<brain::FType>(data, offset);
+    const std::uint8_t orphans = brain::tools::get<std::uint8_t>(data, offset);
     brain::UIType count = brain::tools::get<std::uint64_t>(data, offset);
 
     // the space and the limits
@@ -234,6 +239,10 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
     } else if (!std::isfinite(stepsPercentage) || stepsPercentage <= 0 || stepsPercentage > 1 || steps == 0 || (stepsCustom != BRAIN_ACTIVATION_NONE && stepsCustom != BRAIN_ACTIVATION_CUSTOM)
         || !std::isfinite(threshold) || threshold < 0) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "invalid time steps limit or signal threshold");
+    }
+
+    if (!std::isfinite(weightMin) || !std::isfinite(weightMax) || weightMin < 0 || weightMax <= weightMin || orphans > 1) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "invalid limits of the weights or orphans mode");
     }
 
     // the neurons (none: not allocated yet)
@@ -281,6 +290,8 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
     this->_customSteps = stepsCustom == BRAIN_ACTIVATION_CUSTOM;
     this->_steps = steps;
     this->_threshold = threshold;
+    this->_weightLimits = {weightMin, weightMax};
+    this->_orphans = orphans == 1;
     this->_placed = this->_ioSize;
     if (this->_customSteps) {
         std::cerr << utils::exception::WarningException(utils::exception::ExternalCode::CustomStepsCapRequired).formated() << std::endl;
@@ -348,8 +359,10 @@ _hot void brain::RawBrainNetwork::backpropagation(const brain::FType coef)
     // check inputs
     if (!std::isfinite(coef)) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "the coefficient should be a finite number");
+    } else if (this->_ioSize.second == 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "the number of outputs of the network is not set (size() / output())");
     }
-    /* Nothing */
+    this->learn_(brain::Values(this->_ioSize.second, coef));
 }
 
 _hot void brain::RawBrainNetwork::backpropagation(const brain::Values& coefs)
@@ -357,10 +370,207 @@ _hot void brain::RawBrainNetwork::backpropagation(const brain::Values& coefs)
     // check inputs
     if (coefs.empty()) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "no coefficients given");
-    } else if (this->_ioSize.second != 0 && coefs.size() != this->_ioSize.second) _unlikely {
+    } else if (this->_ioSize.second == 0 || coefs.size() != this->_ioSize.second) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(coefs.size()) + ", expected " + std::to_string(this->_ioSize.second));
     }
-    /* Nothing */
+    for (const brain::FType coef: coefs) {
+        if (!std::isfinite(coef)) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "the coefficients should be finite numbers");
+        }
+    }
+    this->learn_(coefs);
+}
+
+// A slot holds a link when it is an inward one or has an id or a weight (a free slot is all at 0)
+_cold static bool occupied(const brain::RawBrainLink& link)
+{
+    return link.inward || link.id != 0 || link.weight != 0;
+}
+
+// The first free slot of a neuron (cap: none)
+_cold static brain::UIType freeSlot(const std::vector<brain::RawBrainLink>& links, const brain::UIType cap, const brain::UIType owner)
+{
+    brain::UIType slot = 0;
+
+    while (slot < cap && occupied(links[owner * cap + slot])) ++slot;
+    return slot;
+}
+
+// The slot of the other neuron that holds the clone of a link
+_cold static brain::UIType cloneSlot(const std::vector<brain::RawBrainLink>& links, const brain::UIType cap, const brain::UIType owner, const brain::RawBrainLink& link)
+{
+    brain::UIType slot = 0;
+
+    while (slot < cap && !(occupied(links[link.id * cap + slot]) && links[link.id * cap + slot].id == owner && links[link.id * cap + slot].inward != link.inward)) ++slot;
+    return slot;
+}
+
+// Number of inward and outward links of a neuron
+_cold static std::pair<brain::UIType, brain::UIType> degree(const std::vector<brain::RawBrainLink>& links, const brain::UIType cap, const brain::UIType owner)
+{
+    std::pair<brain::UIType, brain::UIType> count = {0, 0};
+
+    for (brain::UIType slot = 0; slot < cap; ++slot) {
+        const brain::RawBrainLink& link = links[owner * cap + slot];
+
+        if (!occupied(link)) continue;
+        if (link.inward) ++count.first;
+        else ++count.second;
+    }
+    return count;
+}
+
+// Can a neuron lose a link? Never its last one, nor the last link of its kind (an input keeps an outward link, the others an inward one) when it had one
+_cold static bool survives(const std::pair<brain::UIType, brain::UIType>& count, const bool isInput, const bool inward)
+{
+    const brain::UIType in = count.first - (inward ? 1 : 0);
+    const brain::UIType out = count.second - (inward ? 0 : 1);
+    const brain::UIType before = isInput ? count.second : count.first;
+    const brain::UIType after = isInput ? out : in;
+
+    return in + out >= 1 && !(before >= 1 && after == 0);
+}
+
+_hot void brain::RawBrainNetwork::learn_(const brain::Values& rewards)
+{
+    // the states of the last apply() are what the gradient is made of
+    if (this->_states.size() != this->_steps + 1 || this->_states[0].size() != this->_neuron || this->_rawNeurons.empty()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "nothing to learn from, call apply() first");
+    }
+    const brain::UIType input = this->_ioSize.first;
+    const brain::UIType output = this->_ioSize.second;
+
+    // the memories stored on the gpu are changed there (an external activation function can only run on the host)
+    const bool onGpu = this->_rawNeurons.isOnGpu() && !this->_activationFunction.second && brain::tools::gpu::stepsBack(this->_gpu.get(), this->_rawNeurons.native(), this->_rawLinks.native(), this->_neuron, this->_cap, input, this->_activationFunction.first, this->_states, rewards);
+    std::vector<brain::RawBrainNeuron> neurons = this->_rawNeurons.toVector();
+    std::vector<brain::RawBrainLink> links = this->_rawLinks.toVector();
+    brain::Values grad(this->_neuron, 0.0); // gain of the score for the output of each neuron, at the step read
+    brain::Values biasGrad(this->_neuron, 0.0);
+    brain::Values weightGrad(links.size(), 0.0); // by inward slot
+
+    if (!onGpu) {
+        // the scores are given to the outputs of the last step, then they go back in time through the inward links
+        for (brain::UIType k = 0; k < output; ++k)
+            grad[this->_neuron - output + k] = rewards[k];
+        for (brain::UIType step = this->_steps; step > 0; --step) {
+            const brain::Values& before = this->_states[step - 1];
+            brain::Values below(this->_neuron, 0.0);
+
+            for (brain::UIType i = input; i < this->_neuron; ++i) {
+                brain::FType sum = neurons[i].bias;
+
+                if (grad[i] == 0) continue;
+                for (brain::UIType slot = 0; slot < this->_cap; ++slot) {
+                    const brain::RawBrainLink& link = links[i * this->_cap + slot];
+                    if (link.inward) sum += link.weight * before[link.id];
+                }
+                const brain::FType slope = grad[i] * this->derivative_(sum, this->activate_(sum));
+
+                biasGrad[i] += slope;
+                for (brain::UIType slot = 0; slot < this->_cap; ++slot) {
+                    const brain::RawBrainLink& link = links[i * this->_cap + slot];
+                    if (!link.inward) continue;
+                    weightGrad[i * this->_cap + slot] += slope * before[link.id];
+                    below[link.id] += slope * link.weight;
+                }
+            }
+            grad = std::move(below);
+        }
+
+        // a positive score strengthens what made the outputs, a negative one weakens it (the link and its clone keep the same weight)
+        for (brain::UIType i = input; i < this->_neuron; ++i) {
+            if (std::isfinite(biasGrad[i])) neurons[i].bias += biasGrad[i];
+            for (brain::UIType slot = 0; slot < this->_cap; ++slot) {
+                brain::RawBrainLink& link = links[i * this->_cap + slot];
+                brain::FType weight;
+
+                if (!link.inward || !std::isfinite(weightGrad[i * this->_cap + slot])) continue;
+                weight = link.weight + weightGrad[i * this->_cap + slot];
+                if (weight == 0) weight = std::numeric_limits<brain::FType>::min(); // a weight at 0 would look like a free slot
+                link.weight = weight;
+                links[link.id * this->_cap + cloneSlot(links, this->_cap, i, link)].weight = weight;
+            }
+        }
+    }
+    const bool changed = this->relink_(neurons, links);
+
+    if (!onGpu) this->_rawNeurons.store(neurons);
+    if (!onGpu || changed) this->_rawLinks.store(links);
+    this->sync_(neurons, links);
+}
+
+_cold bool brain::RawBrainNetwork::relink_(const std::vector<brain::RawBrainNeuron>& neurons, std::vector<brain::RawBrainLink>& links)
+{
+    const brain::UIType input = this->_ioSize.first;
+    const brain::UIType output = this->_ioSize.second;
+    const brain::UIType count = neurons.size();
+    const brain::FType min = this->_weightLimits.first;
+    const brain::FType max = this->_weightLimits.second;
+    bool changed = false;
+
+    for (brain::UIType owner = 0; owner < count && this->_cap > 0; ++owner) {
+        brain::UIType farthest = this->_cap;
+        brain::FType distance = -1.0;
+        brain::UIType used = 0;
+
+        // the farthest linked neuron
+        for (brain::UIType slot = 0; slot < this->_cap; ++slot) {
+            const brain::RawBrainLink& link = links[owner * this->_cap + slot];
+            brain::FType far;
+
+            if (!occupied(link)) continue;
+            ++used;
+            far = neurons[owner] | neurons[link.id];
+            if (far > distance || (far == distance && link.id > links[owner * this->_cap + farthest].id)) {
+                distance = far;
+                farthest = slot;
+            }
+        }
+        if (farthest == this->_cap) continue;
+        const brain::RawBrainLink link = links[owner * this->_cap + farthest];
+        const brain::FType weight = std::abs(link.weight);
+
+        if (weight <= min) {
+            // too weak: removed (with its clone), unless it is the last link of one of the two neurons
+            if (this->_orphans || (survives(degree(links, this->_cap, owner), owner < input, link.inward) && survives(degree(links, this->_cap, link.id), link.id < input, !link.inward))) {
+                links[link.id * this->_cap + cloneSlot(links, this->_cap, owner, link)] = brain::RawBrainLink{};
+                links[owner * this->_cap + farthest] = brain::RawBrainLink{};
+                changed = true;
+            }
+        } else if (weight >= max && used < this->_cap) {
+            // too strong: the next nearest neuron that can be linked gets a link too
+            for (const brain::UIType other: brain::tools::sort(owner, neurons, count - 1)) {
+                const bool canReceive = owner >= input && other < count - output; // owner <- other
+                const bool canSend = owner < count - output && other >= input; // owner -> other
+                brain::UIType slot = 0;
+                brain::UIType otherSlot;
+
+                while (slot < this->_cap && !(occupied(links[owner * this->_cap + slot]) && links[owner * this->_cap + slot].id == other)) ++slot;
+                otherSlot = freeSlot(links, this->_cap, other);
+                if (slot < this->_cap || otherSlot == this->_cap || (!canReceive && !canSend)) continue;
+                const bool receive = canReceive && (!canSend || brain::tools::rand_floating() < 0.5f);
+                const brain::FType start = this->random_(static_cast<brain::FType>(0.01)); // a weight in the middle of the limits, so the new link stays
+                const brain::FType low = min + (max - min) * static_cast<brain::FType>(0.25);
+                const brain::FType high = min + (max - min) * static_cast<brain::FType>(0.75);
+                const brain::FType value = (start < 0 ? -1 : 1) * std::clamp(std::abs(start), low, high);
+
+                links[owner * this->_cap + freeSlot(links, this->_cap, owner)] = {other, value, receive};
+                links[other * this->_cap + otherSlot] = {owner, value, !receive};
+                changed = true;
+                break;
+            }
+        }
+    }
+    return changed;
+}
+
+_cold void brain::RawBrainNetwork::weightLimits(const brain::FType min, const brain::FType max)
+{
+    // check inputs
+    if (!std::isfinite(min) || !std::isfinite(max) || min < 0 || max <= min) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the limits of the weights should be finite numbers with 0 <= min < max");
+    }
+    this->_weightLimits = {min, max};
 }
 
 _cold void brain::RawBrainNetwork::weightInit(const brain::FType fallback)

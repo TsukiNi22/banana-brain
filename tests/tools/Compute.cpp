@@ -38,7 +38,7 @@ static void expectNear(const brain::Values& a, const brain::Values& b)
 {
     ASSERT_EQ(a.size(), b.size());
     for (std::size_t i = 0; i < a.size(); ++i)
-        EXPECT_NEAR(a[i], b[i], 1e-4) << "value " << i;
+        EXPECT_NEAR(a[i], b[i], 1e-4 + 1e-5 * std::abs(b[i])) << "value " << i; // float rounding: relative on the big values
 }
 
 /* ------------------------------- gpu ------------------------------- */
@@ -126,4 +126,66 @@ TEST(Gpu, DirectCallRunsOnTheDevice) {
     EXPECT_TRUE(brain::tools::gpu::steps(network.gpu().get(), 0, 0, false, 4, 2, 1, 1, brain::ActivationFunction::None, 0.0, {1.0}, states, false) == false); // no memory given
     EXPECT_TRUE(states.empty());
     EXPECT_FALSE(brain::tools::gpu::available(nullptr));
+}
+
+TEST(Gpu, LayersBackpropagationMatchesTheHost) {
+    REQUIRE_CUDA();
+    for (const brain::ActivationFunction fn: {brain::ActivationFunction::None, brain::ActivationFunction::Sigmoid, brain::ActivationFunction::ReLU}) {
+        brain::LayerNetwork gpu(brain::Layers{5, 7, 3}, utils::system::MemoryMode::Cuda);
+        brain::LayerNetwork ram(brain::Layers{5, 7, 3}, utils::system::MemoryMode::Ram);
+        const brain::Values inputs = {0.3, -0.8, 1.5, 0.1, 2.0};
+        const brain::Values errors = {0.2, -0.1, 0.05};
+
+        gpu.size(5, 3);
+        ram.size(5, 3);
+        gpu.rand(-1.0, 1.0);
+        gpu.weightInit();
+        gpu.biasInit();
+        gpu.internalActivationFunction(fn);
+        ram.deserialize(gpu.serialize());
+        for (brain::UIType round = 0; round < 3; ++round) {
+            gpu.inputs(inputs);
+            ram.inputs(inputs);
+            (void)gpu.apply();
+            (void)ram.apply();
+            gpu.backpropagation(errors);
+            ram.backpropagation(errors);
+        }
+        ASSERT_TRUE(gpu.onGpu());
+        expectNear(gpu.apply(inputs), ram.apply(inputs));
+        const brain::Bytes a = gpu.serialize();
+        const brain::Bytes b = ram.serialize();
+        ASSERT_EQ(a.size(), b.size());
+        EXPECT_GT(a.size(), 0u);
+    }
+}
+
+TEST(Gpu, RawBackpropagationMatchesTheHost) {
+    REQUIRE_CUDA();
+    for (const brain::ActivationFunction fn: {brain::ActivationFunction::None, brain::ActivationFunction::Sigmoid, brain::ActivationFunction::ReLU}) {
+        brain::RawBrainNetwork gpu(30, {10.0, 10.0}, utils::system::MemoryMode::Cuda);
+        brain::RawBrainNetwork ram(30, {10.0, 10.0}, utils::system::MemoryMode::Ram);
+        const brain::Values inputs = {0.5, -0.25, 1.0};
+
+        gpu.size(3, 2);
+        gpu.rand(-1.0, 1.0);
+        gpu.weightInit();
+        gpu.biasInit();
+        gpu.internalActivationFunction(fn);
+        gpu.weightLimits(1e-9, 1e9); // the links stay: only the weights are compared
+        ram.deserialize(gpu.serialize());
+        for (brain::UIType round = 0; round < 3; ++round) {
+            gpu.inputs(inputs);
+            ram.inputs(inputs);
+            (void)gpu.apply();
+            (void)ram.apply();
+            gpu.backpropagation(brain::Values{0.05, -0.02});
+            ram.backpropagation(brain::Values{0.05, -0.02});
+        }
+        ASSERT_TRUE(gpu.onGpu());
+        gpu.inputs(inputs);
+        ram.inputs(inputs);
+        expectNear(gpu.apply(), ram.apply());
+        expectNear(gpu.reduce()->apply(inputs), ram.reduce()->apply(inputs)); // the execution copy follows
+    }
 }

@@ -48,7 +48,7 @@ class INetwork {
         virtual void inputs(const brain::Values& inputs) = 0; // training: load the inputs into the network
         virtual brain::Values apply(void) = 0; // training: execute the network with the loaded inputs (keeps what the backpropagation needs)
         virtual brain::Values apply(const brain::Values& inputs) const = 0; // execution: nothing stored in the network, can be called from several threads at once
-        virtual void backpropagation(const brain::FType coef) = 0; // coef between -1 <-> 1 (100% == perfect, -100% == totally false), can be above or under for a massive change
+        virtual void backpropagation(const brain::FType coef) = 0; // layered network: the error of the output (positive = too high, the output goes down), brain network: a score (positive = good, the links that made the output are strengthened, negative = weakened), the learning rate is already in it
         virtual void backpropagation(const brain::Values& coefs) = 0; // same as above with a special coef for each output
 
         /* setup */

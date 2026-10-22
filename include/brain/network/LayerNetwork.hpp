@@ -47,6 +47,7 @@ class LayerNetwork: public brain::ANetwork {
         std::vector<brain::Values> _outputs; // training: the output of each layer (the inputs are not in it), of the last apply()
 
         // ---------- Pre-Function -------- //
+        void learn_(const brain::Values& errors); // classic backpropagation of the error of each output (the learning rate is already in it): the weights and the biases go down the gradient
         brain::Values forward_(const brain::Values& inputs, std::vector<brain::Values>* sums, std::vector<brain::Values>* outputs) const; // layer after layer, what each layer computed is kept when asked (training)
         void layout_(void); // allocate the neurons and the weights, every one at its default (the weights are lost)
 

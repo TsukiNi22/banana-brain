@@ -48,6 +48,8 @@ class RawBrainNetwork: public brain::BrainNetwork {
         bool _customLimit = false; // true: the hook was replaced (can't be saved)
         std::pair<brain::FType, brain::StepsCapFn> _stepsLimit; // <percentage, hook> limits of the time steps: the smallest of the two is the number of steps of the execution
         bool _customSteps = false; // true: the steps hook was replaced (can't be saved)
+        std::pair<brain::FType, brain::FType> _weightLimits = {BRAIN_WEIGHT_MIN, BRAIN_WEIGHT_MAX}; // <min, max> of the absolute weight: the farthest link of a neuron is removed at the min and the next nearest neuron is linked at the max (backpropagation)
+        bool _orphans = false; // true: the last links of a neuron can be removed (it can end up alone), false: an input keeps an outward link, the others an inward one
         std::pair<brain::UIType, brain::UIType> _placed = {0, 0}; // number of inputs and outputs the neurons were placed for
         std::vector<brain::Values> _states; // training: the state of every neuron at each time step of the last apply() (the first one is the start)
 
@@ -56,9 +58,12 @@ class RawBrainNetwork: public brain::BrainNetwork {
         void resized_(void) final; // the first neurons are the inputs and the last ones the outputs: set the neurons up again when their number changes
         brain::UIType linksCap_(void) const; // number of links allowed for a neuron: min(percentage * neurons, hook(neurons)), between 1 and neurons - 1 (0 with a single neuron)
         brain::UIType stepsCap_(void) const; // time steps of the execution: min(percentage * neurons, hook(neurons)), at least 1
-        void sync_(void); // rebuild the reduced memories (biases and inward links) from the raw ones
+        void learn_(const brain::Values& rewards); // backpropagation through the time steps of the last apply(): the scores reinforce (positive) or weaken (negative) the links that made the outputs, then the links are changed (relink_)
+        bool relink_(const std::vector<brain::RawBrainNeuron>& neurons, std::vector<brain::RawBrainLink>& links); // the farthest link of each neuron is removed when its weight is too small, the next nearest neuron is linked when it is too big (false: nothing changed)
+        void sync_(const std::vector<brain::RawBrainNeuron>& rawNeurons, const std::vector<brain::RawBrainLink>& rawLinks); // from the raw memories already read // rebuild the reduced memories (biases and inward links) from the raw ones
 
         // ------------ Function ---------- //
+        _cold inline void sync_(void) {this->sync_(this->_rawNeurons.toVector(), this->_rawLinks.toVector());}; // rebuild the reduced memories from the raw ones
         _cold _nodiscard static inline brain::UIType defaultCap_(const brain::UIType n) {return static_cast<brain::UIType>(BRAIN_LINKS_CAP_COMPUTING(n));}; // the default hook
         _cold _nodiscard static inline brain::UIType defaultSteps_(const brain::UIType n) {return static_cast<brain::UIType>(BRAIN_STEPS_CAP_COMPUTING(n));}; // the default hook of the time steps
 
@@ -78,6 +83,9 @@ class RawBrainNetwork: public brain::BrainNetwork {
         void weightInit(const brain::FType fallback = 0.01) final;
         void biasInit(const brain::FType fallback = 0.01) final;
 
+        /* setter (weights) */
+        void weightLimits(const brain::FType min, const brain::FType max); // both at once, 0 <= min < max
+
         /* setter (links) */
         void linksCap(const brain::FType percentage); // set the maximum allowed links using the percentage of the neurons (0 < percentage <= 1), sets the neurons and the links up again
         void linksCap(const brain::LinksCapFn& fn); // replace the function to compute the number of allowed links, sets the neurons and the links up again
@@ -90,6 +98,19 @@ class RawBrainNetwork: public brain::BrainNetwork {
         std::unique_ptr<brain::BrainNetwork> reduce(void); // the reduced network (execution only), from the inward links and the biases
 
         // ------------ Function ---------- //
+        /* getter (weights) */
+        _cold _nodiscard inline brain::FType weightMin(void) const {return this->_weightLimits.first;}; // the farthest link of a neuron is removed when the absolute value of its weight falls to it
+        _cold _nodiscard inline brain::FType weightMax(void) const {return this->_weightLimits.second;}; // the next nearest neuron is linked when the absolute value of the weight of the farthest link rises to it
+        _cold _nodiscard inline bool orphans(void) const           {return this->_orphans;}; // true: the last links of a neuron can be removed
+
+        /* setter (weights) */
+        _cold inline void weightMin(const brain::FType min) {this->weightLimits(min, this->_weightLimits.second);}; // 0 <= min < max
+        _cold inline void weightMax(const brain::FType max) {this->weightLimits(this->_weightLimits.first, max);}; // max > min
+
+        /* setter (orphans) */
+        _cold inline void allowOrphans(void)    {this->_orphans = true;}; // the backpropagation can remove the last link of a neuron (an input without outward link, an other without inward link, even alone)
+        _cold inline void disallowOrphans(void) {this->_orphans = false;}; // default: an input keeps an outward link, the others an inward one
+
         _cold _nodiscard std::size_t memory(void) const final {return this->brain::BrainNetwork::memory() + this->_rawNeurons.bytes() + this->_rawLinks.bytes();}; // the execution copy and the raw memories
 
         /* getter (links, steps) */

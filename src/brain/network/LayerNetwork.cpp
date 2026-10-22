@@ -223,8 +223,10 @@ _hot void brain::LayerNetwork::backpropagation(const brain::FType coef)
     // check inputs
     if (!std::isfinite(coef)) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "the coefficient should be a finite number");
+    } else if (this->_layers.empty()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "the network has no layer");
     }
-    /* Nothing */
+    this->learn_(brain::Values(this->_layers.back(), coef));
 }
 
 _hot void brain::LayerNetwork::backpropagation(const brain::Values& coefs)
@@ -234,8 +236,51 @@ _hot void brain::LayerNetwork::backpropagation(const brain::Values& coefs)
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "no coefficients given");
     } else if (this->_ioSize.second != 0 && coefs.size() != this->_ioSize.second) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(coefs.size()) + ", expected " + std::to_string(this->_ioSize.second));
+    } else if (this->_layers.empty() || coefs.size() != this->_layers.back()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(coefs.size()) + ", the last layer has " + std::to_string(this->_layers.empty() ? 0 : this->_layers.back()) + " neurons");
     }
-    /* Nothing */
+    for (const brain::FType coef: coefs) {
+        if (!std::isfinite(coef)) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "the coefficients should be finite numbers");
+        }
+    }
+    this->learn_(coefs);
+}
+
+_hot void brain::LayerNetwork::learn_(const brain::Values& errors)
+{
+    // the sums and the outputs of the last apply() are what the gradient is made of
+    if (this->_sums.size() != this->_layers.size() || this->_outputs.size() != this->_layers.size()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "nothing to learn from, call apply() first");
+    }
+
+    // the memories stored on the gpu are changed there (an external activation function can only run on the host)
+    if (this->_neurons.isOnGpu() && !this->_activationFunction.second && brain::tools::gpu::layersBack(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), this->_layers, this->_activationFunction.first, this->_inputs, this->_sums, this->_outputs, errors)) return;
+    std::vector<brain::LayerNeuron> neurons = this->_neurons.toVector();
+    std::vector<brain::FType> weights = this->_weights.toVector();
+    brain::Values delta = errors; // error of the outputs of the layer, from the last one to the first one
+    brain::UIType first = neurons.size();
+
+    for (brain::UIType l = this->_layers.size(); l-- > 0;) {
+        const brain::UIType size = this->_layers[l];
+        const brain::Values& previous = l == 0 ? this->_inputs : this->_outputs[l - 1];
+        brain::Values below(l == 0 ? 0 : this->_layers[l - 1], 0.0); // error given to the previous layer
+
+        first -= size;
+        for (brain::UIType k = 0; k < size; ++k) {
+            brain::LayerNeuron& neuron = neurons[first + k];
+            const brain::FType slope = delta[k] * this->derivative_(this->_sums[l][k], this->_outputs[l][k]);
+
+            for (brain::UIType j = 0; j < neuron.count; ++j) {
+                if (l > 0) below[j] += slope * weights[neuron.incoming + j]; // with the weight before the update
+                weights[neuron.incoming + j] -= slope * previous[j];
+            }
+            neuron.bias -= slope;
+        }
+        delta = std::move(below);
+    }
+    this->_neurons.store(neurons);
+    this->_weights.store(weights);
 }
 
 _cold void brain::LayerNetwork::weightInit(const brain::FType fallback)

@@ -192,6 +192,21 @@ _hot brain::FType brain::ANetwork::activate_(const brain::FType value) const
     }
 }
 
+_hot brain::FType brain::ANetwork::derivative_(const brain::FType sum, const brain::FType output) const
+{
+    // an external function has no known derivative: estimated around the sum
+    if (this->_activationFunction.second) {
+        const brain::FType step = static_cast<brain::FType>(1e-3);
+
+        return (this->_activationFunction.second(sum + step) - this->_activationFunction.second(sum - step)) / (static_cast<brain::FType>(2.0) * step);
+    }
+    switch (this->_activationFunction.first) {
+        case brain::ActivationFunction::Sigmoid: return output * (static_cast<brain::FType>(1.0) - output);
+        case brain::ActivationFunction::ReLU:    return sum > 0 ? static_cast<brain::FType>(1.0) : static_cast<brain::FType>(0.0);
+        default: return static_cast<brain::FType>(1.0); // none, linear
+    }
+}
+
 _cold void brain::ANetwork::size(const brain::UIType input, const brain::UIType output)
 {
     const std::pair<brain::UIType, brain::UIType> previous = this->_ioSize;

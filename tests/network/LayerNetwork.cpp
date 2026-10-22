@@ -379,3 +379,64 @@ TEST(LayerNetwork, DeserializeRefusesNeuronsThatDontMatchTheLayers) {
     bad = layerBytes({2, 1}, 2, {1.0, 2.0, 3.0, 4.0, 0.5}, {0.5, 0.0, 1.0}); // a neuron reads a weight that does not exist
     EXPECT_TRUE(throwsCode([&] {network.deserialize(bad);}, utils::exception::ExternalCode::InvalidNetworkFile));
 }
+
+/* ------------------------------- backpropagation ------------------------------- */
+TEST(LayerNetwork, BackpropagationNeedsAnApply) {
+    brain::LayerNetwork network(brain::Layers{3, 2}, utils::system::MemoryMode::Ram);
+
+    network.size(2, 2);
+    EXPECT_THROW(network.backpropagation(0.5), utils::exception::IException); // no apply() yet
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    EXPECT_NO_THROW(network.backpropagation(0.5));
+    EXPECT_THROW(network.backpropagation(std::nanf("")), utils::exception::IException);
+    EXPECT_THROW(network.backpropagation(brain::Values{0.1}), utils::exception::IException); // 1 coefficient for 2 outputs
+    EXPECT_THROW(network.backpropagation(brain::Values{0.1, std::nanf("")}), utils::exception::IException);
+}
+
+TEST(LayerNetwork, BackpropagationGoesDownTheGradient) {
+    for (const brain::ActivationFunction fn: {brain::ActivationFunction::None, brain::ActivationFunction::Sigmoid, brain::ActivationFunction::ReLU}) {
+        brain::LayerNetwork network(brain::Layers{4, 1}, utils::system::MemoryMode::Ram);
+        const brain::Values inputs = {0.6, -0.3};
+        const brain::FType expected = 0.25f;
+
+        network.size(2, 1);
+        network.rand(0.1, 0.9);
+        network.weightInit();
+        network.biasInit();
+        network.internalActivationFunction(fn);
+        network.inputs(inputs);
+        const brain::FType first = std::abs(network.apply()[0] - expected);
+        for (brain::UIType round = 0; round < 300; ++round) {
+            network.inputs(inputs);
+            network.backpropagation(0.1f * (network.apply()[0] - expected)); // the error of the output, times the learning rate
+        }
+        network.inputs(inputs);
+        EXPECT_LT(std::abs(network.apply()[0] - expected), std::max(first * 0.2f, 0.01f)) << "activation " << static_cast<int>(fn);
+    }
+}
+
+TEST(LayerNetwork, BackpropagationMatchesTheNumericalGradient) {
+    brain::LayerNetwork network(brain::Layers{3, 2}, utils::system::MemoryMode::Ram);
+    const brain::Values inputs = {0.4, -0.7};
+    const brain::Values errors = {1.0, -0.5};
+
+    network.size(2, 2);
+    network.rand(-1.0, 1.0);
+    network.weightInit();
+    network.biasInit();
+    network.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+    const brain::Bytes start = network.serialize();
+
+    // the loss L = sum(error_k * output_k): its gradient is what one step with these errors moves, so L goes down
+    network.inputs(inputs);
+    const brain::Values before = network.apply();
+    network.backpropagation(errors);
+    network.inputs(inputs);
+    const brain::Values after = network.apply();
+    const brain::FType lossBefore = errors[0] * before[0] + errors[1] * before[1];
+    const brain::FType lossAfter = errors[0] * after[0] + errors[1] * after[1];
+
+    EXPECT_NE(network.serialize(), start);
+    EXPECT_LT(lossAfter, lossBefore);
+}

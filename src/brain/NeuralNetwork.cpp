@@ -86,6 +86,21 @@ _cold void brain::NeuralNetwork::init<brain::NetworkType::Brain>(const brain::UI
     std::unique_ptr<brain::INetwork> network = std::make_unique<brain::RawBrainNetwork>(neurons, size); // the network checks its parameters, the actual one is kept on an error
     this->clear();
     this->_network = std::move(network);
+    this->warnLoss_();
+}
+
+_cold void brain::NeuralNetwork::warnLoss_(void) const
+{
+    if (this->_lossFunction.first == brain::LossFunction::MSE && !this->_lossFunction.second && dynamic_cast<const brain::RawBrainNetwork*>(this->_network.get())) {
+        std::cerr << utils::exception::WarningException(utils::exception::ExternalCode::ErrorLossOnBrain).formated() << std::endl;
+    }
+}
+
+_cold void brain::NeuralNetwork::internalLossFunction(const brain::LossFunction fn)
+{
+    this->requireUnfrozen();
+    this->_lossFunction = {fn, nullptr};
+    this->warnLoss_();
 }
 
 _cold void brain::NeuralNetwork::size(const brain::UIType input, const brain::UIType output)
