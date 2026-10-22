@@ -58,6 +58,23 @@
             "restrictions": ["Fatal", "Error", "Warning"]
         },
         {
+            "code": "ReadOnlyNetwork",
+            "message": "A reduced network can only be executed, the training is done on a raw network",
+            "restrictions": ["Fatal", "Error"]
+        },
+        {
+            "code": "CustomRandomRequired",
+            "message": "The network used a custom random function, it can't be restored from a file",
+            "info": "Give it again with rand()",
+            "restrictions": ["Error", "Warning"]
+        },
+        {
+            "code": "CustomLinksCapRequired",
+            "message": "The network used a custom links cap function, it can't be restored from a file",
+            "info": "Give it again with linksCap()",
+            "restrictions": ["Error", "Warning"]
+        },
+        {
             "code": "CustomActivationRequired",
             "message": "The network used a custom activation function, it can't be restored from a file",
             "info": "Give it again with activationFunction()",

@@ -24,9 +24,9 @@ File Description:
     /* INCLUDE */
 
     /* type */
-    #include "../NetworkDefine.hpp"    // brain::ActivationFunction
-    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::RandFn, brain::ActivationFn
-    #include <utility>              // std::pair
+    #include "../NetworkDefine.hpp"   // brain::ActivationFunction
+    #include "../NetworkType.hpp"     // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::RandFn, brain::ActivationFn
+    #include <utility>                // std::pair
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -41,11 +41,12 @@ class INetwork {
         // ---------- Pre-Function -------- //
         /* serialization */
         virtual brain::Bytes serialize(void) const = 0; // every info needed to rebuild the network (neurons, weights, bias...)
-        virtual void deserialize(const brain::Bytes& data) = 0; // rebuild the network from the data given by serialize()
+        virtual void deserialize(const brain::Bytes& data) = 0; // rebuild the network from the data given by serialize() (the common part is read first: on an invalid data use a new network, brain::NeuralNetwork::load does)
 
         /* execution */
-        virtual void inputs(const brain::Values& inputs) const = 0; // load the inputs into the network
-        virtual brain::Values apply(void) const = 0; // execute the network with the given inputs
+        virtual void inputs(const brain::Values& inputs) = 0; // training: load the inputs into the network
+        virtual brain::Values apply(void) = 0; // training: execute the network with the loaded inputs (keeps what the backpropagation needs)
+        virtual brain::Values apply(const brain::Values& inputs) const = 0; // execution: nothing stored in the network, can be called from several threads at once
         virtual void backpropagation(const brain::FType coef) = 0; // coef between -1 <-> 1 (100% == perfect, -100% == totally false), can be above or under for a massive change
         virtual void backpropagation(const brain::Values& coefs) = 0; // same as above with a special coef for each output
 
