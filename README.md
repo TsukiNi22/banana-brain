@@ -7,7 +7,7 @@ C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling se
 Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
 
 > [!NOTE]
-> The library is in progress (the tag `v0.0.0` was the architecture only). Written: the checks and errors of every function, the memories of the neurons (`utils::system::HybridMemory`, GPU when available), the default setup of the three networks, the serialization (`save` / `load`) and the tools. The forward pass of the three networks is written (`apply`, `exec`); **not written yet**: the backpropagation of the networks.
+> The library is in progress (the tag `v0.0.0` was the architecture only). Written: the checks and errors of every function, the memories of the neurons (`utils::system::HybridMemory`, GPU when available), the default setup of the three networks, the serialization (`save` / `load`) and the tools. The forward pass and the backpropagation of the networks are written.
 
 ### Table of Contents
  - [Dependencies](#dependencies)
@@ -206,7 +206,15 @@ The random generator of the library (`brain::tools::generator`, used by every ra
 ### Execution
 - `LayerNetwork`: layer after layer, each neuron is `activation(bias + Σ weight × output of the previous layer)`; the inputs feed the first layer and the outputs are the last layer.
 - `BrainNetwork` / `RawBrainNetwork`: **time steps**. The first `input` neurons (ids `0..input-1`) hold the inputs, the last `output` neurons (ids `n-output..n-1`) are the outputs (`size(input, output)` is needed), and at each step every other neuron computes `activation(bias + Σ weight × output of the neuron it is linked to, at the previous step)`; the outputs are read after the last step. On a `RawBrainNetwork` the input neurons are placed on the left edge of the space and the output ones on the right edge, evenly spread; changing the sizes places the neurons again.
-- The number of steps is `min(percentage × neurons, hook(neurons))`, at least 1 (`stepsCap(percentage | fn)`, `resetStepsCap()`, getter `stepsCap()`, same as `linksCap`; default: 25 % of the neurons and `2 log2(n)`, `BRAIN_STEPS_CAP_*`). `threshold(value)` / `threshold()` cancel (set to 0) a signal whose absolute value is under it at each step, to stop signals too weak to matter (`BRAIN_SIGNAL_THRESHOLD`, a placeholder at 0 = nothing cancelled).
+- The number of steps is `min(percentage × neurons, hook(neurons))`, at least 1 (`stepsCap(percentage | fn)`, `resetStepsCap()`, getter `stepsCap()`, same as `linksCap`; default: 25 % of the neurons and `4 log2(n)`, `BRAIN_STEPS_CAP_*`). `threshold(value)` / `threshold()` cancel (set to 0) a signal whose absolute value is under it at each step, to stop signals too weak to matter (`BRAIN_SIGNAL_THRESHOLD`, a placeholder at 0 = nothing cancelled).
+
+### Backpropagation
+- `backpropagation(coef | coefs)` follows an `apply()` (the sums, outputs and states of it are kept). The learning rate is already in the coefficients (`train` multiplies the loss by it).
+- `LayerNetwork`: the classic one. A coefficient is the error of an output (positive = too high): the weights and biases go down the gradient, layer by layer (derivative of the activation; estimated around the sum for an external function).
+- `RawBrainNetwork`: a coefficient is a **score** (positive = good): going back through the time steps, the links and biases that made the output are strengthened, the ones of a negative score weakened; a link and its clone keep the same weight. The mean squared error is an error and not a score: setting it for a brain network warns (`ErrorLossOnBrain`).
+- The links change too: the farthest link of a neuron is removed when `|weight| <= weightMin()` and the next nearest neuron is linked when `|weight| >= weightMax()` (within the links cap; `BRAIN_WEIGHT_MIN` 0.01, `BRAIN_WEIGHT_MAX` 2.0, setters `weightMin`, `weightMax`, `weightLimits`). It never removes the last link of a neuron, nor the last inward link of an output or hidden neuron, nor the last outward link of an input, unless `allowOrphans()` (`disallowOrphans()` by default). The limits and the mode are saved in the `.rbn`.
+
+The weights and biases are updated on the gpu when the memories are stored there (CUDA, activation not external); the links that change with the weights are then read back and rebuilt on the host.
 
 ### Save / load
 `save(path)` / `load(path)` write and read the network (`NeuralNetwork`), `serialize()` / `deserialize(bytes)` do it in memory (each network).
