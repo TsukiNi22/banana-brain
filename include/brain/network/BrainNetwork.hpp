@@ -59,9 +59,6 @@ class BrainNetwork: public brain::ANetwork {
         /* serialization */
         brain::Bytes serialize(void) const override;
 
-        /* execution */
-        using brain::ANetwork::apply;
-
         // ------------ Function ---------- //
         /* serialization */
         _cold void deserialize(const brain::Bytes& data) override {this->deserializeBody_(data, this->deserializeHeader_(data, static_cast<std::uint8_t>(BRAIN_MAGIC_BRAIN)));};
