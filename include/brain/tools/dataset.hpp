@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 21/10/2026 by @author Tsukini
 
 File Name:
 ##  @file dataset.hpp
@@ -28,6 +28,7 @@ File Description:
     #include <utils/utils.hpp>      // _hot, _cold, _nodiscard
     #include "../NetworkType.hpp"   // brain::IType, brain::FType, brain::Values, brain::Dataset
     #include <utility>              // std::pair
+    #include <cstring>              // std::memcpy
     #include <string>               // std::string
 
 namespace brain::tools { // namespace start
@@ -35,8 +36,23 @@ namespace brain::tools { // namespace start
 /* PROTOTYPE */
 
 /* conversion */
-_hot _nodiscard brain::Values text_to_input(const std::string& text); // can be not what you want
-_hot _nodiscard std::string input_to_text(const brain::Values& input); // doesn't ensure the validity of the output
+_hot _nodiscard inline brain::Values text_to_input(const std::string& s) // can be not what you want
+{
+    brain::Values input((s.size() + sizeof(brain::FType) - 1) / sizeof(brain::FType));
+    std::memcpy(input.data(), s.data(), s.size());
+    return input;
+}
+
+template<bool round = false>
+_hot _nodiscard inline std::string input_to_text(const brain::Values& input) // doesn't ensure the validity of the output
+{
+    std::string s(input.size() * sizeof(brain::FType), '\0');
+    std::memcpy(s.data(), input.data(), input.size() * sizeof(brain::FType));
+    if constexpr (round) {
+        while (!s.empty() && s.back() == '\0') s.pop_back();
+    }
+    return s;
+}
 
 /* dataset */
 _cold void shuffle(brain::Dataset& inputs, const brain::IType seed = 0); // shuffle the samples order (seed == 0 -> random seed)

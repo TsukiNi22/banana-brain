@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 21/10/2026 by @author Tsukini
 
 File Name:
 ##  @file dataset.cpp
@@ -26,18 +26,6 @@ File Description:
 #include <utility>
 #include <random>
 #include <string>
-
-_hot brain::Values brain::tools::text_to_input(const std::string& text)
-{
-    /* Nothing */
-    return {};
-}
-
-_hot std::string brain::tools::input_to_text(const brain::Values& input)
-{
-    /* Nothing */
-    return {};
-}
 
 _cold void brain::tools::shuffle(brain::Dataset& inputs, const brain::IType seed)
 {
