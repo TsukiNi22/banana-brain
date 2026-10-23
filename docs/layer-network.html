@@ -502,6 +502,46 @@ details.quiz > :not(summary) { padding: 0 14px; }
   dfn[data-def]:focus::after { left: 0; max-width: min(300px, 86vw); }
 }
 @media print { .stepper .controls, .level-switch { display: none; } .stepper svg .off { opacity: 1; } }
+
+/* Live simulations: a network drawn in 2D that runs forward then learns, over and over */
+.viz { border: 1px solid var(--border); border-radius: 10px; background: var(--bg); padding: 14px 16px; margin: 16px 0; }
+.viz-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.viz-bar button, .viz-bar select { font: inherit; font-size: 14px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; min-height: 36px; cursor: pointer; }
+.viz-bar button:hover, .viz-bar select:hover { border-color: var(--accent); }
+.viz-bar button:focus-visible, .viz-bar select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.viz-bar button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.viz-stats { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; color: var(--muted); margin: 8px 0 4px; }
+.viz-stats b { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
+.viz-phase { font-size: 14px; min-height: 1.6em; color: var(--text); }
+.viz-phase b { color: var(--accent); }
+.viz-draw { overflow-x: auto; }
+.viz svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.viz .vz-node { fill: var(--surface); stroke: var(--line); stroke-width: 1.4; }
+.viz .vz-node.vz-io { stroke: var(--accent); }
+.viz .vz-fill { fill: var(--accent); transition: fill-opacity .25s; }
+.viz .vz-ring { fill: none; stroke-width: 2; transition: stroke-opacity .25s; }
+.viz .vz-ring.vz-pos { stroke: var(--ok); }
+.viz .vz-ring.vz-neg { stroke: var(--warn); }
+.viz .vz-edge { fill: none; stroke-linecap: round; stroke-opacity: .45; transition: stroke-opacity .25s, stroke-width .25s; }
+.viz .vz-edge.vz-pos { stroke: var(--accent); }
+.viz .vz-edge.vz-neg { stroke: var(--warn); }
+.viz .vz-edge.vz-hot { stroke-opacity: 1; }
+.viz .vz-edge.vz-new { stroke: var(--ok); stroke-opacity: 1; stroke-dasharray: 6 4; }
+.viz .vz-edge.vz-gone { stroke: var(--warn); stroke-opacity: .7; stroke-dasharray: 2 4; }
+.viz .vz-val { fill: var(--text); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.viz .vz-val.vz-on { fill: var(--surface); }
+.viz .vz-tag { fill: var(--muted); font-size: 11px; }
+.viz .vz-spark { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.viz .vz-axis { stroke: var(--border); }
+.viz-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.viz-legend i { display: inline-block; width: 22px; height: 0; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.viz-legend i.neg { border-top-color: var(--warn); }
+.viz-legend i.new { border-top: 3px dashed var(--ok); }
+.viz-legend i.gone { border-top: 3px dotted var(--warn); }
+.viz-legend i.hot { border-top-width: 5px; }
+@media (max-width: 600px) { .viz { padding: 10px; } .viz-bar button, .viz-bar select { min-height: 44px; font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .viz .vz-fill, .viz .vz-ring, .viz .vz-edge { transition: none; } }
+@media print { .viz-bar { display: none; } }
 </style>
 </head>
 <body>
@@ -546,10 +586,11 @@ details.quiz > :not(summary) { padding: 0 14px; }
   <a href="#how">2. <span data-lang="en">How it works</span><span data-lang="fr">Comment ça marche</span></a>
   <a href="#size">3. <span data-lang="en">Size and cost</span><span data-lang="fr">Taille et coût</span></a>
   <a href="#try">4. <span data-lang="en">Try it</span><span data-lang="fr">Essayer</span></a>
-  <a href="#example">5. <span data-lang="en">Worked example</span><span data-lang="fr">Exemple détaillé</span></a>
-  <a href="#pitfalls">6. <span data-lang="en">Pitfalls</span><span data-lang="fr">Pièges</span></a>
-  <a href="#check">7. <span data-lang="en">Check yourself</span><span data-lang="fr">Vérifier</span></a>
-  <a href="#glossary">8. <span data-lang="en">Glossary & sources</span><span data-lang="fr">Glossaire et sources</span></a>
+  <a href="#watch">5. <span data-lang="en">Watch it learn</span><span data-lang="fr">Le voir apprendre</span></a>
+  <a href="#example">6. <span data-lang="en">Worked example</span><span data-lang="fr">Exemple détaillé</span></a>
+  <a href="#pitfalls">7. <span data-lang="en">Pitfalls</span><span data-lang="fr">Pièges</span></a>
+  <a href="#check">8. <span data-lang="en">Check yourself</span><span data-lang="fr">Vérifier</span></a>
+  <a href="#glossary">9. <span data-lang="en">Glossary & sources</span><span data-lang="fr">Glossaire et sources</span></a>
 </aside>
 <main>
 <header>
@@ -659,8 +700,29 @@ details.quiz > :not(summary) { padding: 0 14px; }
 </section>
 
 <!-- 5 -->
+<section id="watch">
+  <h2>5. <span data-lang="en">Watch it learn</span><span data-lang="fr">Le voir apprendre</span></h2>
+  <p data-level="simple"><span data-lang="en">The same kind of network learning a classic problem, XOR: the output must be 1 when exactly one input is 1. Each sample goes in on the left, the values light up layer by layer, the error is computed, then the backpropagation changes the weights (thickness, colour) and the biases (rings). <em>New random network</em> draws other weights and biases (as <code>weightInit()</code> and <code>biasInit()</code> do). Run it fast to see the error fall.</span><span data-lang="fr">Le même genre de réseau qui apprend un problème classique, le XOR : la sortie doit valoir 1 quand exactement une entrée vaut 1. Chaque exemple entre à gauche, les valeurs s'allument couche par couche, l'erreur est calculée, puis la rétropropagation change les poids (épaisseur, couleur) et les biais (anneaux). <em>Nouveau réseau aléatoire</em> tire d'autres poids et biais (comme <code>weightInit()</code> et <code>biasInit()</code>). Lancez-le en rapide pour voir l'erreur tomber.</span></p>
+  <p data-level="technical"><span data-lang="en">Layers <code>{4, 1}</code>, 2 inputs, sigmoid, weights and biases drawn in [−1, 1] (<code>weightInit()</code> and <code>biasInit()</code> with the default <code>rand(-1, 1)</code>; without them the weights are 1.0 and the biases 0.0), learning rate 1.5, coefficient <code>1.5·(y − t)</code> after each sample, the four samples in turn. The page runs the same rules as <code>forward_</code> / <code>learn_</code>: from a mean error of 0.50 it reaches about 0.04 after 800 rounds.</span><span data-lang="fr">Couches <code>{4, 1}</code>, 2 entrées, sigmoïde, poids et biais tirés dans [−1, 1] (<code>weightInit()</code> et <code>biasInit()</code> avec le <code>rand(-1, 1)</code> par défaut ; sans eux les poids valent 1.0 et les biais 0.0), taux 1.5, coefficient <code>1.5·(y − t)</code> après chaque exemple, les quatre exemples à tour de rôle. La page applique les mêmes règles que <code>forward_</code> / <code>learn_</code> : partie d'une erreur moyenne de 0.50, elle atteint environ 0.04 après 800 tours.</span></p>
+  <div class="viz" id="vizLayer">
+    <div class="viz-bar">
+      <button type="button" data-act="play" aria-pressed="false">Play</button>
+      <button type="button" data-act="step"><span data-lang="en">Step</span><span data-lang="fr">Pas</span></button>
+      <button type="button" data-act="reset"><span data-lang="en">Reset</span><span data-lang="fr">Recommencer</span></button>
+      <button type="button" data-act="random"><span data-lang="en">New random network</span><span data-lang="fr">Nouveau réseau aléatoire</span></button>
+      <button type="button" data-act="example"><span data-lang="en">Back to the example</span><span data-lang="fr">Revenir à l'exemple</span></button>
+      <select aria-label="Speed"><option value="slow" data-en="Animated" data-fr="Animé">Animated</option><option value="fast" data-en="Fast (1 round per frame)" data-fr="Rapide (1 tour par image)">Fast (1 round per frame)</option><option value="turbo" data-en="Very fast (25 rounds)" data-fr="Très rapide (25 tours)">Very fast (25 rounds)</option></select>
+    </div>
+    <p class="viz-phase"></p>
+    <div class="viz-draw"><svg viewBox="0 0 760 360" role="img" aria-label="Live simulation of the network"></svg></div>
+    <div class="viz-stats"><span><span data-lang="en">Seed</span><span data-lang="fr">Seed</span> <b data-stat="seed">–</b></span><span><span data-lang="en">Rounds</span><span data-lang="fr">Tours</span> <b data-stat="round">0</b></span><span><span data-lang="en">Mean error</span><span data-lang="fr">Erreur moyenne</span> <b data-stat="error">–</b></span><span><span data-lang="en">Outputs</span><span data-lang="fr">Sorties</span> <b data-stat="outs">–</b></span></div>
+  </div>
+  <div class="viz-legend"><span><i></i><span data-lang="en">positive weight</span><span data-lang="fr">poids positif</span></span><span><i class="neg"></i><span data-lang="en">negative weight</span><span data-lang="fr">poids négatif</span></span><span><i class="hot"></i><span data-lang="en">used / changed now</span><span data-lang="fr">utilisé / modifié maintenant</span></span><span><span data-lang="en">fill = output of the neuron, ring = bias</span><span data-lang="fr">remplissage = sortie du neurone, anneau = biais</span></span></div>
+</section>
+
+<!-- 6 -->
 <section id="example">
-  <h2>5. <span data-lang="en">Worked example</span><span data-lang="fr">Exemple détaillé</span></h2>
+  <h2>6. <span data-lang="en">Worked example</span><span data-lang="fr">Exemple détaillé</span></h2>
   <p><span data-lang="en">The figure of section 2 in code: build the network, run it, give the error, run it again.</span><span data-lang="fr">La figure de la section 2 en code : construire le réseau, l'exécuter, donner l'erreur, l'exécuter à nouveau.</span></p>
 <pre data-title="main.cpp"><code>brain::LayerNetwork network(brain::Layers{2, 1}); // 2 hidden neurons, 1 output
 network.size(2, 1); // 2 inputs, 1 output
@@ -675,9 +737,9 @@ network.inputs({1.0, 0.5});
   <p><span data-lang="en">After 100 steps with the same rate the output reaches 0.922 (section 4 computes it live).</span><span data-lang="fr">Après 100 pas au même taux, la sortie atteint 0.922 (la section 4 le calcule en direct).</span></p>
 </section>
 
-<!-- 6 -->
+<!-- 7 -->
 <section id="pitfalls">
-  <h2><span data-level="simple">6. <span data-lang="en">Common mistakes</span><span data-lang="fr">Erreurs courantes</span></span><span data-level="technical">6. <span data-lang="en">Pitfalls</span><span data-lang="fr">Pièges</span></span></h2>
+  <h2><span data-level="simple">7. <span data-lang="en">Common mistakes</span><span data-lang="fr">Erreurs courantes</span></span><span data-level="technical">7. <span data-lang="en">Pitfalls</span><span data-lang="fr">Pièges</span></span></h2>
   <ul data-level="simple">
     <li><span data-lang="en"><strong>"Any number works as the error."</strong> The coefficient must say <em>which way</em> the answer is wrong: positive = too high, negative = too low. A squared error (always positive) would push every answer down.</span><span data-lang="fr"><strong>« N'importe quel nombre sert d'erreur. »</strong> Le coefficient doit dire <em>dans quel sens</em> la réponse est fausse : positif = trop haute, négatif = trop basse. Une erreur au carré (toujours positive) pousserait toutes les réponses vers le bas.</span></li>
     <li><span data-lang="en"><strong>"Bigger steps learn faster."</strong> Up to a point: a too big rate jumps over the right answer and swings around it (try a rate of 3 in section 4).</span><span data-lang="fr"><strong>« De plus grands pas apprennent plus vite. »</strong> Jusqu'à un certain point : un taux trop grand saute par-dessus la bonne réponse et oscille autour (essayez un taux de 3 dans la section 4).</span></li>
@@ -691,9 +753,9 @@ network.inputs({1.0, 0.5});
   </ul>
 </section>
 
-<!-- 7 -->
+<!-- 8 -->
 <section id="check">
-  <h2>7. <span data-lang="en">Check yourself</span><span data-lang="fr">Vérifier</span></h2>
+  <h2>8. <span data-lang="en">Check yourself</span><span data-lang="fr">Vérifier</span></h2>
   <details class="quiz"><summary><span data-level="simple"><span data-lang="en">The answer is 0.9 and should be 0.2: is the coefficient positive or negative?</span><span data-lang="fr">La réponse vaut 0.9 et devrait valoir 0.2 : le coefficient est-il positif ou négatif ?</span></span><span data-level="technical"><span data-lang="en">Sign of <code>backpropagation(rate·(y − t))</code> for y = 0.9, t = 0.2?</span><span data-lang="fr">Signe de <code>backpropagation(taux·(y − t))</code> pour y = 0.9, t = 0.2 ?</span></span></summary>
     <p><span data-level="simple"><span data-lang="en">Positive: the answer is too high, so the weights move to lower it.</span><span data-lang="fr">Positif : la réponse est trop haute, donc les poids bougent pour la baisser.</span></span><span data-level="technical"><span data-lang="en">Positive (rate·0.7): each weight moves by <code>−δ·o<sub>prev</sub></code>, the output goes down.</span><span data-lang="fr">Positif (taux·0.7) : chaque poids bouge de <code>−δ·o<sub>préc</sub></code>, la sortie descend.</span></span></p>
   </details>
@@ -702,9 +764,9 @@ network.inputs({1.0, 0.5});
   </details>
 </section>
 
-<!-- 8 -->
+<!-- 9 -->
 <section id="glossary">
-  <h2>8. <span data-lang="en">Glossary & sources</span><span data-lang="fr">Glossaire et sources</span></h2>
+  <h2>9. <span data-lang="en">Glossary & sources</span><span data-lang="fr">Glossaire et sources</span></h2>
   <div class="table-wrap"><table>
     <thead><tr><th><span data-lang="en">Term</span><span data-lang="fr">Terme</span></th><th><span data-lang="en">Meaning</span><span data-lang="fr">Sens</span></th></tr></thead>
     <tbody>
@@ -775,6 +837,262 @@ explain.play('train', function (v) {
   draw(out, t);
   return { x1: (+v.x1).toFixed(1), x2: (+v.x2).toFixed(1), t: t.toFixed(2), lr: lr.toFixed(1), n: n, before: explain.fmt(out[0], 3), after: explain.fmt(out[out.length - 1], 3), e0: explain.fmt(Math.abs(out[0] - t), 3), e1: explain.fmt(Math.abs(out[out.length - 1] - t), 3) };
 });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+// Simulations of the networks of banana-brain, same rules as the C++ code (LayerNetwork forward_ / learn_, RawBrainNetwork init_ / apply / learn_ / relink_)
+function rng(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function sigm(x) { return 1 / (1 + Math.exp(-x)); }
+
+// ---------- layered network ----------
+function LayerSim(sizes, seed) { // sizes = [inputs, layer1, ..., output]
+  var r = rng(seed); this.sizes = sizes; this.layers = [];
+  for (var l = 1; l < sizes.length; l++) {
+    var layer = [];
+    for (var k = 0; k < sizes[l]; k++) { var w = []; for (var j = 0; j < sizes[l - 1]; j++) w.push(r() * 2 - 1); layer.push({ w: w, b: r() * 2 - 1 }); }
+    this.layers.push(layer);
+  }
+}
+LayerSim.prototype.forward = function (x) {
+  var outs = [x.slice()], sums = [];
+  for (var l = 0; l < this.layers.length; l++) {
+    var prev = outs[l], s = [], o = [];
+    this.layers[l].forEach(function (n) { var v = n.b; for (var j = 0; j < prev.length; j++) v += n.w[j] * prev[j]; s.push(v); o.push(sigm(v)); });
+    sums.push(s); outs.push(o);
+  }
+  this.last = { outs: outs, sums: sums }; return outs[outs.length - 1];
+};
+LayerSim.prototype.learn = function (errors) { // errors = rate * (output - expected), classic descent
+  var outs = this.last.outs, delta = errors.slice(), changes = [];
+  for (var l = this.layers.length - 1; l >= 0; l--) {
+    var prev = outs[l], below = new Array(prev.length).fill(0), ch = [];
+    for (var k = 0; k < this.layers[l].length; k++) {
+      var n = this.layers[l][k], o = outs[l + 1][k], slope = delta[k] * o * (1 - o), row = [];
+      for (var j = 0; j < prev.length; j++) { below[j] += slope * n.w[j]; var d = slope * prev[j]; n.w[j] -= d; row.push(-d); }
+      n.b -= slope; ch.push({ w: row, b: -slope });
+    }
+    changes.unshift(ch); delta = below;
+  }
+  return changes;
+};
+
+// ---------- raw brain network ----------
+function BrainSim(opt) {
+  var r = this.r = rng(opt.seed); this.n = opt.neurons; this.input = opt.input; this.output = opt.output;
+  this.cap = opt.cap; this.steps = opt.steps; this.min = opt.min; this.max = opt.max; this.threshold = opt.threshold || 0;
+  var W = opt.width, H = opt.height, n = this.n, pos = [], range = opt.range || 1; // weightInit / biasInit in rand(-range, range)
+  for (var i = 0; i < n; i++) {
+    if (i < this.input) pos.push({ x: 0, y: (i + 0.5) * H / this.input });
+    else if (i >= n - this.output) pos.push({ x: W, y: (i - (n - this.output) + 0.5) * H / this.output });
+    else pos.push({ x: r() * W, y: r() * H });
+  }
+  this.pos = pos; this.bias = new Array(n).fill(0);
+  this.links = []; for (var i2 = 0; i2 < n * this.cap; i2++) this.links.push(null); // {id, w, inward}
+  var used = new Array(n).fill(0);
+  for (var owner = 0; owner < n; owner++) {
+    var target = this.cap; // as many links as the cap allows
+    var order = this.near(owner);
+    for (var q = 0; q < order.length && used[owner] < target; q++) {
+      var other = order[q];
+      if (this.slotOf(owner, other) >= 0 || used[other] >= this.cap) continue;
+      var canReceive = owner >= this.input && other < n - this.output, canSend = owner < n - this.output && other >= this.input;
+      if (!canReceive && !canSend) continue;
+      var receive = canReceive && (!canSend || r() < 0.5);
+      this.links[owner * this.cap + used[owner]++] = { id: other, w: 1, inward: receive }; // 1.0 by default, the weightInit below draws them
+      this.links[other * this.cap + used[other]++] = { id: owner, w: 1, inward: !receive };
+    }
+  }
+  // weightInit / biasInit in [-1, 1], the clone keeps the same weight
+  for (var o = 0; o < n; o++) for (var s = 0; s < this.cap; s++) { var L = this.links[o * this.cap + s]; if (L && L.inward) { L.w = (r() * 2 - 1) * range; this.clone(o, L).w = L.w; } }
+  for (var b = this.input; b < n; b++) this.bias[b] = (r() * 2 - 1) * range;
+}
+BrainSim.prototype.d2 = function (a, b) { var dx = this.pos[a].x - this.pos[b].x, dy = this.pos[a].y - this.pos[b].y; return dx * dx + dy * dy; };
+BrainSim.prototype.near = function (i) { var self = this, ids = []; for (var k = 0; k < this.n; k++) if (k !== i) ids.push(k); return ids.sort(function (a, b) { return self.d2(i, a) - self.d2(i, b) || a - b; }); };
+BrainSim.prototype.slotOf = function (owner, other) { for (var s = 0; s < this.cap; s++) { var L = this.links[owner * this.cap + s]; if (L && L.id === other) return s; } return -1; };
+BrainSim.prototype.free = function (owner) { for (var s = 0; s < this.cap; s++) if (!this.links[owner * this.cap + s]) return s; return -1; };
+BrainSim.prototype.clone = function (owner, L) { for (var s = 0; s < this.cap; s++) { var C = this.links[L.id * this.cap + s]; if (C && C.id === owner && C.inward !== L.inward) return C; } return null; };
+BrainSim.prototype.degree = function (o) { var d = { in: 0, out: 0 }; for (var s = 0; s < this.cap; s++) { var L = this.links[o * this.cap + s]; if (L) { if (L.inward) d.in++; else d.out++; } } return d; };
+BrainSim.prototype.forward = function (x) {
+  var n = this.n, s0 = new Array(n).fill(0); for (var i = 0; i < this.input; i++) s0[i] = x[i];
+  var states = [s0];
+  for (var t = 0; t < this.steps; t++) {
+    var prev = states[t], next = new Array(n).fill(0);
+    for (var k = 0; k < n; k++) {
+      if (k < this.input) { next[k] = x[k]; continue; }
+      var sum = this.bias[k];
+      for (var s = 0; s < this.cap; s++) { var L = this.links[k * this.cap + s]; if (L && L.inward) sum += L.w * prev[L.id]; }
+      var v = sigm(sum); next[k] = Math.abs(v) < this.threshold ? 0 : v;
+    }
+    states.push(next);
+  }
+  this.states = states; return states[states.length - 1].slice(n - this.output);
+};
+BrainSim.prototype.learn = function (scores) { // scores: positive = good (ascent), then the links change at the limits
+  var n = this.n, cap = this.cap, grad = new Array(n).fill(0), bg = new Array(n).fill(0), wg = new Array(n * cap).fill(0);
+  for (var k = 0; k < this.output; k++) grad[n - this.output + k] = scores[k];
+  for (var t = this.steps; t > 0; t--) {
+    var before = this.states[t - 1], below = new Array(n).fill(0);
+    for (var i = this.input; i < n; i++) {
+      if (grad[i] === 0) continue;
+      var sum = this.bias[i];
+      for (var s = 0; s < cap; s++) { var L = this.links[i * cap + s]; if (L && L.inward) sum += L.w * before[L.id]; }
+      var o = sigm(sum), slope = grad[i] * o * (1 - o);
+      bg[i] += slope;
+      for (var s2 = 0; s2 < cap; s2++) { var L2 = this.links[i * cap + s2]; if (!L2 || !L2.inward) continue; wg[i * cap + s2] += slope * before[L2.id]; below[L2.id] += slope * L2.w; }
+    }
+    grad = below;
+  }
+  var events = { added: [], removed: [], changed: [] };
+  for (var i3 = this.input; i3 < n; i3++) {
+    this.bias[i3] += bg[i3];
+    for (var s3 = 0; s3 < cap; s3++) { var L3 = this.links[i3 * cap + s3]; if (!L3 || !L3.inward || wg[i3 * cap + s3] === 0) continue; L3.w += wg[i3 * cap + s3]; if (L3.w === 0) L3.w = 1e-38; this.clone(i3, L3).w = L3.w; events.changed.push([L3.id, i3, wg[i3 * cap + s3]]); }
+  }
+  this.relink(events); return events;
+};
+BrainSim.prototype.relink = function (events) {
+  var n = this.n, cap = this.cap, self = this, min = this.min, max = this.max;
+  for (var owner = 0; owner < n; owner++) {
+    var list = [];
+    for (var s = 0; s < cap; s++) { var L = this.links[owner * cap + s]; if (L) list.push({ slot: s, id: L.id, d: this.d2(owner, L.id) }); }
+    list.sort(function (a, b) { return a.d - b.d || a.id - b.id; });
+    var snap = list.map(function (e) { var w = Math.abs(self.links[owner * cap + e.slot].w); return { slot: e.slot, id: e.id, w: w, kind: w <= min ? -1 : (w >= max ? 1 : 0) }; });
+    for (var k = 0; k < snap.length; k++) {
+      var e = snap[k], cur = this.links[owner * cap + e.slot];
+      if (!cur || cur.id !== e.id || e.kind === 0) continue;
+      if (e.kind < 0) {
+        var a = this.degree(owner), b = this.degree(cur.id);
+        if (this.survives(a, owner < this.input, cur.inward) && this.survives(b, cur.id < this.input, !cur.inward)) {
+          var C = this.clone(owner, cur); this.links[cur.id * cap + this.links.slice(cur.id * cap, cur.id * cap + cap).indexOf(C)] = null; this.links[owner * cap + e.slot] = null;
+          events.removed.push(cur.inward ? [cur.id, owner] : [owner, cur.id]);
+        }
+        continue;
+      }
+      if (this.free(owner) < 0) continue;
+      var ref = 0, used = 0;
+      for (var dist = 1; dist < snap.length && used < 2; dist++) for (var side = -1; side <= 1; side += 2) { var at = k + side * dist; if (at < 0 || at >= snap.length || used >= 2 || snap[at].kind !== 0) continue; ref += snap[at].w; used++; }
+      ref = used === 0 ? (min + max) / 2 : ref / used;
+      var order = this.near(owner);
+      for (var q = 0; q < order.length; q++) {
+        var other = order[q], canReceive = owner >= this.input && other < n - this.output, canSend = owner < n - this.output && other >= this.input;
+        if (this.slotOf(owner, other) >= 0 || this.free(other) < 0 || (!canReceive && !canSend)) continue;
+        var receive = canReceive && (!canSend || this.r() < 0.5), low = min + (max - min) * 0.05, high = min + (max - min) * 0.95;
+        var value = (this.r() < 0.5 ? -1 : 1) * Math.min(Math.max(ref * (0.5 + 0.5 * this.r()), low), high);
+        this.links[owner * cap + this.free(owner)] = { id: other, w: value, inward: receive };
+        this.links[other * cap + this.free(other)] = { id: owner, w: value, inward: !receive };
+        events.added.push(receive ? [other, owner] : [owner, other]);
+        break;
+      }
+    }
+  }
+};
+BrainSim.prototype.survives = function (d, isInput, inward) { var i = d.in - (inward ? 1 : 0), o = d.out - (inward ? 0 : 1), before = isInput ? d.out : d.in, after = isInput ? o : i; return i + o >= 1 && !(before >= 1 && after === 0); };
+// Runner of a live simulation: Play / Pause / Step / Reset, the speed, one sample after the other (nothing runs before Play)
+function vizRunner(root, sim) {
+  var bar = root.querySelector('.viz-bar'), playBtn = bar.querySelector('[data-act="play"]'), speed = bar.querySelector('select');
+  var timer = null, running = false, queue = [];
+  function fr() { return document.documentElement.getAttribute('lang') === 'fr'; }
+  function label() { playBtn.textContent = running ? (fr() ? 'Pause' : 'Pause') : (fr() ? 'Lecture' : 'Play'); playBtn.setAttribute('aria-pressed', running ? 'true' : 'false'); Array.prototype.forEach.call(speed.options, function (o) { o.textContent = fr() ? o.getAttribute('data-fr') : o.getAttribute('data-en'); }); }
+  function tick() {
+    timer = null;
+    if (!queue.length) {
+      if (speed.value === 'slow') queue = sim.sampleFrames();
+      else { sim.fastRounds(speed.value === 'turbo' ? 25 : 1); sim.draw(sim.fastFrame()); } // the state of the next sample after the rounds
+    }
+    if (queue.length) { var f = queue.shift(); sim.draw(f); }
+    if (running) timer = setTimeout(tick, speed.value === 'slow' ? 650 : 30);
+  }
+  bar.addEventListener('click', function (e) {
+    var button = e.target.closest('[data-act]'); // a click on the text of a button (its language span) is a click on the button
+    if (!button) return;
+    var act = button.getAttribute('data-act');
+    if (act === 'play') { running = !running; label(); if (running && !timer) tick(); }
+    else if (act === 'step') { running = false; label(); if (timer) { clearTimeout(timer); timer = null; } if (!queue.length) queue = sim.sampleFrames(); var f = queue.shift(); sim.draw(f); }
+    else if (act === 'reset' || act === 'random' || act === 'example') {
+      running = false; label(); if (timer) { clearTimeout(timer); timer = null; } queue = [];
+      if (act === 'random') sim.seed = sim.randomSeed ? sim.randomSeed() : 1 + Math.floor(Math.random() * 1e9); // new positions, weights and biases
+      else if (act === 'example') sim.seed = sim.exampleSeed;
+      sim.reset(); sim.draw(null);
+    }
+  });
+  speed.addEventListener('change', function () { queue = []; });
+  new MutationObserver(function () { label(); sim.draw(sim.lastFrame || null); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) speed.value = 'fast';
+  label(); sim.reset(); sim.draw(null);
+}
+function vizFr() { return document.documentElement.getAttribute('lang') === 'fr'; }
+function vizT(en, fr) { return vizFr() ? fr : en; }
+function vizNum(v) { return (Math.round(v * 100) / 100).toFixed(2); }
+function vizSpark(values, x, y, w, h) {
+  if (values.length < 2) return '';
+  var max = Math.max.apply(null, values.concat([0.01])), pts = values.map(function (v, i) { return (x + w * i / (values.length - 1)).toFixed(1) + ',' + (y + h - h * v / max).toFixed(1); });
+  return '<line class="vz-axis" x1="' + x + '" x2="' + (x + w) + '" y1="' + (y + h) + '" y2="' + (y + h) + '"/><polyline class="vz-spark" points="' + pts.join(' ') + '"/>';
+}
+// Layered network learning XOR: 2 inputs, 4 hidden, 1 output (sigmoid), error = rate * (output - expected)
+(function () {
+  var root = document.getElementById('vizLayer'); if (!root) return;
+  var svg = root.querySelector('svg'), DATA = [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0]], RATE = 1.5, SIZES = [2, 4, 1];
+  var sim = { net: null, round: 0, sample: 0, history: [], lastFrame: null, seed: 3, exampleSeed: 3 };
+  var X = [130, 380, 630];
+  function ny(l, k) { var n = SIZES[l]; return 40 + (k + 0.5) * 300 / n; }
+  function meanError() { var e = 0; DATA.forEach(function (d) { e += Math.abs(sim.net.forward([d[0], d[1]])[0] - d[2]); }); return e / DATA.length; }
+  sim.reset = function () { sim.net = new LayerSim(SIZES, sim.seed); sim.round = 0; sim.sample = 0; sim.history = [meanError()]; sim.lastFrame = null; };
+  function learnOne(d) { var y = sim.net.forward([d[0], d[1]])[0]; return { y: y, changes: sim.net.learn([RATE * (y - d[2])]), outs: sim.net.last.outs }; }
+  function nextSample() { var d = DATA[sim.sample]; sim.sample = (sim.sample + 1) % DATA.length; if (sim.sample === 0) { sim.round++; sim.history.push(meanError()); if (sim.history.length > 200) sim.history.shift(); } return d; }
+  sim.fastRounds = function (rounds) { for (var r = 0; r < rounds * DATA.length; r++) learnOne(nextSample()); };
+  sim.fastFrame = function () { var d = DATA[sim.sample]; sim.net.forward([d[0], d[1]]); var outs = sim.net.last.outs.map(function (a) { return a.slice(); }); return { d: d, outs: outs, upto: outs.length - 1, phase: 'fast' }; };
+  sim.sampleFrames = function () {
+    var d = DATA[sim.sample], outs = (sim.net.forward([d[0], d[1]]), sim.net.last.outs.map(function (a) { return a.slice(); })), frames = [];
+    for (var l = 0; l < outs.length; l++) frames.push({ d: d, outs: outs, upto: l, phase: l === 0 ? 'in' : (l === outs.length - 1 ? 'out' : 'hidden') });
+    frames.push({ d: d, outs: outs, upto: outs.length - 1, phase: 'error' });
+    frames.push({ d: d, outs: outs, upto: outs.length - 1, phase: 'back', run: function () { var r = learnOne(nextSample()); return r.changes; } });
+    return frames;
+  };
+  sim.draw = function (f) {
+    var changes = null;
+    if (f && f.run && !f.done) { f.changes = f.run(); f.done = true; }
+    if (f) changes = f.changes || null;
+    sim.lastFrame = f;
+    var s = '', outs = f ? f.outs : null, upto = f ? f.upto : -1;
+    // edges: color = sign, width = |weight|, bright = used at this phase or changed by the backpropagation
+    for (var l = 0; l < sim.net.layers.length; l++) sim.net.layers[l].forEach(function (n, k) {
+      n.w.forEach(function (w, j) {
+        var hot = (f && f.phase !== 'back' && f.phase !== 'fast' && upto === l + 1) || (changes && Math.abs(changes[l][k].w[j]) > 0.002);
+        s += '<line class="vz-edge ' + (w >= 0 ? 'vz-pos' : 'vz-neg') + (hot ? ' vz-hot' : '') + '" x1="' + X[l] + '" y1="' + ny(l, j) + '" x2="' + X[l + 1] + '" y2="' + ny(l + 1, k) + '" stroke-width="' + (0.8 + Math.min(Math.abs(w), 6) * 0.9).toFixed(2) + '"/>';
+      });
+    });
+    // neurons: filled with the output, ring = bias (green positive, orange negative)
+    for (var l2 = 0; l2 < SIZES.length; l2++) for (var k2 = 0; k2 < SIZES[l2]; k2++) {
+      var x = X[l2], y = ny(l2, k2), v = outs && l2 <= upto ? outs[l2][k2] : null;
+      s += '<circle class="vz-node' + (l2 === 0 || l2 === SIZES.length - 1 ? ' vz-io' : '') + '" cx="' + x + '" cy="' + y + '" r="24"/>';
+      if (v !== null) s += '<circle class="vz-fill" cx="' + x + '" cy="' + y + '" r="24" fill-opacity="' + (0.15 + 0.8 * v).toFixed(2) + '"/>';
+      if (l2 > 0) { var b = sim.net.layers[l2 - 1][k2].b; s += '<circle class="vz-ring ' + (b >= 0 ? 'vz-pos' : 'vz-neg') + '" cx="' + x + '" cy="' + y + '" r="29" stroke-opacity="' + Math.min(1, 0.2 + Math.abs(b) / 3).toFixed(2) + '"/><text class="vz-tag" x="' + x + '" y="' + (y + 44) + '" text-anchor="middle">b ' + vizNum(b) + '</text>'; }
+      if (v !== null) s += '<text class="vz-val' + (v > 0.55 ? ' vz-on' : '') + '" x="' + x + '" y="' + (y + 4) + '" text-anchor="middle">' + vizNum(v) + '</text>';
+    }
+    s += '<text class="vz-tag" x="130" y="22" text-anchor="middle">' + vizT('inputs', 'entrées') + '</text><text class="vz-tag" x="380" y="22" text-anchor="middle">' + vizT('hidden', 'cachée') + '</text><text class="vz-tag" x="630" y="22" text-anchor="middle">' + vizT('output', 'sortie') + '</text>';
+    s += '<text class="vz-tag" x="750" y="318" text-anchor="end">' + vizT('mean error', 'erreur moyenne') + '</text>' + vizSpark(sim.history, 670, 324, 80, 28);
+    svg.innerHTML = s;
+    // texts
+    var d = f ? f.d : null, phase = '';
+    if (f) {
+      var y = f.outs[f.outs.length - 1][0];
+      if (f.phase === 'in') phase = vizT('<b>Inputs.</b> Sample (' + d[0] + ', ' + d[1] + '), expected ' + d[2] + '.', '<b>Entrées.</b> Exemple (' + d[0] + ', ' + d[1] + '), attendu ' + d[2] + '.');
+      else if (f.phase === 'hidden') phase = vizT('<b>Hidden layer.</b> Each neuron: bias + Σ weight × input, then the sigmoid.', '<b>Couche cachée.</b> Chaque neurone : biais + Σ poids × entrée, puis la sigmoïde.');
+      else if (f.phase === 'out') phase = vizT('<b>Output.</b> ' + vizNum(y) + ' for an expected ' + d[2] + '.', '<b>Sortie.</b> ' + vizNum(y) + ' pour un attendu de ' + d[2] + '.');
+      else if (f.phase === 'error') phase = vizT('<b>Error.</b> rate × (output − expected) = ' + vizNum(RATE * (y - d[2])) + (y > d[2] ? ': too high, the output must go down.' : ': too low, the output must go up.'), '<b>Erreur.</b> taux × (sortie − attendu) = ' + vizNum(RATE * (y - d[2])) + (y > d[2] ? ' : trop haute, la sortie doit baisser.' : ' : trop basse, la sortie doit monter.'));
+      else if (f.phase === 'fast') phase = vizT('<b>Fast training.</b> Round ' + sim.round + ', mean error ' + vizNum(sim.history[sim.history.length - 1]) + '; the drawing shows the sample (' + d[0] + ', ' + d[1] + '), expected ' + d[2] + '.', '<b>Entraînement rapide.</b> Tour ' + sim.round + ', erreur moyenne ' + vizNum(sim.history[sim.history.length - 1]) + ' ; le dessin montre l\'exemple (' + d[0] + ', ' + d[1] + '), attendu ' + d[2] + '.');
+      else phase = vizT('<b>Backpropagation.</b> The bright links changed: thicker = stronger weight, blue positive, orange negative; the rings are the biases.', '<b>Rétropropagation.</b> Les liens vifs ont changé : plus épais = poids plus fort, bleu positif, orange négatif ; les anneaux sont les biais.');
+    } else phase = vizT('Press <b>Play</b> (animated: one sample at a time) or pick a faster speed to watch it learn XOR.', 'Appuyez sur <b>Lecture</b> (animé : un exemple à la fois) ou choisissez une vitesse plus rapide pour le voir apprendre le XOR.');
+    root.querySelector('.viz-phase').innerHTML = phase;
+    var res = DATA.map(function (dd) { return '(' + dd[0] + ',' + dd[1] + ')→' + vizNum(sim.net.forward([dd[0], dd[1]])[0]); }).join('  ');
+    root.querySelector('[data-stat="seed"]').textContent = sim.seed;
+    root.querySelector('[data-stat="round"]').textContent = sim.round;
+    root.querySelector('[data-stat="error"]').textContent = vizNum(sim.history[sim.history.length - 1]);
+    root.querySelector('[data-stat="outs"]').textContent = res;
+  };
+  vizRunner(root, sim);
+})();
 });
 </script>
 </div>
