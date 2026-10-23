@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [pre-release]
 ### In Progress
+- `-ffast-math` (`Optimized` mode) lets the compiler remove the finite checks (`std::isfinite`): a NaN coefficient, range or limit is not refused in this mode (its clang warning `-Wnan-infinity-disabled` is disabled, 3 unit tests fail there); `-fno-finite-math-only` would keep them
 - `train` sends the loss (always positive for the mean squared error) as the coefficient: a layered network needs the signed error (output - expected) and a brain network a score, `backpropagation` can be called by hand with them
 
 ### Changed
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `size()`, `input()` and `output()` restore the previous sizes when the network refuses the new ones
 
 ### Fixed
+- A program that used a GPU crashed at its exit (each test run alone by `ctest`): the shared GPU handlers and the CUDA libraries are released at the exit, before the statics of libutils they use
 - `loss.cpp` and `activation.cpp` were only in the sources of the executable: they are in the library
 - `BRAIN_LINKS_CAP_COMPUTING` overflowed on a big network (`pow`): written as `2 log2(n) ln(n) / ln(1.1)`
 - `brain::tools::get<bool>` read an undefined `bool` from a byte other than 0 or 1
