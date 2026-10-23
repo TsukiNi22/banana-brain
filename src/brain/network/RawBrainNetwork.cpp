@@ -71,10 +71,10 @@ _cold void brain::RawBrainNetwork::init_(void)
         else neurons[i].pos = {brain::tools::rand_floating() * this->_size.first, brain::tools::rand_floating() * this->_size.second};
     }
 
-    // each neuron gets a random number of links (1 -> cap) with its nearest neurons, the closest first without skipping one (but the ones that can't be linked: a full neuron, two inputs or two outputs)
-    // the direction of each link is random too, except for the inputs that only send and the outputs that only receive
+    // each neuron is linked to as many of its nearest neurons as its cap allows, the closest first without skipping one (but the ones that can't be linked: a full neuron, two inputs or two outputs)
+    // the direction of each link is random, except for the inputs that only send and the outputs that only receive
     for (brain::UIType owner = 0; owner < neurons.size(); ++owner) {
-        const brain::UIType target = std::min<brain::UIType>(this->_cap, 1 + static_cast<brain::UIType>(brain::tools::rand_floating() * static_cast<brain::FType>(this->_cap)));
+        const brain::UIType target = this->_cap;
         const bool ownerInput = owner < input;
         const bool ownerOutput = owner >= neurons.size() - output;
 

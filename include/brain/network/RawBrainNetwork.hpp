@@ -54,7 +54,7 @@ class RawBrainNetwork: public brain::BrainNetwork {
         std::vector<brain::Values> _states; // training: the state of every neuron at each time step of the last apply() (the first one is the start)
 
         // ---------- Pre-Function -------- //
-        void init_(void) final; // set the memories up: the input neurons on the left edge and the output ones on the right edge (evenly spread), the others placed randomly, each one linked to its nearest neurons (weights at 1.0, bias at 0.0)
+        void init_(void) final; // set the memories up: the input neurons on the left edge and the output ones on the right edge (evenly spread), the others placed randomly, each one linked to as many of its nearest neurons as its cap allows (weights at 1.0, bias at 0.0)
         void resized_(void) final; // the first neurons are the inputs and the last ones the outputs: set the neurons up again when their number changes
         brain::UIType linksCap_(void) const; // number of links allowed for a neuron: min(percentage * neurons, hook(neurons)), between 1 and neurons - 1 (0 with a single neuron)
         brain::UIType stepsCap_(void) const; // time steps of the execution: min(percentage * neurons, hook(neurons)), at least 1

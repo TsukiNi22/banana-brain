@@ -269,13 +269,13 @@ TEST(RawBrainNetwork, InitLinksEachNeuronToItsNearest) {
     for (const brain::RawBrainLink& link: parsed.links) {
         inward += link.inward;
         EXPECT_LT(link.id, 30u);
-        if (link.inward || link.weight != 0.0f) EXPECT_EQ(link.weight, 1.0f); // 1.0 by default
+        if (link.inward || link.weight != 0.0f) EXPECT_EQ(link.weight, 1.0f); // 1.0 by default (weightInit gives the random ones)
     }
     EXPECT_GT(inward, 0u);
     expectMirrors(parsed);
 }
 
-TEST(RawBrainNetwork, InitGivesARandomNumberOfLinksInBothDirections) {
+TEST(RawBrainNetwork, InitFillsTheCapWithLinksInBothDirections) {
     brain::RawBrainNetwork network(60, {10.0, 10.0});
 
     brain::tools::rand(7);
@@ -299,7 +299,7 @@ TEST(RawBrainNetwork, InitGivesARandomNumberOfLinksInBothDirections) {
         EXPECT_LE(used, parsed.cap);
         counts.push_back(used);
     }
-    EXPECT_GT(*std::max_element(counts.begin(), counts.end()), *std::min_element(counts.begin(), counts.end())); // not always the same number
+    EXPECT_GT(std::count(counts.begin(), counts.end(), parsed.cap), static_cast<std::ptrdiff_t>(counts.size() / 2)); // most neurons are full: as many links as the cap allows
     EXPECT_GT(inward, 0u);
     EXPECT_GT(outward, 0u);
     expectMirrors(parsed);
@@ -623,7 +623,7 @@ TEST(RawBrainNetwork, APositiveScoreStrengthensAndANegativeOneWeakens) {
     }
 }
 
-TEST(RawBrainNetwork, AWeakFarthestLinkIsRemovedUnlessItIsTheLastOne) {
+TEST(RawBrainNetwork, AWeakLinkIsRemovedUnlessItIsTheLastOne) {
     brain::RawBrainNetwork network(30, {10.0, 10.0});
 
     brain::tools::rand(3);
@@ -694,13 +694,17 @@ TEST(RawBrainNetwork, OrphansCanBeAllowed) {
     expectMirrors(after);
 }
 
-TEST(RawBrainNetwork, AStrongFarthestLinkLinksTheNextNearestNeuron) {
+TEST(RawBrainNetwork, AStrongLinkLinksTheNearestFreeNeuron) {
     brain::RawBrainNetwork network(30, {10.0, 10.0});
 
     brain::tools::rand(3);
     network.size(2, 2);
     network.weightInit();
-    network.weightLimits(0.0, 1e-6); // every farthest link is too strong
+    network.weightLimits(1e9, 2e9); // a removal pass first: the init fills the cap, the growth needs free slots
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    network.backpropagation(0.0);
+    network.weightLimits(0.0, 1e-6); // every link is too strong
     network.inputs(brain::Values{0.5, 0.5});
     (void)network.apply();
     const ParsedRaw before = parseRaw(network.serialize());
@@ -754,6 +758,10 @@ TEST(RawBrainNetwork, ANewLinkIsSmallerThanTheNearestOnesAndInsideTheLimits) {
     brain::tools::rand(11);
     network.size(2, 2);
     network.weightInit();
+    network.weightLimits(1e9, 2e9); // a removal pass first: the init fills the cap, the growth needs free slots
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    network.backpropagation(0.0);
     network.weightLimits(0.0, 1e-6); // every link is too strong: no other link to look at, the reference is the middle of the limits
     network.inputs(brain::Values{0.5, 0.5});
     (void)network.apply();
