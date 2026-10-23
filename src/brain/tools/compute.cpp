@@ -27,6 +27,7 @@ File Description:
 #include <algorithm>
 #include <sstream>
 #include <cstddef>
+#include <cstdlib>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -295,6 +296,7 @@ File Description:
                 } catch (const utils::exception::IException& e) {return;} // a function is missing: nothing computed on the gpu
                 if (candidate->init(0) != CUDA_SUCCESS) return;
                 loaded = std::move(candidate);
+                (void)std::atexit([]() {loaded.reset();}); // the libraries are closed at the exit, before the statics of libutils they use are destroyed
             });
             return loaded.get();
         }

@@ -28,19 +28,35 @@ File Description:
 #include "brain/tools/random.hpp"
 #include "brain/tools/bytes.hpp"
 #include <iostream>
+#include <cstdlib>
 #include <mutex>
 #include <cmath>
 #include <map>
 
+// The gpu handlers shared by the networks and their lock
+static std::mutex handlersLock;
+static std::map<utils::system::MemoryMode, std::shared_ptr<utils::system::IGpu>> handlers;
+
+// Release the gpu handlers at the exit, before the statics of libutils they use are destroyed (a handler destroyed after them crashes the exit)
+_cold static void releaseGpus(void)
+{
+    std::lock_guard guard(handlersLock);
+
+    handlers.clear();
+}
+
 // One gpu handler per mode for the whole program: finding a gpu (loading the drivers) takes a few hundred ms, the networks share the result (nullptr: no gpu, ram)
 _cold static std::shared_ptr<utils::system::IGpu> sharedGpu(const utils::system::MemoryMode mode)
 {
-    static std::mutex lock;
-    static std::map<utils::system::MemoryMode, std::shared_ptr<utils::system::IGpu>> handlers;
-    std::lock_guard guard(lock);
+    std::lock_guard guard(handlersLock);
     auto it = handlers.find(mode); // xstyle: ignore CPP-AUTO
 
-    if (it == handlers.end()) it = handlers.emplace(mode, utils::system::make_shared_gpu(mode)).first; // an error (GpuUnavailable...) is not kept
+    if (it == handlers.end()) {
+        static bool registered = false;
+
+        it = handlers.emplace(mode, utils::system::make_shared_gpu(mode)).first; // an error (GpuUnavailable...) is not kept
+        if (it->second && !registered) registered = std::atexit(releaseGpus) == 0; // after the first real handler: the statics of libutils it made are destroyed after the release
+    }
     return it->second;
 }
 
