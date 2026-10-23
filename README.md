@@ -268,7 +268,10 @@ ctest --test-dir $BUILD_DIR --output-on-failure --timeout 30   # or ./unit_tests
 ```
 
 > [!NOTE]
-> The tests use GoogleTest (`tests/`, one file per module) and run in the `Unit Tests - Libraries (CI)` workflow.
+> The tests use GoogleTest (`tests/`, one file per module) and run in the `Unit Tests - Libraries (CI)` workflow. The `Gpu.*` tests are skipped without a CUDA gpu (and under AddressSanitizer, where the driver can't be loaded).
+
+> [!WARNING]
+> The `Optimized` mode builds with `-ffast-math`: the compiler removes the finite checks (`std::isfinite`), so a NaN coefficient, range or limit is not refused and 3 tests fail in this mode. Run the tests in `Debug` or `Asan`.
 
 ## Workflows/Release
 ### Workflows
