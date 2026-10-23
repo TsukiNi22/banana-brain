@@ -78,6 +78,35 @@ jobs:
             --default-key "${{ secrets.GPG_KEY_ID }}" \
             --clearsign -o dists/stable/InRelease dists/stable/Release
 
+      - name: Update metadata and signature (Arch)
+        run: |
+          set -euo pipefail
+          REPO_DIR="gh-pages/arch/x86_64"
+          if ! compgen -G "$REPO_DIR/*.pkg.tar.zst" > /dev/null; then
+            echo "No Arch package to index."
+            exit 0
+          fi
+          cd "$REPO_DIR"
+
+          # Signature of the packages added by hand (detached binary signatures)
+          for f in *.pkg.tar.zst; do
+            [ -f "$f.sig" ] && continue
+            gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+              --default-key "${{ secrets.GPG_KEY_ID }}" --detach-sign --no-armor -o "$f.sig" "$f"
+          done
+
+          # Database rebuilt from every package, oldest first (the last version of a package wins)
+          rm -f brain.db* brain.files*
+          find . -maxdepth 1 -name "*.pkg.tar.zst" -printf '%f\n' | sort -V | xargs repo-add -q --include-sigs brain.db.tar.gz
+
+          # GitHub Pages: real files instead of the symbolic links of repo-add, signed databases
+          for db in brain.db brain.files; do
+            cp --remove-destination "$db.tar.gz" "$db"
+            gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+              --default-key "${{ secrets.GPG_KEY_ID }}" --detach-sign --no-armor -o "$db.sig" "$db"
+            cp "$db.sig" "$db.tar.gz.sig"
+          done
+
       - name: Commit and push
         working-directory: gh-pages
         run: |
