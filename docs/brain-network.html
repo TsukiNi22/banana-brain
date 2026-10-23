@@ -1,0 +1,1271 @@
+<!doctype html>
+<html data-nav-order="2" data-nav-title="Brain network" data-page="explain" lang="en" data-storage-key="banana-brain">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brain network</title>
+<style>
+/* Visual system of the user's HTML pages (source: html-doc/templates/technical.html, R-Type doc colors +
+   context-forge layout). Inlined in each page by scripts/new_page.py: pages stay self-contained. */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --text: #1d1f23;
+  --muted: #5d636e;
+  --border: #dfe1e5;
+  --accent: #2f5bd3;
+  --accent-soft: #e6ecfb;
+  --warn: #a8540a;
+  --warn-soft: #fbefe3;
+  --ok: #1f7a4a;
+  --ok-soft: #e3f4ea;
+  --code-bg: #f1f2f4;
+  --node: #ffffff;
+  --node-alt: #eef1f8;
+  --line: #8a909b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b;
+    --surface: #1d2025;
+    --text: #e6e7ea;
+    --muted: #9aa0ab;
+    --border: #30343b;
+    --accent: #7d9cf0;
+    --accent-soft: #232c45;
+    --warn: #f0a868;
+    --warn-soft: #3a2a1b;
+    --ok: #6fcf97;
+    --ok-soft: #1b3326;
+    --code-bg: #24272d;
+    --node: #23262c;
+    --node-alt: #283043;
+    --line: #747a85;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b;
+  --surface: #1d2025;
+  --text: #e6e7ea;
+  --muted: #9aa0ab;
+  --border: #30343b;
+  --accent: #7d9cf0;
+  --accent-soft: #232c45;
+  --warn: #f0a868;
+  --warn-soft: #3a2a1b;
+  --ok: #6fcf97;
+  --ok-soft: #1b3326;
+  --code-bg: #24272d;
+  --node: #23262c;
+  --node-alt: #283043;
+  --line: #747a85;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+main { min-width: 0; }
+header h1 { font-size: 34px; line-height: 1.2; margin: 0 0 8px; }
+header p { color: var(--muted); margin: 0 0 32px; max-width: 70ch; }
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  scroll-margin-top: 72px;
+}
+h2 { font-size: 22px; margin: 0 0 16px; }
+h3 { font-size: 17px; margin: 28px 0 10px; }
+p, li { max-width: 75ch; }
+a { color: var(--accent); }
+code {
+  font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font: 13.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+pre code { background: none; padding: 0; }
+.table-wrap { overflow-x: auto; margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+.callout {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+  margin: 16px 0;
+}
+.callout.warn { background: var(--warn-soft); border-left-color: var(--warn); }
+.callout.ok { background: var(--ok-soft); border-left-color: var(--ok); }
+.callout > :first-child { margin-top: 0; }
+.callout > :last-child { margin-bottom: 0; }
+figure { margin: 20px 0; }
+figure svg { width: 100%; height: auto; display: block; }
+figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+svg .box { fill: var(--node); stroke: var(--line); stroke-width: 1.2; }
+svg .box-alt { fill: var(--node-alt); stroke: var(--accent); stroke-width: 1.2; }
+svg .group { fill: none; stroke: var(--border); stroke-width: 1.5; stroke-dasharray: 5 4; }
+svg .lbl { fill: var(--text); font: 13px system-ui, sans-serif; }
+svg .small { fill: var(--muted); font: 11.5px system-ui, sans-serif; }
+svg .title { fill: var(--muted); font: 600 12px system-ui, sans-serif; letter-spacing: .05em; }
+svg .edge { stroke: var(--line); stroke-width: 1.4; fill: none; }
+svg .edge-accent { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+svg .dash { stroke-dasharray: 4 4; }
+svg .arrow { fill: var(--line); }
+svg .arrow-accent { fill: var(--accent); }
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 18px;
+  height: 56px; padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.tabs { display: flex; gap: 4px; margin-left: 8px; overflow-x: auto; }
+.tabs[hidden] { display: none; }
+.tabs a {
+  padding: 6px 12px; border-radius: 6px;
+  color: var(--muted); text-decoration: none; font-size: 14px; white-space: nowrap;
+}
+.tabs a:hover { color: var(--text); background: var(--code-bg); }
+.tabs a.current { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.topbar .spacer { flex: 1; }
+.icon-btn {
+  display: grid; place-items: center;
+  width: 36px; height: 36px; padding: 0;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 50%;
+  cursor: pointer; text-decoration: none;
+  transition: border-color .15s, color .15s;
+}
+.icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon-btn svg { width: 18px; height: 18px; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; padding: 24px 16px 60px; gap: 16px; }
+  .topbar { gap: 10px; padding: 0 12px; }
+  .brand .ver { display: none; }
+  .menu-btn { display: grid; }
+  .sidebar { position: fixed; top: 56px; left: 0; bottom: 0; z-index: 25; width: min(300px, 85vw); max-height: none; padding: 16px 10px; background: var(--bg); border-right: 1px solid var(--border); transform: translateX(-105%); transition: transform .2s; }
+  .sidebar.open { transform: none; box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
+  section { padding: 20px 16px; }
+  header h1 { font-size: 27px; }
+}
+/* Language switch (EN / FR pill) */
+.lang-switch {
+  display: inline-flex; align-items: center; gap: 2px; padding: 3px;
+  border: 1.5px solid var(--border); border-radius: 999px; background: var(--surface);
+}
+.lang-switch button {
+  border: 0; background: none; color: var(--text); cursor: pointer;
+  font: 600 12.5px system-ui, sans-serif; letter-spacing: .03em;
+  padding: 4px 11px; border-radius: 999px; transition: background .2s, color .2s;
+}
+.lang-switch button.on { background: var(--accent); color: var(--surface); }
+.lang-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Theme switch: blue track + sun (light), black track + moon and stars (dark) */
+.theme-switch {
+  position: relative; width: 58px; height: 30px; flex: none; padding: 0; border: 0; border-radius: 999px;
+  background: #2196f3; cursor: pointer; transition: background .3s;
+}
+.theme-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-switch .knob {
+  position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; transition: transform .3s, background .3s;
+}
+.theme-switch .knob svg { width: 22px; height: 22px; }
+.theme-switch .sun { display: block; }
+.theme-switch .moon, .theme-switch .stars { display: none; }
+.theme-switch .stars { position: absolute; inset: 0; }
+.theme-switch .stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; }
+.theme-switch .stars i:nth-child(1) { left: 9px; top: 9px; }
+.theme-switch .stars i:nth-child(2) { left: 16px; top: 18px; width: 1.5px; height: 1.5px; }
+.theme-switch .stars i:nth-child(3) { left: 21px; top: 8px; width: 1.5px; height: 1.5px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-switch { background: #0b0b0d; box-shadow: inset 0 0 0 1px #2a2c31; }
+  :root:not([data-theme="light"]) .theme-switch .knob { transform: translateX(28px); background: #ffffff; }
+  :root:not([data-theme="light"]) .theme-switch .sun { display: none; }
+  :root:not([data-theme="light"]) .theme-switch .moon, :root:not([data-theme="light"]) .theme-switch .stars { display: block; }
+}
+:root[data-theme="dark"] .theme-switch { background: #0b0b0d; box-shadow: inset 0 0 0 1px #2a2c31; }
+:root[data-theme="dark"] .theme-switch .knob { transform: translateX(28px); background: #ffffff; }
+:root[data-theme="dark"] .theme-switch .sun { display: none; }
+:root[data-theme="dark"] .theme-switch .moon, :root[data-theme="dark"] .theme-switch .stars { display: block; }
+/* Bilingual content: only the active language is shown */
+:root[lang="en"] [data-lang="fr"], :root[lang="fr"] [data-lang="en"] { display: none !important; }
+/* ---------- Header: logo + version badge, mobile menu ---------- */
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; white-space: nowrap; }
+.brand .logo { width: 26px; height: 26px; flex: none; color: var(--accent); object-fit: contain; }
+.brand .ver { font-size: 12px; color: var(--muted); font-weight: 500; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; }
+.brand .ver:empty { display: none; } /* no version: the name alone */
+.menu-btn { display: none; }
+/* ---------- Sidebar tree (pages > sections of the current page) ---------- */
+.sidebar { position: sticky; top: 80px; align-self: start; max-height: calc(100vh - 100px); overflow-y: auto; font-size: 14px; }
+@media (max-width: 860px) { .sidebar { position: fixed; top: 56px; max-height: none; } } /* off-canvas menu: out of the flow */
+.sidebar p { margin: 0 0 8px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; }
+.sidebar a { display: block; padding: 5px 10px; color: var(--muted); text-decoration: none; border-left: 2px solid var(--border); }
+.sidebar a:hover, .sidebar a.active { color: var(--accent); border-left-color: var(--accent); }
+/* ---------- Page header: eyebrow + title + lead ---------- */
+.page-eyebrow { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); margin-bottom: 6px; }
+header .lead { font-size: 17px; color: var(--muted); margin: 0 0 32px; max-width: 70ch; }
+/* ---------- Heading anchors ---------- */
+h2 .anchor, h3 .anchor { margin-left: 8px; color: var(--muted); font-weight: 400; text-decoration: none; opacity: 0; transition: opacity .15s; }
+h2:hover .anchor, h3:hover .anchor, .anchor:focus { opacity: 1; }
+/* ---------- Code blocks: title bar + copy button ---------- */
+pre { position: relative; }
+pre[data-title]::before {
+  content: attr(data-title); display: block; margin: -14px -16px 12px; padding: 6px 16px;
+  font: 12px system-ui, sans-serif; color: var(--muted); border-bottom: 1px solid var(--border);
+  background: var(--surface); border-radius: 7px 7px 0 0;
+}
+pre .copy {
+  position: absolute; top: 8px; right: 8px; font: 12px system-ui, sans-serif; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  border-radius: 6px; padding: 3px 8px; opacity: 0; transition: opacity .15s;
+}
+pre[data-title] .copy { top: 5px; }
+pre:hover .copy, pre .copy:focus { opacity: 1; }
+pre .copy:hover { color: var(--text); }
+/* ---------- Content tabs ---------- */
+.ctabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin: 12px 0; }
+.ctabs button { background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 8px 12px; cursor: pointer; color: var(--muted); font: 500 14px system-ui, sans-serif; }
+.ctabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.ctab-panel { display: none; }
+.ctab-panel.active { display: block; }
+/* ---------- Previous / next page ---------- */
+.pager { display: flex; justify-content: space-between; gap: 16px; margin-top: 32px; }
+.pager a { flex: 1; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); text-decoration: none; }
+.pager a:hover { border-color: var(--accent); }
+.pager a span { display: block; font-size: 12px; color: var(--muted); }
+.pager a.next { text-align: right; }
+.pager:empty { display: none; }
+/* ---------- Footer ---------- */
+footer.site { max-width: 1180px; margin: 0 auto; padding: 22px 24px 30px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+footer.site a { color: var(--accent); }
+@media (max-width: 860px) {
+  .menu-btn { display: grid; }
+  footer.site { padding: 20px 16px; }
+  .topbar .tabs { display: none; } /* the sidebar (menu) gives the navigation on mobile */
+}
+.topbar .icon-btn, .topbar .lang-switch, .topbar .theme-switch { flex: none; }
+.topbar .tabs { min-width: 0; }
+@media (max-width: 860px) {
+  .topbar .spacer { display: none; }
+  .topbar .tabs { flex: 1 1 auto; }
+  .topbar .icon-btn { width: 32px; height: 32px; }
+}
+@media (max-width: 480px) {
+  .topbar { gap: 8px; padding: 0 10px; }
+  .topbar a.icon-btn[href] { display: none; } /* GitHub link: also in the footer / graph panel */
+  .lang-switch button { padding: 4px 9px; }
+}
+@media (min-width: 1340px) {
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 880px) minmax(0, 1fr); max-width: none; }
+  .layout > .sidebar { grid-column: 1; justify-self: end; width: 230px; }
+  .layout > main { grid-column: 2; }
+  footer.site { max-width: 880px; }
+}
+/* ---------- No scroll beyond the page ---------- */
+html, body { overscroll-behavior: none; }
+/* ---------- Top right actions: same height, grouped, divider ---------- */
+.top-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.top-actions .divider { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+.top-actions .icon-btn { width: 34px; height: 34px; }
+.top-actions .lang-switch { height: 34px; padding: 3px; background: var(--code-bg); border: 1px solid var(--border); }
+.top-actions .lang-switch button { height: 26px; padding: 0 10px; font-size: 12px; }
+.top-actions .theme-switch { width: 56px; height: 30px; border: 1px solid transparent; }
+.top-actions .theme-switch .knob { top: 2px; left: 2px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .top-actions .theme-switch { border-color: var(--border); box-shadow: none; }
+  :root:not([data-theme="light"]) .top-actions .theme-switch .knob { transform: translateX(26px); }
+}
+:root[data-theme="dark"] .top-actions .theme-switch { border-color: var(--border); box-shadow: none; }
+:root[data-theme="dark"] .top-actions .theme-switch .knob { transform: translateX(26px); }
+@media (max-width: 480px) { .top-actions .divider { display: none; } }
+/* ---------- Responsive: phones, tablets, touch screens, notches, TVs, print ---------- */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+img, video, canvas, svg { max-width: 100%; }
+main h1, main h2, main h3, main p, main li, main td, main th, main figcaption { overflow-wrap: break-word; }
+code { overflow-wrap: anywhere; }
+pre code { overflow-wrap: normal; }
+.sidebar { max-height: calc(100vh - 100px); max-height: calc(100dvh - 100px); overscroll-behavior: contain; }
+/* Notches and rounded corners (viewport-fit=cover): the content stays inside the safe area */
+.topbar { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.layout { padding-left: max(24px, env(safe-area-inset-left)); padding-right: max(24px, env(safe-area-inset-right)); }
+footer.site { padding-bottom: max(30px, env(safe-area-inset-bottom)); }
+/* Very large screens (TV, 4K): a bigger base so the page stays readable at a distance */
+@media (min-width: 1900px) { html { font-size: 18px; } }
+@media (min-width: 2600px) { html { font-size: 21px; } }
+/* Tablets and small laptops: tighter column gap */
+@media (min-width: 861px) and (max-width: 1100px) { .layout { gap: 24px; grid-template-columns: 210px minmax(0, 1fr); } }
+@media (max-width: 860px) {
+  .topbar { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  .layout { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .sidebar { top: 56px; bottom: 0; height: auto; padding-bottom: max(16px, env(safe-area-inset-bottom)); overflow-y: auto; }
+  input, select, textarea { font-size: 16px; } /* under 16px iOS zooms the page on focus */
+  table { font-size: 13.5px; }
+  th, td { padding: 6px 8px; }
+  pre { font-size: 12.5px; padding: 12px; }
+  .formula { flex-direction: column; align-items: flex-start; gap: 6px; }
+}
+@media (max-width: 600px) {
+  .pager { flex-direction: column; }
+  .pager a.next { text-align: left; }
+  section { border-radius: 8px; }
+  h2 { font-size: 20px; }
+  .ctabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .ctabs button { white-space: nowrap; flex: none; }
+}
+@media (max-width: 480px) {
+  .layout { padding-top: 16px; }
+  header h1 { font-size: 24px; }
+  header .lead { font-size: 16px; }
+  .callout { padding: 10px 12px; }
+}
+/* Phone held sideways: little height, keep the bar slim */
+@media (max-height: 480px) and (orientation: landscape) {
+  .topbar { height: 48px; }
+  .sidebar { top: 48px; }
+  section { scroll-margin-top: 56px; }
+}
+/* Touch (no hover): what only showed on hover is always there, and targets are finger sized */
+@media (hover: none) {
+  pre .copy { opacity: 1; }
+  h2 .anchor, h3 .anchor { opacity: .6; }
+  dfn[data-def] { cursor: pointer; }
+}
+@media (pointer: coarse) {
+  .icon-btn { width: 44px; height: 44px; }
+  .top-actions .icon-btn { width: 40px; height: 40px; }
+  .tabs a, .ctabs button, .sidebar a { min-height: 44px; display: flex; align-items: center; }
+  .sidebar a { padding-top: 0; padding-bottom: 0; }
+  .lang-switch button, .top-actions .lang-switch button { min-height: 32px; min-width: 38px; }
+  pre .copy { padding: 8px 12px; font-size: 13px; }
+  summary { min-height: 44px; display: flex; align-items: center; }
+  .pager a, .btn { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  .theme-switch, .lang-switch, .icon-btn { border: 1px solid ButtonText; }
+  .tabs a.current, .ctabs button.active, .lang-switch button.on { outline: 2px solid Highlight; }
+}
+@media print {
+  .topbar, .sidebar, .pager, .menu-btn, pre .copy, .top-actions, .h-anchor, .anchor { display: none !important; }
+  .layout { display: block; max-width: none; padding: 0; }
+  section { break-inside: avoid-page; border: 0; padding: 0 0 12px; background: none; }
+  pre { white-space: pre-wrap; overflow: visible; }
+  body { background: #fff; color: #000; }
+  a { color: inherit; }
+}
+
+/* ---------- Explanation pages (explain-doc), on top of html-style (its layout is kept as is) ---------- */
+/* Level switch (Simple | Technical): same pill as the language switch */
+.level-switch { display: inline-flex; align-items: center; gap: 2px; height: 34px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--code-bg); }
+.level-switch button { height: 26px; border: 0; background: none; color: var(--text); cursor: pointer; font: 600 12px system-ui, sans-serif; letter-spacing: .03em; padding: 0 10px; border-radius: 999px; transition: background .2s, color .2s; }
+.level-switch button.on { background: var(--accent); color: var(--surface); }
+.level-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Only the content of the active level is shown (no data-level = both levels) */
+:root[data-level="simple"] [data-level="technical"], :root[data-level="technical"] [data-level="simple"] { display: none !important; }
+.level-badge { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); vertical-align: middle; }
+/* One-sentence summary */
+.tldr { font-size: 18px; line-height: 1.5; padding: 16px 20px; border-radius: 10px; background: var(--accent-soft); border-left: 3px solid var(--accent); margin: 0 0 24px; }
+.tldr strong { color: var(--accent); }
+/* Stepper: animated diagram, one state per step; controls + caption above the drawing */
+.stepper .view svg { max-height: min(400px, 58vh); margin-inline: auto; }
+.stepper svg [data-show], .stepper svg [data-text], .stepper svg [data-at] { transition: opacity .16s ease, transform .45s ease, fill .3s; }
+.stepper svg .off, .stepper svg .fading { opacity: 0; }
+.stepper svg rect, .stepper svg circle, .stepper svg path { transition: fill .25s, stroke .25s; }
+.stepper svg .hl { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2.4; }
+.stepper svg .hl-warn { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 2.4; }
+.stepper svg text.hl, .stepper svg text.hl-warn { stroke: none; }
+.stepper svg text.hl, .stepper svg text.changed { fill: var(--accent); font-weight: 700; }
+.stepper svg text.hl-warn { fill: var(--warn); }
+.stepper.init *, .stepper.init *::before, .stepper.init *::after { transition: none !important; }
+/* The head follows the scroll only when the figure is taller than the screen (class set by explain.js) */
+.stepper.tall .step-head { position: sticky; top: 64px; }
+.stepper .step-head { z-index: 5; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.stepper .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.stepper .controls button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; min-width: 32px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); cursor: pointer; font: 500 13px/1 system-ui, sans-serif; }
+.stepper .controls button svg { width: 14px; height: 14px; flex: none; fill: currentColor; }
+.stepper .controls button.play { min-width: 76px; padding: 0 12px; }
+.stepper .controls button:hover { border-color: var(--accent); color: var(--accent); }
+.stepper .controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stepper .controls .count { color: var(--muted); font-size: 13px; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.stepper .progress { flex: 1; min-width: 80px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.stepper .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+/* Captions stacked in one cell: cross-fade, the height of the longest one (the drawing doesn't jump) */
+.stepper .captions { display: grid; list-style: none; padding: 0; margin: 10px 0 0; }
+.stepper .captions > li { grid-area: 1 / 1; opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s .2s; font-size: 15px; line-height: 1.5; }
+.stepper .captions > li.on { opacity: 1; visibility: visible; transition: opacity .2s ease .1s, visibility 0s; }
+.stepper .captions > li b:first-child { color: var(--accent); }
+/* Formula: MathML block + its variables */
+.formula { display: flex; align-items: center; gap: 16px; margin: 16px 0; padding: 14px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); overflow-x: auto; }
+.formula math { flex: 1; font-size: 1.25em; }
+.formula .num { color: var(--muted); font-size: 13px; }
+table.where td:first-child { white-space: nowrap; width: 1%; }
+/* Playground: inputs -> computed outputs / drawing */
+.playground { margin: 16px 0; padding: 18px 20px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+.playground .inputs { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: end; margin-bottom: 14px; }
+.playground label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.playground input[type="range"] { width: min(320px, 70vw); accent-color: var(--accent); }
+.playground input[type="text"], .playground input[type="number"] { font: 15px ui-monospace, Menlo, Consolas, monospace; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+.playground input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.playground button { height: 32px; padding: 0 12px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: var(--surface); cursor: pointer; font: 600 13px system-ui, sans-serif; }
+.playground button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.playground .outputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.playground .out { padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
+.playground .out span { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.playground .out b { font: 600 22px ui-monospace, Menlo, Consolas, monospace; color: var(--text); font-variant-numeric: tabular-nums; }
+.playground output { font-variant-numeric: tabular-nums; color: var(--text); }
+/* Charts drawn in SVG by the page scripts */
+svg .axis { stroke: var(--muted); stroke-width: 1; }
+svg .grid { stroke: var(--border); stroke-width: 1; }
+svg .curve { fill: none; stroke: var(--accent); stroke-width: 2.2; }
+svg .curve-2 { fill: none; stroke: var(--warn); stroke-width: 2.2; stroke-dasharray: 6 4; }
+svg .dot { fill: var(--accent); }
+svg .dot-2 { fill: var(--warn); }
+svg .mark { stroke: var(--text); stroke-width: 1; stroke-dasharray: 3 3; }
+/* Glossary terms: definition on hover / focus */
+dfn[data-def] { font-style: normal; border-bottom: 1px dashed var(--accent); cursor: help; position: relative; }
+dfn[data-def]:hover::after, dfn[data-def]:focus::after {
+  content: attr(data-def); position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: max-content; max-width: min(320px, 80vw);
+  padding: 8px 10px; border-radius: 6px; background: var(--text); color: var(--bg); font: 400 13px/1.45 system-ui, sans-serif;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .2); white-space: normal;
+}
+dfn[data-def]:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Check yourself */
+details.quiz { margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+details.quiz summary { padding: 10px 14px; cursor: pointer; font-weight: 600; }
+details.quiz summary::marker { color: var(--accent); }
+details.quiz[open] summary { border-bottom: 1px solid var(--border); }
+details.quiz > :not(summary) { padding: 0 14px; }
+/* Compare cards (two approaches side by side) */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 14px 0; }
+.compare > div { padding: 14px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.compare h4 { margin: 0 0 6px; font-size: 15px; }
+@media (max-width: 860px) {
+  .stepper .view { overflow-x: auto; }
+  .stepper.tall .step-head { top: 56px; }
+  .stepper .view svg { min-width: 560px; } /* readable labels: scroll instead of shrinking */
+  .level-switch button { padding: 0 8px; }
+}
+@media (max-width: 480px) {
+  .brand .repo-name { display: none; } /* room for the level and theme switches */
+}
+@media (prefers-reduced-motion: reduce) {
+  .stepper svg *, .stepper .progress i, .stepper .captions > li { transition: none !important; }
+}
+/* Phones and touch screens */
+@media (max-width: 600px) {
+  .tldr { font-size: 16px; padding: 12px 14px; }
+  .playground { padding: 14px 12px; }
+  .playground .inputs { gap: 12px; }
+  .playground input[type="range"] { width: 100%; }
+  .playground label { width: 100%; }
+  .playground .out b { font-size: 19px; }
+  .formula { padding: 10px 12px; }
+  .stepper .controls .progress { flex-basis: 100%; order: 5; }
+}
+@media (pointer: coarse) {
+  .stepper .controls button { height: 44px; min-width: 44px; }
+  .playground button { height: 44px; }
+  .playground input[type="range"] { height: 32px; }
+  .level-switch { height: 40px; }
+  .level-switch button { height: 32px; min-width: 52px; }
+  dfn[data-def] { min-height: 24px; }
+}
+@media (hover: none) {
+  dfn[data-def]:hover::after { display: none; }              /* tap = focus: the definition shows with :focus */
+  dfn[data-def]:focus::after { left: 0; max-width: min(300px, 86vw); }
+}
+@media print { .stepper .controls, .level-switch { display: none; } .stepper svg .off { opacity: 1; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="icon-btn menu-btn" type="button" id="menuBtn" aria-label="Open the navigation" data-i18n-aria-label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <a class="brand" href="index.html"><svg class="logo" viewBox="0 0 32 32" fill="none" aria-hidden="true"><!-- default logo: replace with the project logo (inline SVG, currentColor) --><rect x="4" y="4" width="18" height="22" rx="3" fill="currentColor" opacity=".35"/><rect x="9" y="7" width="18" height="22" rx="3" fill="currentColor"/><path d="M13 14h10M13 18h10M13 22h6" stroke="var(--surface)" stroke-width="2" stroke-linecap="round"/></svg><span class="repo-name">banana-brain</span><span class="ver repo-version">v0.0.0</span></a>
+  <nav class="tabs" aria-label="Pages">
+    <a href="index.html" data-i18n>Technical</a>
+    <a href="graph.html" data-i18n>Graph</a>
+    <a href="layer-network.html" data-i18n>Layer network</a>
+    <a href="brain-network.html" class="current" aria-current="page" data-i18n>Brain network</a>
+  </nav>
+  <span class="spacer"></span>
+  <div class="top-actions">
+  <a class="icon-btn repo-link" href="https://github.com/TsukiNi22/banana-brain" title="GitHub repository" data-i18n-title aria-label="GitHub repository" data-i18n-aria-label>
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.71 1.23 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+  </a>
+  <span class="divider" aria-hidden="true"></span>
+  <div class="lang-switch" role="group" aria-label="Language" data-i18n-aria-label>
+    <button type="button" data-set-lang="en" class="on">EN</button>
+    <button type="button" data-set-lang="fr">FR</button>
+  </div>
+  <span class="divider" aria-hidden="true"></span><div class="level-switch" role="group" aria-label="Level" data-i18n-aria-label>
+    <button type="button" data-set-level="simple" data-i18n>Simple</button>
+    <button type="button" data-set-level="technical" data-i18n>Technical</button>
+  </div>
+  <span class="divider" aria-hidden="true"></span>
+
+  <button class="theme-switch" type="button" id="themeToggle" role="switch" aria-checked="false" aria-label="Toggle theme" data-i18n-aria-label title="Toggle theme" data-i18n-title>
+    <span class="stars" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="knob" aria-hidden="true">
+      <svg class="sun" viewBox="0 0 24 24" fill="#ffffff"><circle cx="12" cy="12" r="5.2"/><g stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"><path d="M12 1.8v2.6M12 19.6v2.6M1.8 12h2.6M19.6 12h2.6M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M4.8 19.2l1.8-1.8M17.4 6.6l1.8-1.8"/></g></svg>
+      <svg class="moon" viewBox="0 0 24 24"><path d="M15.6 4.2a8 8 0 1 0 4.2 11.6A7 7 0 0 1 15.6 4.2z" fill="#f6c343"/></svg>
+    </span>
+  </button>
+  </div>
+</header>
+<div class="layout" id="top">
+<aside class="sidebar" id="sidebar" aria-label="Contents">
+  <p data-i18n>Contents</p>
+  <a href="#idea">1. <span data-lang="en">The idea</span><span data-lang="fr">L'idée</span></a>
+  <a href="#how">2. <span data-lang="en">How it works</span><span data-lang="fr">Comment ça marche</span></a>
+  <a href="#limits">3. <span data-lang="en">Limits</span><span data-lang="fr">Limites</span></a>
+  <a href="#try">4. <span data-lang="en">Try it</span><span data-lang="fr">Essayer</span></a>
+  <a href="#training">5. <span data-lang="en">Training and links</span><span data-lang="fr">Entraînement et liens</span></a>
+  <a href="#pitfalls">6. <span data-lang="en">Pitfalls</span><span data-lang="fr">Pièges</span></a>
+  <a href="#check">7. <span data-lang="en">Check yourself</span><span data-lang="fr">Vérifier</span></a>
+  <a href="#glossary">8. <span data-lang="en">Glossary & sources</span><span data-lang="fr">Glossaire et sources</span></a>
+</aside>
+<main>
+<header>
+  <div class="page-eyebrow"><span data-lang="en">Explanation</span><span data-lang="fr">Explication</span> <span class="level-badge" data-level="simple">Simple</span><span class="level-badge" data-level="technical"><span data-lang="en">Technical</span><span data-lang="fr">Technique</span></span></div>
+  <h1><span data-lang="en">How a brain network works</span><span data-lang="fr">Comment marche un réseau cerveau</span></h1>
+  <p class="lead"><span data-lang="en">The <code>RawBrainNetwork</code> and its reduced <code>BrainNetwork</code>: neurons placed in a space, a signal that travels step by step, links that appear and disappear while it learns.</span><span data-lang="fr">Le <code>RawBrainNetwork</code> et son <code>BrainNetwork</code> réduit : des neurones placés dans un espace, un signal qui avance pas à pas, des liens qui apparaissent et disparaissent pendant l'apprentissage.</span></p>
+</header>
+<p data-level="simple" class="tldr"><span data-lang="en"><strong>In one sentence:</strong> neurons sit on a map and talk to their nearest neighbours; a signal enters on the left and moves one neighbour further at each tick, and training strengthens the paths that gave a good answer, even creating or cutting links.</span><span data-lang="fr"><strong>En une phrase :</strong> des neurones sont posés sur une carte et parlent à leurs plus proches voisins ; un signal entre à gauche et avance d'un voisin à chaque tic, et l'entraînement renforce les chemins qui ont donné une bonne réponse, jusqu'à créer ou couper des liens.</span></p><p data-level="technical" class="tldr"><span data-lang="en"><strong>In one sentence:</strong> a recurrent network on a 2D space: each neuron has up to <code>cap</code> links to its nearest neurons, the state is updated synchronously for a fixed number of time steps, and the training is a reinforcement (score-weighted backpropagation through time) followed by structural changes at the weight limits.</span><span data-lang="fr"><strong>En une phrase :</strong> un réseau récurrent dans un espace 2D : chaque neurone a jusqu'à <code>cap</code> liens vers ses plus proches voisins, l'état est mis à jour d'un coup pendant un nombre fixe de pas de temps, et l'entraînement est un renforcement (rétropropagation dans le temps pondérée par un score) suivi de changements de structure aux limites des poids.</span></p>
+<!-- 1 -->
+<section id="idea">
+  <h2>1. <span data-lang="en">The idea</span><span data-lang="fr">L'idée</span></h2>
+  <div data-level="simple">
+    <p><span data-lang="en">Think of a crowd in a square passing a rumour. Nobody shouts to everybody: each person only talks to the few people standing closest. The people on the left edge hear the news first (the <strong>inputs</strong>), the people on the right edge report what reached them (the <strong>outputs</strong>).</span><span data-lang="fr">Pensez à une foule sur une place qui fait circuler une rumeur. Personne ne crie à tout le monde : chacun ne parle qu'aux quelques personnes les plus proches. Les gens du bord gauche entendent la nouvelle en premier (les <strong>entrées</strong>), les gens du bord droit rapportent ce qui leur est parvenu (les <strong>sorties</strong>).</span></p>
+    <p><span data-lang="en">The news moves one person at each <dfn data-def="One tick of the clock: every neuron updates at the same time, from what its neighbours had at the tick before.">time step</dfn>. A whisper too quiet is dropped. When the final report is good, the people who passed it trust each other more; a friendship that gets very strong makes the person look for one more friend nearby, and a friendship that fades is dropped.</span><span data-lang="fr">La nouvelle avance d'une personne à chaque <dfn data-def="Un tic d'horloge : chaque neurone se met à jour en même temps, à partir de ce que ses voisins avaient au tic d'avant.">pas de temps</dfn>. Un murmure trop faible est perdu. Quand le rapport final est bon, ceux qui l'ont transmis se font plus confiance ; une amitié devenue très forte pousse à chercher un ami de plus à côté, et une amitié qui s'éteint est abandonnée.</span></p>
+  </div>
+  <div data-level="technical">
+    <p><span data-lang="en"><code>RawBrainNetwork(neurons, {width, height})</code> places its neurons in a 2D space: the <code>input</code> first ones on the left edge, the <code>output</code> last ones on the right edge, the others at random. Each neuron gets a random number (1 to <code>cap</code>) of links to its nearest neurons, closest first, in a random direction (an input only sends, an output only receives). A link is stored twice with the same weight: <code>inward</code> on the receiver, an outward clone on the sender. <code>reduce()</code> gives the <code>BrainNetwork</code>: only the biases and the inward links, for the execution.</span><span data-lang="fr"><code>RawBrainNetwork(neurons, {largeur, hauteur})</code> place ses neurones dans un espace 2D : les <code>input</code> premiers sur le bord gauche, les <code>output</code> derniers sur le bord droit, les autres au hasard. Chaque neurone reçoit un nombre aléatoire (1 à <code>cap</code>) de liens vers ses plus proches voisins, du plus proche au plus loin, dans un sens aléatoire (une entrée ne fait qu'envoyer, une sortie ne fait que recevoir). Un lien est stocké deux fois avec le même poids : <code>inward</code> sur le receveur, un clone sortant sur l'émetteur. <code>reduce()</code> donne le <code>BrainNetwork</code> : seulement les biais et les liens entrants, pour l'exécution.</span></p>
+    <div class="compare">
+      <div><h4>LayerNetwork</h4><p><span data-lang="en">Fixed layers, every neuron reads the whole previous layer, one pass, classic gradient descent.</span><span data-lang="fr">Couches fixes, chaque neurone lit toute la couche d'avant, un seul passage, descente de gradient classique.</span></p></div>
+      <div><h4>RawBrainNetwork</h4><p><span data-lang="en">Neurons in a space, a few local links, loops allowed, <code>steps</code> passes, score reinforcement and links that change.</span><span data-lang="fr">Neurones dans un espace, quelques liens locaux, boucles possibles, <code>steps</code> passages, renforcement par score et liens qui changent.</span></p></div>
+      <div><h4>BrainNetwork</h4><p><span data-lang="en">The reduced copy: same execution, smaller file (<code>.bn</code>), no training.</span><span data-lang="fr">La copie réduite : même exécution, fichier plus petit (<code>.bn</code>), pas d'entraînement.</span></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="how">
+  <h2>2. <span data-lang="en">How it works</span><span data-lang="fr">Comment ça marche</span></h2>
+  <p><span data-lang="en">Press <strong>Play</strong>: a chain input → A → B → output with the weights 2, 3 and 0.5, the input at 1, no activation.</span><span data-lang="fr">Appuyez sur <strong>Lecture</strong> : une chaîne entrée → A → B → sortie avec les poids 2, 3 et 0.5, l'entrée à 1, sans activation.</span></p>
+  <figure class="stepper" data-steps="4">
+    <svg viewBox="0 0 760 220" role="img" aria-label="A signal crossing a chain of four neurons in three time steps">
+      <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0 0L10 5L0 10z"/></marker>
+<marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow-accent" d="M0 0L10 5L0 10z"/></marker></defs>
+      <circle id="n0" class="box-alt" cx="100" cy="110" r="34"/>
+      <circle id="n1" class="box" cx="287" cy="110" r="34" data-hl="1"/>
+      <circle id="n2" class="box" cx="474" cy="110" r="34" data-hl="2"/>
+      <circle id="n3" class="box" cx="660" cy="110" r="34" data-hl="3"/>
+      <path id="e1" class="edge" data-from="n0" data-to="n1" marker-end="url(#arr)"/>
+      <path id="e2" class="edge" data-from="n1" data-to="n2" marker-end="url(#arr)"/>
+      <path id="e3" class="edge" data-from="n2" data-to="n3" marker-end="url(#arr)"/>
+      <text class="small" data-label-for="e1" data-offset="-10" text-anchor="middle">×2</text>
+      <text class="small" data-label-for="e2" data-offset="-10" text-anchor="middle">×3</text>
+      <text class="small" data-label-for="e3" data-offset="-10" text-anchor="middle">×0.5</text>
+      <text class="lbl" x="100" y="115" text-anchor="middle">1</text>
+      <text class="lbl" x="287" y="115" text-anchor="middle" data-text="0:0;1:2">0</text>
+      <text class="lbl" x="474" y="115" text-anchor="middle" data-text="0:0;2:6">0</text>
+      <text class="lbl" x="660" y="115" text-anchor="middle" data-text="0:0;3:3">0</text>
+      <text class="small" x="100" y="170" text-anchor="middle" data-lang="en">input</text><text class="small" x="100" y="170" text-anchor="middle" data-lang="fr">entrée</text>
+      <text class="small" x="287" y="170" text-anchor="middle">A</text><text class="small" x="474" y="170" text-anchor="middle">B</text>
+      <text class="small" x="660" y="170" text-anchor="middle" data-lang="en">output</text><text class="small" x="660" y="170" text-anchor="middle" data-lang="fr">sortie</text>
+      <text class="small" x="380" y="30" text-anchor="middle" data-lang="en" data-text="0:step 0;1:step 1;2:step 2;3:step 3">step 0</text><text class="small" x="380" y="30" text-anchor="middle" data-lang="fr" data-text="0:pas 0;1:pas 1;2:pas 2;3:pas 3">pas 0</text>
+    </svg>
+    <ol class="captions">
+      <li><b><span data-lang="en">Start.</span><span data-lang="fr">Début.</span></b> <span data-level="simple"><span data-lang="en">The input holds 1, everybody else 0.</span><span data-lang="fr">L'entrée vaut 1, tous les autres 0.</span></span><span data-level="technical"><span data-lang="en">State 0: the first <code>input</code> neurons get the inputs, the others start at 0.</span><span data-lang="fr">État 0 : les <code>input</code> premiers neurones reçoivent les entrées, les autres partent de 0.</span></span></li>
+      <li><b><span data-lang="en">Step 1.</span><span data-lang="fr">Pas 1.</span></b> <span data-level="simple"><span data-lang="en">A hears the input: 1 × 2 = 2. B and the output still hear 0 (A was 0 a moment ago).</span><span data-lang="fr">A entend l'entrée : 1 × 2 = 2. B et la sortie entendent encore 0 (A valait 0 juste avant).</span></span><span data-level="technical"><span data-lang="en">Every neuron reads the state of the step before: A = 2·1 = 2, B = 3·0 = 0, out = 0.5·0 = 0 (synchronous update).</span><span data-lang="fr">Chaque neurone lit l'état du pas d'avant : A = 2·1 = 2, B = 3·0 = 0, sortie = 0.5·0 = 0 (mise à jour synchrone).</span></span></li>
+      <li><b><span data-lang="en">Step 2.</span><span data-lang="fr">Pas 2.</span></b> <span data-level="simple"><span data-lang="en">B hears A: 2 × 3 = 6.</span><span data-lang="fr">B entend A : 2 × 3 = 6.</span></span><span data-level="technical"><span data-lang="en">B = 3·2 = 6; the output still reads the old B (0).</span><span data-lang="fr">B = 3·2 = 6 ; la sortie lit encore l'ancien B (0).</span></span></li>
+      <li><b><span data-lang="en">Step 3.</span><span data-lang="fr">Pas 3.</span></b> <span data-level="simple"><span data-lang="en">The output hears B: 6 × 0.5 = 3. With only 2 steps the output would have stayed at 0.</span><span data-lang="fr">La sortie entend B : 6 × 0.5 = 3. Avec seulement 2 pas, la sortie serait restée à 0.</span></span><span data-level="technical"><span data-lang="en">out = 0.5·6 = 3: a signal needs as many steps as hops; with a threshold of 2.5, A (2) would have been cancelled and the output would stay at 0.</span><span data-lang="fr">sortie = 0.5·6 = 3 : un signal a besoin d'autant de pas que de sauts ; avec un seuil de 2.5, A (2) aurait été annulé et la sortie resterait à 0.</span></span></li>
+    </ol>
+  </figure>
+</section>
+
+<!-- 3 -->
+<section id="limits">
+  <h2><span data-level="simple">3. <span data-lang="en">How many links, how many steps</span><span data-lang="fr">Combien de liens, combien de pas</span></span><span data-level="technical">3. <span data-lang="en">Limits</span><span data-lang="fr">Limites</span></span></h2>
+  <div data-level="simple">
+    <p><span data-lang="en">Two numbers grow with the size of the network, but slowly: the links of a neuron (how many neighbours it may talk to) and the steps (how many ticks the network runs).</span><span data-lang="fr">Deux nombres grandissent avec la taille du réseau, mais lentement : les liens d'un neurone (à combien de voisins il peut parler) et les pas (combien de tics le réseau tourne).</span></p>
+    <div class="table-wrap"><table>
+      <thead><tr><th><span data-lang="en">Neurons</span><span data-lang="fr">Neurones</span></th><th><span data-lang="en">Links per neuron (max)</span><span data-lang="fr">Liens par neurone (max)</span></th><th><span data-lang="en">Steps</span><span data-lang="fr">Pas</span></th></tr></thead>
+      <tbody><tr><td>10</td><td>1</td><td>2</td></tr><tr><td>100</td><td>10</td><td>25</td></tr><tr><td>1 000</td><td>100</td><td>39</td></tr><tr><td>100 000</td><td>4 012</td><td>66</td></tr></tbody>
+    </table></div>
+  </div>
+  <div data-level="technical">
+    <p><span data-lang="en">Both limits are the smaller of a percentage of the neurons and a hook (<code>linksCap</code> / <code>stepsCap</code>, <code>BRAIN_LINKS_CAP_*</code>, <code>BRAIN_STEPS_CAP_*</code>):</span><span data-lang="fr">Les deux limites sont le plus petit d'un pourcentage des neurones et d'un hook (<code>linksCap</code> / <code>stepsCap</code>, <code>BRAIN_LINKS_CAP_*</code>, <code>BRAIN_STEPS_CAP_*</code>) :</span></p>
+    <div class="formula"><math display="block"><mrow><mtext>cap</mtext><mo>=</mo><mtext>clamp</mtext><mo>(</mo><mi>min</mi><mo>(</mo><mo>⌊</mo><mn>0.1</mn><mi>n</mi><mo>⌋</mo><mo>,</mo><mo>⌊</mo><mfrac><mrow><mn>2</mn><msub><mi>log</mi><mn>2</mn></msub><mi>n</mi><mo>·</mo><mi>ln</mi><mi>n</mi></mrow><mrow><mi>ln</mi><mn>1.1</mn></mrow></mfrac><mo>⌋</mo><mo>)</mo><mo>,</mo><mn>1</mn><mo>,</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo>)</mo></mrow></math><span class="num">(1)</span></div>
+    <div class="formula"><math display="block"><mrow><mtext>steps</mtext><mo>=</mo><mi>max</mi><mo>(</mo><mn>1</mn><mo>,</mo><mi>min</mi><mo>(</mo><mo>⌊</mo><mn>0.25</mn><mi>n</mi><mo>⌋</mo><mo>,</mo><mo>⌊</mo><mn>4</mn><msub><mi>log</mi><mn>2</mn></msub><mi>n</mi><mo>⌋</mo><mo>)</mo><mo>)</mo></mrow></math><span class="num">(2)</span></div>
+    <p><span data-lang="en">Execution costs <em>O(steps · n · cap)</em>: a step reads every slot of every neuron (a free slot is all zeros). On a CUDA gpu one kernel per step runs a thread per neuron; a signal under <code>threshold()</code> (absolute value) is set to 0 at each step.</span><span data-lang="fr">L'exécution coûte <em>O(pas · n · cap)</em> : un pas lit chaque slot de chaque neurone (un slot libre est tout à zéro). Sur un GPU CUDA, un kernel par pas lance un thread par neurone ; un signal sous <code>threshold()</code> (valeur absolue) est mis à 0 à chaque pas.</span></p>
+  </div>
+  <div class="playground" data-play="caps">
+    <div class="inputs"><label><span data-lang="en">Neurons</span><span data-lang="fr">Neurones</span> <output data-out="n"></output><input type="range" data-in="e" min="1" max="6" step="0.05" value="3"></label></div>
+    <div class="outputs">
+      <div class="out"><span><span data-lang="en">Links per neuron (max)</span><span data-lang="fr">Liens par neurone (max)</span></span><b data-out="links"></b></div>
+      <div class="out"><span><span data-lang="en">Steps</span><span data-lang="fr">Pas</span></span><b data-out="steps"></b></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="try">
+  <h2>4. <span data-lang="en">Try it</span><span data-lang="fr">Essayer</span></h2>
+  <p><span data-lang="en">The chain of section 2, with your weights, your number of steps and your threshold: the state of A, B and the output after each step.</span><span data-lang="fr">La chaîne de la section 2, avec vos poids, votre nombre de pas et votre seuil : l'état de A, B et de la sortie après chaque pas.</span></p>
+  <div class="playground" data-play="chain">
+    <div class="inputs">
+      <label><span data-lang="en">Weight input → A</span><span data-lang="fr">Poids entrée → A</span> <output data-out="w1"></output><input type="range" data-in="w1" min="-3" max="3" step="0.1" value="2"></label>
+      <label><span data-lang="en">Weight A → B</span><span data-lang="fr">Poids A → B</span> <output data-out="w2"></output><input type="range" data-in="w2" min="-3" max="3" step="0.1" value="3"></label>
+      <label><span data-lang="en">Weight B → output</span><span data-lang="fr">Poids B → sortie</span> <output data-out="w3"></output><input type="range" data-in="w3" min="-3" max="3" step="0.1" value="0.5"></label>
+      <label><span data-lang="en">Steps</span><span data-lang="fr">Pas</span> <output data-out="steps"></output><input type="range" data-in="steps" min="1" max="6" step="1" value="3"></label>
+      <label><span data-lang="en">Threshold</span><span data-lang="fr">Seuil</span> <output data-out="thr"></output><input type="range" data-in="thr" min="0" max="5" step="0.1" value="0"></label>
+    </div>
+    <div class="outputs">
+      <div class="out"><span><span data-lang="en">Output</span><span data-lang="fr">Sortie</span></span><b data-out="out"></b></div>
+      <div class="out"><span><span data-lang="en">States (A, B, output) per step</span><span data-lang="fr">États (A, B, sortie) par pas</span></span><b data-out="states"></b></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="training">
+  <h2>5. <span data-lang="en">Training and links</span><span data-lang="fr">Entraînement et liens</span></h2>
+  <div data-level="simple">
+    <p><span data-lang="en">After a run, you give each output a <strong>score</strong>: positive when it was good, negative when it was bad. The score goes back through the ticks: the links that carried a well scored answer get stronger, the others weaker.</span><span data-lang="fr">Après un passage, vous donnez à chaque sortie un <strong>score</strong> : positif quand elle était bonne, négatif quand elle était mauvaise. Le score remonte les tics : les liens qui ont porté une réponse bien notée se renforcent, les autres s'affaiblissent.</span></p>
+    <p><span data-lang="en">Then each link is checked: one that became too weak (under the minimum) is cut, one that became too strong (over the maximum) makes its neuron link to the closest neighbour it does not know yet. A neuron never loses its last link, unless you allow it.</span><span data-lang="fr">Ensuite chaque lien est vérifié : un lien devenu trop faible (sous le minimum) est coupé, un lien devenu trop fort (au-dessus du maximum) fait lier son neurone au plus proche voisin qu'il ne connaît pas encore. Un neurone ne perd jamais son dernier lien, sauf si vous l'autorisez.</span></p>
+  </div>
+  <div data-level="technical">
+    <p><span data-lang="en"><code>backpropagation(scores)</code> after <code>apply()</code> (which keeps every state): the gradient of <code>Σ score<sub>k</sub>·out<sub>k</sub></code> goes back through the steps on the inward links, then every weight and bias goes <strong>up</strong> that gradient (ascent: the learning rate is already in the scores), the clone keeping the same weight. Then, for every neuron, each link with <code>|w| ≤ weightMin()</code> is removed (with its clone) and each link with <code>|w| ≥ weightMax()</code> links the nearest neuron still free (within <code>cap</code>), with a random weight between half and all of the mean of the two nearest links of the list that did not cause it, inside the limits.</span><span data-lang="fr"><code>backpropagation(scores)</code> après <code>apply()</code> (qui garde chaque état) : le gradient de <code>Σ score<sub>k</sub>·sortie<sub>k</sub></code> remonte les pas sur les liens entrants, puis chaque poids et biais <strong>monte</strong> ce gradient (montée : le taux d'apprentissage est déjà dans les scores), le clone gardant le même poids. Ensuite, pour chaque neurone, chaque lien avec <code>|w| ≤ weightMin()</code> est supprimé (avec son clone) et chaque lien avec <code>|w| ≥ weightMax()</code> lie le plus proche voisin encore libre (dans <code>cap</code>), avec un poids aléatoire entre la moitié et la totalité de la moyenne des deux liens les plus proches de la liste qui ne l'ont pas provoqué, dans les limites.</span></p>
+    <p><span data-lang="en">Protected without <code>allowOrphans()</code>: the last link of a neuron, the last inward link of an output or hidden neuron, the last outward link of an input. On a CUDA gpu the gradient and the update run there (<code>stepsBack</code>); a kernel then checks the limits, and only when a link is at one are the links read back for the change, done on the host.</span><span data-lang="fr">Protégés sans <code>allowOrphans()</code> : le dernier lien d'un neurone, le dernier lien entrant d'une sortie ou d'un neurone caché, le dernier lien sortant d'une entrée. Sur un GPU CUDA, le gradient et la mise à jour y tournent (<code>stepsBack</code>) ; un kernel vérifie ensuite les limites, et c'est seulement quand un lien en atteint une que les liens sont relus pour le changement, fait sur l'hôte.</span></p>
+  </div>
+  <div class="playground" data-play="relink">
+    <div class="inputs">
+      <label><span data-lang="en">|weight| of the link</span><span data-lang="fr">|poids| du lien</span> <output data-out="w"></output><input type="range" data-in="w" min="0" max="3" step="0.01" value="1"></label>
+      <label>weightMin = <output data-out="min"></output><input type="range" data-in="min" min="0" max="1" step="0.01" value="0.01"></label>
+      <label>weightMax = <output data-out="max"></output><input type="range" data-in="max" min="1" max="3" step="0.05" value="2"></label>
+      <label><span data-lang="en">Mean |weight| of the 2 nearest other links</span><span data-lang="fr">|poids| moyen des 2 autres liens les plus proches</span> <output data-out="ref"></output><input type="range" data-in="ref" min="0" max="3" step="0.05" value="0.8"></label>
+    </div>
+    <div class="outputs">
+      <div class="out"><span><span data-lang="en">What happens</span><span data-lang="fr">Ce qui se passe</span></span><b data-out="action"></b></div>
+      <div class="out"><span><span data-lang="en">Weight of a new link</span><span data-lang="fr">Poids d'un nouveau lien</span></span><b data-out="range"></b></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="pitfalls">
+  <h2><span data-level="simple">6. <span data-lang="en">Common mistakes</span><span data-lang="fr">Erreurs courantes</span></span><span data-level="technical">6. <span data-lang="en">Pitfalls</span><span data-lang="fr">Pièges</span></span></h2>
+  <ul data-level="simple">
+    <li><span data-lang="en"><strong>"More neurons is always better."</strong> The signal needs one step per hop: too few steps and the outputs never hear the inputs (section 4: 2 steps on the chain give 0).</span><span data-lang="fr"><strong>« Plus de neurones, c'est toujours mieux. »</strong> Le signal a besoin d'un pas par saut : trop peu de pas et les sorties n'entendent jamais les entrées (section 4 : 2 pas sur la chaîne donnent 0).</span></li>
+    <li><span data-lang="en"><strong>"The score is the error."</strong> Here it is the other way around: a positive score says <em>good</em>. Giving the squared error (positive when wrong) would reward the mistakes: the library warns about it.</span><span data-lang="fr"><strong>« Le score, c'est l'erreur. »</strong> Ici c'est l'inverse : un score positif dit <em>bien</em>. Donner l'erreur au carré (positive quand c'est faux) récompenserait les erreurs : la bibliothèque prévient.</span></li>
+    <li><span data-lang="en"><strong>"A high threshold cleans the noise."</strong> It also cuts the real signal before it arrives (threshold 2.5 on the chain: output 0).</span><span data-lang="fr"><strong>« Un seuil haut nettoie le bruit. »</strong> Il coupe aussi le vrai signal avant qu'il arrive (seuil 2.5 sur la chaîne : sortie 0).</span></li>
+  </ul>
+  <ul data-level="technical">
+    <li><span data-lang="en"><strong>Steps vs depth:</strong> the default steps <code>min(25 % n, 4 log2 n)</code> are tight on small networks (10 neurons: 2 steps); raise <code>stepsCap</code> when the inputs and outputs are many hops apart.</span><span data-lang="fr"><strong>Pas et profondeur :</strong> les pas par défaut <code>min(25 % n, 4 log2 n)</code> sont justes sur les petits réseaux (10 neurones : 2 pas) ; montez <code>stepsCap</code> quand les entrées et les sorties sont à plusieurs sauts.</span></li>
+    <li><span data-lang="en"><strong>Score, not error:</strong> <code>train</code> sends the loss value; with the MSE (0 = perfect) the ascent rewards the wrong outputs: <code>ErrorLossOnBrain</code> is warned.</span><span data-lang="fr"><strong>Score, pas erreur :</strong> <code>train</code> envoie la valeur de la perte ; avec la MSE (0 = parfait) la montée récompense les mauvaises sorties : <code>ErrorLossOnBrain</code> est signalé.</span></li>
+    <li><span data-lang="en"><strong>Hidden neurons without inward link:</strong> the random directions of the init can leave one; it then only outputs <code>f(bias)</code>.</span><span data-lang="fr"><strong>Neurones cachés sans lien entrant :</strong> les sens aléatoires de l'init peuvent en laisser un ; il ne sort alors que <code>f(biais)</code>.</span></li>
+    <li><span data-lang="en"><strong>Orphans:</strong> <code>allowOrphans()</code> lets the limits empty a neuron completely; it stays in the network but takes no part in it.</span><span data-lang="fr"><strong>Orphelins :</strong> <code>allowOrphans()</code> laisse les limites vider complètement un neurone ; il reste dans le réseau sans y participer.</span></li>
+    <li><span data-lang="en"><strong>Cost of a relink:</strong> sorting the neighbours is <em>O(n log n)</em> per change and runs on the host; with tight limits every step pays it.</span><span data-lang="fr"><strong>Coût d'un changement de liens :</strong> trier les voisins coûte <em>O(n log n)</em> par changement et tourne sur l'hôte ; avec des limites serrées, chaque pas le paie.</span></li>
+  </ul>
+</section>
+
+<!-- 7 -->
+<section id="check">
+  <h2>7. <span data-lang="en">Check yourself</span><span data-lang="fr">Vérifier</span></h2>
+  <details class="quiz"><summary><span data-level="simple"><span data-lang="en">An output is 4 neurons away from the input: how many steps at least?</span><span data-lang="fr">Une sortie est à 4 neurones de l'entrée : combien de pas au minimum ?</span></span><span data-level="technical"><span data-lang="en">Minimal <code>steps</code> for a path of 4 hops (synchronous update)?</span><span data-lang="fr"><code>steps</code> minimal pour un chemin de 4 sauts (mise à jour synchrone) ?</span></span></summary>
+    <p><span data-level="simple"><span data-lang="en">4: the signal moves one neuron per step.</span><span data-lang="fr">4 : le signal avance d'un neurone par pas.</span></span><span data-level="technical"><span data-lang="en">4: after step <var>k</var> the signal has crossed <var>k</var> links.</span><span data-lang="fr">4 : après le pas <var>k</var>, le signal a traversé <var>k</var> liens.</span></span></p>
+  </details>
+  <details class="quiz"><summary><span data-level="simple"><span data-lang="en">A link reaches |weight| = 2.1 with a maximum of 2: what happens?</span><span data-lang="fr">Un lien atteint |poids| = 2.1 avec un maximum de 2 : que se passe-t-il ?</span></span><span data-level="technical"><span data-lang="en"><code>|w| ≥ weightMax()</code>: effect?</span><span data-lang="fr"><code>|w| ≥ weightMax()</code> : effet ?</span></span></summary>
+    <p><span data-level="simple"><span data-lang="en">Its neuron links one more neighbour (the closest free one), if it has room for a new link.</span><span data-lang="fr">Son neurone se lie à un voisin de plus (le plus proche libre), s'il a de la place pour un nouveau lien.</span></span><span data-level="technical"><span data-lang="en">A new link to the nearest free neuron (if a slot is free on both), weight in [0.5·ref, ref] clamped inside the limits.</span><span data-lang="fr">Un nouveau lien vers le plus proche neurone libre (si un slot est libre des deux côtés), poids dans [0.5·ref, ref] borné dans les limites.</span></span></p>
+  </details>
+</section>
+
+<!-- 8 -->
+<section id="glossary">
+  <h2>8. <span data-lang="en">Glossary & sources</span><span data-lang="fr">Glossaire et sources</span></h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th><span data-lang="en">Term</span><span data-lang="fr">Terme</span></th><th><span data-lang="en">Meaning</span><span data-lang="fr">Sens</span></th></tr></thead>
+    <tbody>
+      <tr><td><span data-lang="en">Time step</span><span data-lang="fr">Pas de temps</span></td><td><span data-lang="en">One synchronous update of every neuron from the previous state.</span><span data-lang="fr">Une mise à jour simultanée de chaque neurone depuis l'état d'avant.</span></td></tr>
+      <tr><td><span data-lang="en">Link (inward / clone)</span><span data-lang="fr">Lien (entrant / clone)</span></td><td><span data-lang="en">A connection stored on both neurons with the same weight: inward on the receiver, outward on the sender.</span><span data-lang="fr">Une connexion stockée sur les deux neurones avec le même poids : entrante sur le receveur, sortante sur l'émetteur.</span></td></tr>
+      <tr><td><span data-lang="en">Cap</span><span data-lang="fr">Cap</span></td><td><span data-lang="en">The maximum number of links of a neuron.</span><span data-lang="fr">Le nombre maximum de liens d'un neurone.</span></td></tr>
+      <tr><td><span data-lang="en">Threshold</span><span data-lang="fr">Seuil</span></td><td><span data-lang="en">A signal under it (absolute value) is set to 0.</span><span data-lang="fr">Un signal sous lui (valeur absolue) est mis à 0.</span></td></tr>
+      <tr><td><span data-lang="en">Score</span><span data-lang="fr">Score</span></td><td><span data-lang="en">The reward of an output: positive = good.</span><span data-lang="fr">La récompense d'une sortie : positif = bien.</span></td></tr>
+      <tr><td><span data-lang="en">Orphan</span><span data-lang="fr">Orphelin</span></td><td><span data-lang="en">A neuron left without the links it needs to take part.</span><span data-lang="fr">Un neurone resté sans les liens dont il a besoin pour participer.</span></td></tr>
+      <tr><td><span data-lang="en">Reduced network</span><span data-lang="fr">Réseau réduit</span></td><td><span data-lang="en">The execution only copy (<code>BrainNetwork</code>, <code>.bn</code>).</span><span data-lang="fr">La copie d'exécution seule (<code>BrainNetwork</code>, <code>.bn</code>).</span></td></tr>
+    </tbody>
+  </table></div>
+  <p data-level="technical" class="small"><span data-lang="en">Sources: <code>src/brain/network/RawBrainNetwork.cpp</code> (<code>init_</code>, <code>apply</code>, <code>learn_</code>, <code>relink_</code>), <code>src/brain/network/BrainNetwork.cpp</code> (<code>compute_</code>), <code>src/brain/tools/compute.cpp</code> (kernels <code>step</code>, <code>back_step</code>, <code>back_update</code>, <code>back_flags</code>, <code>reduce_copy</code>); Werbos, <em>Backpropagation through time</em>, Proc. IEEE 78 (1990); Williams, <em>Simple statistical gradient-following algorithms</em> (REINFORCE), Machine Learning 8 (1992).</span><span data-lang="fr">Sources : <code>src/brain/network/RawBrainNetwork.cpp</code> (<code>init_</code>, <code>apply</code>, <code>learn_</code>, <code>relink_</code>), <code>src/brain/network/BrainNetwork.cpp</code> (<code>compute_</code>), <code>src/brain/tools/compute.cpp</code> (kernels <code>step</code>, <code>back_step</code>, <code>back_update</code>, <code>back_flags</code>, <code>reduce_copy</code>) ; Werbos, <em>Backpropagation through time</em>, Proc. IEEE 78 (1990) ; Williams, <em>Simple statistical gradient-following algorithms</em> (REINFORCE), Machine Learning 8 (1992).</span></p>
+</section>
+
+<nav class="pager" aria-label="Pages">
+  <a class="prev" href="layer-network.html"><span data-i18n>Previous</span><b data-i18n>Layer network</b></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+// Same rules as src/brain/network/LayerNetwork.cpp (forward_, learn_) and BrainNetwork.cpp (compute_)
+function sig(x) { return 1 / (1 + Math.exp(-x)); }
+function layerNet() { return { h: [{ w: [0.5, -0.4], b: 0.1 }, { w: [0.3, 0.8], b: -0.2 }], o: { w: [1.2, -0.7], b: 0.05 } }; }
+function forward(n, x) {
+  var hs = n.h.map(function (u) { return u.b + u.w[0] * x[0] + u.w[1] * x[1]; });
+  var ho = hs.map(sig);
+  var os = n.o.b + n.o.w[0] * ho[0] + n.o.w[1] * ho[1];
+  return { hs: hs, ho: ho, os: os, y: sig(os) };
+}
+function learn(n, x, err) { // err = learning rate * (output - expected)
+  var f = forward(n, x);
+  var so = err * f.y * (1 - f.y);
+  var below = [so * n.o.w[0], so * n.o.w[1]];
+  n.o.w[0] -= so * f.ho[0]; n.o.w[1] -= so * f.ho[1]; n.o.b -= so;
+  var sh = [below[0] * f.ho[0] * (1 - f.ho[0]), below[1] * f.ho[1] * (1 - f.ho[1])];
+  for (var k = 0; k < 2; k++) { n.h[k].w[0] -= sh[k] * x[0]; n.h[k].w[1] -= sh[k] * x[1]; n.h[k].b -= sh[k]; }
+  return { f: f, so: so, sh: sh };
+}
+function chain(weights, steps, threshold) { // input 1 -> n1 -> n2 -> n3 (output), linear, bias 0
+  var s = [1, 0, 0, 0], all = [s.slice()];
+  for (var t = 0; t < steps; t++) {
+    var nx = [s[0], weights[0] * s[0], weights[1] * s[1], weights[2] * s[2]];
+    for (var i = 1; i < 4; i++) if (Math.abs(nx[i]) < threshold) nx[i] = 0;
+    s = nx; all.push(s.slice());
+  }
+  return all;
+}
+function stepsCap(n, pct) { return Math.max(1, Math.min(Math.floor(n * pct), Math.floor(4 * Math.log2(n)))); }
+function linksCap(n, pct) { if (n < 2) return 0; return Math.min(Math.max(Math.min(Math.floor(n * pct), Math.floor(2 * Math.log2(n) * Math.log(n) / Math.log(1.1))), 1), n - 1); }
+
+function fr() { return document.documentElement.getAttribute('lang') === 'fr'; }
+function num(v) { return explain.fmt(v, Math.abs(v) < 10 ? 2 : 1); }
+explain.play('caps', function (v) {
+  var n = Math.max(2, Math.round(Math.pow(10, +v.e)));
+  return { n: n.toLocaleString(), links: linksCap(n, 0.1).toLocaleString(), steps: stepsCap(n, 0.25) };
+});
+explain.play('chain', function (v) {
+  var all = chain([+v.w1, +v.w2, +v.w3], Math.round(+v.steps), +v.thr);
+  var last = all[all.length - 1];
+  return { w1: (+v.w1).toFixed(1), w2: (+v.w2).toFixed(1), w3: (+v.w3).toFixed(1), steps: Math.round(+v.steps), thr: (+v.thr).toFixed(1), out: num(last[3]),
+    states: all.slice(1).map(function (s, i) { return (i + 1) + ': ' + num(s[1]) + ', ' + num(s[2]) + ', ' + num(s[3]); }).join(' | ') };
+});
+explain.play('relink', function (v) {
+  var w = +v.w, min = +v.min, max = +v.max, ref = +v.ref, low = min + (max - min) * 0.05, high = min + (max - min) * 0.95;
+  var lo = Math.min(Math.max(ref * 0.5, low), high), hi = Math.min(Math.max(ref, low), high);
+  var action = w <= min ? (fr() ? 'supprimé (sauf dernier lien protégé)' : 'removed (unless a protected last link)')
+    : w >= max ? (fr() ? 'lie le plus proche voisin libre' : 'links the nearest free neuron') : (fr() ? 'rien, le poids continue d\'apprendre' : 'nothing, the weight keeps learning');
+  return { w: w.toFixed(2), min: min.toFixed(2), max: max.toFixed(2), ref: ref.toFixed(2), action: action, range: '±[' + lo.toFixed(2) + ', ' + hi.toFixed(2) + ']' };
+});
+});
+</script>
+</div>
+<footer class="site">banana-brain documentation</footer>
+<script>
+window.DOC_FR = { "Toggle theme": "Changer de thème", "Contents": "Sommaire", "Language": "Langue", "Copy": "Copier", "Copied": "Copié", "Select & copy": "Sélectionner et copier", "Link to this section": "Lien vers cette section", "Open the navigation": "Ouvrir la navigation", "Guide": "Guide", "Technical": "Technique", "Graph": "Graphe", "Pages": "Pages", "Previous": "Précédent", "Next": "Suivant", "GitHub repository": "Dépôt GitHub" };
+</script>
+<script>
+// Behaviour shared by the user's HTML pages (from html-doc): theme switch, optional EN / FR switch, copy buttons
+// on the code blocks, heading anchors, content tabs, mobile menu. Inlined in each page by scripts/new_page.py.
+
+// Language (only when the page has a .lang-switch): [data-i18n] elements and [data-i18n-<attr>] attributes are
+// translated with window.DOC_FR (English text -> French text), [data-lang] blocks are shown for their language only.
+(function () {
+  var root = document.documentElement;
+  var key = (root.getAttribute('data-storage-key') || 'page') + '-lang';
+  var FR = window.DOC_FR || {};
+  var listeners = [];
+  function tr(s) { return root.lang === 'fr' && Object.prototype.hasOwnProperty.call(FR, s) ? FR[s] : s; }
+  function apply() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      if (el.dataset.i18nEn === undefined) el.dataset.i18nEn = el.innerHTML.trim();
+      el.innerHTML = tr(el.dataset.i18nEn);
+    });
+    ['aria-label', 'title', 'placeholder'].forEach(function (attr) {
+      document.querySelectorAll('[data-i18n-' + attr + ']').forEach(function (el) {
+        var store = 'i18nEn' + attr.replace(/-(\w)/g, function (m, c) { return c.toUpperCase(); });
+        if (el.dataset[store] === undefined) el.dataset[store] = el.getAttribute(attr) || '';
+        el.setAttribute(attr, tr(el.dataset[store]));
+      });
+    });
+    document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.setLang === root.lang);
+      b.setAttribute('aria-pressed', b.dataset.setLang === root.lang ? 'true' : 'false');
+    });
+  }
+  function set(lang) {
+    root.lang = lang === 'fr' ? 'fr' : 'en';
+    try { localStorage.setItem(key, root.lang); } catch (e) { /* storage unavailable */ }
+    apply();
+    listeners.forEach(function (f) { f(root.lang); });
+  }
+  var saved = null;
+  if (document.querySelector('.lang-switch')) {
+    try { saved = localStorage.getItem(key); } catch (e) { /* storage unavailable */ }
+  }
+  // Choice carried by a link of the site (?lang=): pages opened from file:// don't share their storage
+  var askedLang = new URLSearchParams(location.search).get('lang');
+  if (askedLang === 'en' || askedLang === 'fr') { saved = askedLang; try { localStorage.setItem(key, askedLang); } catch (e) { /* storage unavailable */ } }
+  root.lang = saved === 'fr' ? 'fr' : (root.lang || 'en');
+  window.docI18n = { tr: tr, set: set, apply: apply, onChange: function (f) { listeners.push(f); }, lang: function () { return root.lang; } };
+  document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+    b.addEventListener('click', function () { set(b.dataset.setLang); });
+  });
+  apply();
+})();
+
+// Links between the pages of the site carry the language, theme and level (?lang=fr&theme=dark&level=technical):
+// the choice applies to every page, also from file:// where each page has its own storage
+(function () {
+  var root = document.documentElement;
+  function carry(e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a || a.target === '_blank') return;
+    var href = a.getAttribute('href');
+    if (!/^[^:?#\/]+\.html(#.*)?$/.test(href) && !/^\.\/[^:?#\/]+\.html(#.*)?$/.test(href)) return; // pages of the same folder only
+    var u = new URL(a.href);
+    u.searchParams.set('lang', root.lang || 'en');
+    if (root.getAttribute('data-theme')) u.searchParams.set('theme', root.getAttribute('data-theme'));
+    if (root.getAttribute('data-level')) u.searchParams.set('level', root.getAttribute('data-level'));
+    a.href = u.href;
+  }
+  document.addEventListener('click', carry, true);
+  document.addEventListener('auxclick', carry, true);
+})();
+
+// Theme: sun / moon switch, choice saved, default = system preference
+(function () {
+  var root = document.documentElement;
+  var key = (root.getAttribute('data-storage-key') || 'page') + '-theme';
+  var btn = document.getElementById('themeToggle');
+  try { var saved = localStorage.getItem(key); if (saved) root.setAttribute('data-theme', saved); } catch (e) { /* storage unavailable */ }
+  var askedTheme = new URLSearchParams(location.search).get('theme'); // carried by a link of the site
+  if (askedTheme === 'dark' || askedTheme === 'light') { root.setAttribute('data-theme', askedTheme); try { localStorage.setItem(key, askedTheme); } catch (e) { /* storage unavailable */ } }
+  function isDark() {
+    return root.getAttribute('data-theme') === 'dark' ||
+      (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  if (!btn) return;
+  btn.setAttribute('aria-checked', isDark() ? 'true' : 'false');
+  btn.addEventListener('click', function () {
+    var next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    btn.setAttribute('aria-checked', next === 'dark' ? 'true' : 'false');
+    try { localStorage.setItem(key, next); } catch (e) { /* storage unavailable */ }
+    document.dispatchEvent(new CustomEvent('themechange', { detail: next }));
+  });
+})();
+
+// Figures: an SVG is never drawn larger than its viewBox (its text would grow with the screen)
+document.querySelectorAll('figure svg[viewBox]').forEach(function (svg) {
+  var w = +svg.getAttribute('viewBox').split(/[\s,]+/)[2];
+  if (w && !svg.style.maxWidth) { svg.style.maxWidth = w + 'px'; svg.style.marginInline = 'auto'; }
+});
+
+// Diagram links: an arrow is computed from the shapes it joins instead of typed coordinates, so it always touches
+// them. <path class="edge" data-from="a" data-to="b" marker-end="url(#arr)"/>: a / b = id of a rect, circle, ellipse
+// (or a <g> holding one). Options: data-from="a:right" (side: top, bottom, left, right), data-bend="0.2" (curve, +/-
+// fraction of the length), data-gap="2" (space before the shape). A label <text data-label-for="pathId"
+// data-offset="-8"> is placed on the middle of the path. Geometry is read from the attributes (works while hidden).
+window.docDiagram = (function () {
+  function translateOf(el, svg) {
+    var x = 0, y = 0;
+    for (var n = el; n && n !== svg; n = n.parentNode) {
+      var t = n.getAttribute && n.getAttribute('transform');
+      var m = t && t.match(/translate\(\s*(-?[\d.]+)[\s,]*(-?[\d.]+)?\s*\)/);
+      if (m) { x += +m[1]; y += +(m[2] || 0); }
+    }
+    return [x, y];
+  }
+  function shape(svg, id) {
+    var el = svg.querySelector('[id="' + id + '"]');
+    if (el && el.tagName.toLowerCase() === 'g') el = el.querySelector('rect, circle, ellipse');
+    if (!el) return null;
+    var o = translateOf(el, svg), num = function (a) { return +(el.getAttribute(a) || 0); };
+    var tag = el.tagName.toLowerCase();
+    if (tag === 'rect') return { kind: 'rect', x: num('x') + o[0], y: num('y') + o[1], w: num('width'), h: num('height') };
+    if (tag === 'circle') return { kind: 'ellipse', cx: num('cx') + o[0], cy: num('cy') + o[1], rx: num('r'), ry: num('r') };
+    return { kind: 'ellipse', cx: num('cx') + o[0], cy: num('cy') + o[1], rx: num('rx'), ry: num('ry') };
+  }
+  function center(s) { return s.kind === 'rect' ? [s.x + s.w / 2, s.y + s.h / 2] : [s.cx, s.cy]; }
+  function side(s, name) {
+    var c = center(s), hw = s.kind === 'rect' ? s.w / 2 : s.rx, hh = s.kind === 'rect' ? s.h / 2 : s.ry;
+    return { top: [c[0], c[1] - hh], bottom: [c[0], c[1] + hh], left: [c[0] - hw, c[1]], right: [c[0] + hw, c[1]] }[name];
+  }
+  // Point of the border of s in the direction of p, moved back by gap
+  function border(s, p, gap) {
+    var c = center(s), dx = p[0] - c[0], dy = p[1] - c[1], len = Math.hypot(dx, dy) || 1, k;
+    if (s.kind === 'rect') k = Math.min(dx ? (s.w / 2) / Math.abs(dx) : Infinity, dy ? (s.h / 2) / Math.abs(dy) : Infinity);
+    else k = 1 / Math.sqrt((dx * dx) / (s.rx * s.rx) + (dy * dy) / (s.ry * s.ry));
+    return [c[0] + dx * k + dx / len * gap, c[1] + dy * k + dy / len * gap];
+  }
+  // Point of the border of s for an arrow coming from / going to toward; off spreads several arrows of the same
+  // shape along its side (instead of all reaching the same point)
+  function end(s, spec, toward, gap, off) {
+    var name = spec.split(':')[1], p;
+    if (name) p = side(s, name);
+    else if (off && s.kind === 'rect') {
+        var c = center(s), dx = toward[0] - c[0], dy = toward[1] - c[1];
+        if (Math.abs(dy) * s.w >= Math.abs(dx) * s.h) p = [c[0] + off * s.w, c[1] + (dy < 0 ? -1 : 1) * s.h / 2];
+        else p = [c[0] + (dx < 0 ? -1 : 1) * s.w / 2, c[1] + off * s.h];
+    } else p = border(s, toward, 0);
+    var vx = toward[0] - p[0], vy = toward[1] - p[1], len = Math.hypot(vx, vy) || 1;
+    return [p[0] + vx / len * gap, p[1] + vy / len * gap];
+  }
+  // Slot (-0.3 .. 0.3 of the side) of each arrow end sharing a shape, ordered by where the other end is
+  function slots(items) {
+    var groups = {};
+    items.forEach(function (it) { if (!it.spec.split(':')[1]) (groups[it.id] = groups[it.id] || []).push(it); });
+    Object.keys(groups).forEach(function (id) {
+      var g = groups[id], s = g[0].shape, c = center(s);
+      if (g.length < 2) return;
+      g.forEach(function (it) {
+        var dx = it.toward[0] - c[0], dy = it.toward[1] - c[1];
+        it.vertical = s.kind === 'rect' && Math.abs(dy) * s.w >= Math.abs(dx) * s.h;
+        it.key = it.vertical ? dx : dy;
+      });
+      [true, false].forEach(function (v) {
+        var sub = g.filter(function (it) { return it.vertical === v; }).sort(function (a, b) { return a.key - b.key; });
+        if (sub.length > 1) sub.forEach(function (it, i) { it.off = ((i + 1) / (sub.length + 1) - 0.5) * 0.6; });
+      });
+    });
+  }
+  function layout(svg) {
+    var items = [], links = [];
+    svg.querySelectorAll('[data-from][data-to]').forEach(function (path) {
+      var fa = path.dataset.from, ta = path.dataset.to;
+      var a = shape(svg, fa.split(':')[0]), b = shape(svg, ta.split(':')[0]);
+      if (!a || !b) { console.warn('diagram link: unknown shape', fa, ta); return; }
+      var gap = +(path.dataset.gap || 2), bend = +(path.dataset.bend || 0);
+      var ca = fa.indexOf(':') > 0 ? side(a, fa.split(':')[1]) : center(a);
+      var cb = ta.indexOf(':') > 0 ? side(b, ta.split(':')[1]) : center(b);
+      var mx = (ca[0] + cb[0]) / 2, my = (ca[1] + cb[1]) / 2, len = Math.hypot(cb[0] - ca[0], cb[1] - ca[1]) || 1;
+      var ctrl = [mx - (cb[1] - ca[1]) / len * bend * len, my + (cb[0] - ca[0]) / len * bend * len];
+      var ea = { spec: fa, id: fa.split(':')[0], shape: a, toward: bend ? ctrl : cb, off: 0 };
+      var eb = { spec: ta, id: ta.split(':')[0], shape: b, toward: bend ? ctrl : ca, off: 0 };
+      items.push(ea, eb);
+      links.push({ path: path, gap: gap, bend: bend, ctrl: ctrl, ea: ea, eb: eb });
+    });
+    slots(items);
+    links.forEach(function (l) {
+      var path = l.path, gap = l.gap, bend = l.bend, ctrl = l.ctrl;
+      var p1 = end(l.ea.shape, l.ea.spec, l.ea.toward, gap, l.ea.off), p2 = end(l.eb.shape, l.eb.spec, l.eb.toward, gap, l.eb.off);
+      var f = function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); };
+      path.setAttribute('d', bend ? 'M' + f(p1) + ' Q' + f(ctrl) + ' ' + f(p2) : 'M' + f(p1) + ' L' + f(p2));
+      var mid = bend ? [(p1[0] + 2 * ctrl[0] + p2[0]) / 4, (p1[1] + 2 * ctrl[1] + p2[1]) / 4] : [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
+      if (path.id) svg.querySelectorAll('[data-label-for="' + path.id + '"]').forEach(function (t) {
+        var off = +(t.dataset.offset || -8), dx = p2[0] - p1[0], dy = p2[1] - p1[1], l = Math.hypot(dx, dy) || 1;
+        var nx = -dy / l, ny = dx / l;
+        if (ny > 0) { nx = -nx; ny = -ny; } // a negative offset is always above the path
+        t.setAttribute('x', (mid[0] - nx * off).toFixed(1));
+        t.setAttribute('y', (mid[1] - ny * off).toFixed(1));
+        if (!t.getAttribute('text-anchor')) t.setAttribute('text-anchor', 'middle');
+      });
+    });
+  }
+  document.querySelectorAll('svg').forEach(layout);
+  return { layout: layout };
+})();
+
+// Sidebar (mobile) + visible section, copy buttons, heading anchors, content tabs
+(function () {
+  var tr = function (s) { return window.docI18n ? window.docI18n.tr(s) : s; };
+  var menu = document.getElementById('menuBtn'), side = document.getElementById('sidebar');
+  if (menu && side) {
+    menu.addEventListener('click', function () { side.classList.toggle('open'); });
+    side.addEventListener('click', function (e) { if (e.target.closest('a')) side.classList.remove('open'); }); // a tapped entry closes the menu
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') side.classList.remove('open'); });
+    document.addEventListener('click', function (e) { if (!side.contains(e.target) && !menu.contains(e.target)) side.classList.remove('open'); });
+  }
+  var links = document.querySelectorAll('.sidebar a[href^="#"]');
+  if (links.length && 'IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        links.forEach(function (a) { a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id); });
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    document.querySelectorAll('main section[id]').forEach(function (s) { observer.observe(s); });
+  }
+  document.querySelectorAll('main pre').forEach(function (pre) {
+    if (pre.dataset.nocopy !== undefined) return;
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = tr('Copy');
+    b.addEventListener('click', function () {
+      var code = pre.querySelector('code') || pre;
+      var done = function () { b.textContent = tr('Copied'); setTimeout(function () { b.textContent = tr('Copy'); }, 1400); };
+      if (navigator.clipboard) navigator.clipboard.writeText(code.innerText).then(done, function () { b.textContent = tr('Select & copy'); });
+      else b.textContent = tr('Select & copy');
+    });
+    pre.appendChild(b);
+  });
+  document.querySelectorAll('main h2[id], main h3[id], main section[id] > h2').forEach(function (h) {
+    var id = h.id || h.parentElement.id;
+    if (!id || h.querySelector('.anchor')) return;
+    var a = document.createElement('a');
+    a.className = 'anchor'; a.href = '#' + id; a.textContent = '#';
+    a.setAttribute('aria-label', tr('Link to this section'));
+    h.appendChild(a);
+  });
+  document.querySelectorAll('.ctabs').forEach(function (bar) {
+    var group = bar.dataset.tabs;
+    var buttons = bar.querySelectorAll('button');
+    var panels = document.querySelectorAll('.ctab-panel[data-tabs="' + group + '"]');
+    function show(name) {
+      buttons.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+      panels.forEach(function (p) { p.classList.toggle('active', p.dataset.tab === name); });
+    }
+    buttons.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.tab); }); });
+    if (buttons.length) show(buttons[0].dataset.tab);
+  });
+  if (window.docI18n) window.docI18n.onChange(function () {
+    document.querySelectorAll('main pre .copy').forEach(function (b) { b.textContent = tr('Copy'); });
+    document.querySelectorAll('.anchor').forEach(function (a) { a.setAttribute('aria-label', tr('Link to this section')); });
+  });
+})();
+
+// Explanation pages (explain-doc): level switch, steppers, playgrounds, glossary terms.
+// API for the page scripts: window.explain.play(name, fn), explain.level(), explain.onLevel(fn), explain.fmt(x, d).
+(function () {
+  var root = document.documentElement;
+  var key = (root.getAttribute('data-storage-key') || 'page') + '-level';
+  var levelListeners = [];
+
+  // ---------- Level: ?level= in the address > saved choice > data-default-level > simple ----------
+  function setLevel(level, save) {
+    level = level === 'technical' ? 'technical' : 'simple';
+    root.setAttribute('data-level', level);
+    document.querySelectorAll('[data-set-level]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.setLevel === level);
+      b.setAttribute('aria-pressed', b.dataset.setLevel === level ? 'true' : 'false');
+    });
+    if (save) { try { localStorage.setItem(key, level); } catch (e) { /* storage unavailable */ } }
+    levelListeners.forEach(function (f) { f(level); });
+  }
+  var asked = new URLSearchParams(location.search).get('level'), saved = null;
+  try { saved = localStorage.getItem(key); } catch (e) { /* storage unavailable */ }
+  setLevel(asked || saved || root.getAttribute('data-default-level') || 'simple', false);
+  document.querySelectorAll('[data-set-level]').forEach(function (b) {
+    b.addEventListener('click', function () { setLevel(b.dataset.setLevel, true); });
+  });
+
+  // ---------- Steppers: <figure class="stepper" data-steps="N"> ----------
+  // In the SVG:
+  // - data-show="2" (only step 2), "2-" (from 2), "1-3", "1,3": visible at those steps (short fade in / out);
+  // - data-hl / data-warn="3,5": class hl / hl-warn (accent / warn highlight) at those steps;
+  // - data-at="0:0,0;3:85,0": offset (x,y in SVG units) from the drawn position, the last entry <= step applies.
+  //   A short move slides; a long one (> 2 times the element size, a wrap-around) fades out and back in at the new
+  //   place instead of crossing the drawing; data-fade forces the fade, data-slide forces the slide;
+  // - data-text="0:19;2:d4": text per step (same rule), a change cross-fades then pulses (class changed).
+  // Captions: <ol class="captions"><li> per step (first = step 0), shown above the drawing with the controls.
+  function inRange(spec, step) {
+    return spec.split(',').some(function (part) {
+      var m = part.trim().match(/^(\d+)(-)?(\d+)?$/);
+      if (!m) return false;
+      var a = +m[1], b = m[2] ? (m[3] !== undefined ? +m[3] : Infinity) : a;
+      return step >= a && step <= b;
+    });
+  }
+  function valueAt(spec, step) {
+    var best = null, at = -1;
+    spec.split(';').forEach(function (part) {
+      var i = part.indexOf(':');
+      if (i < 0) return;
+      var k = +part.slice(0, i).trim();
+      if (k <= step && k > at) { at = k; best = part.slice(i + 1); }
+    });
+    return best;
+  }
+  // French of the UI of the explanation pages (merged into the dictionary of the page)
+  var FR = { "Level": "Niveau", "Simple": "Simple", "Technical": "Technique", "Explanation": "Explication", "Play": "Lecture",
+    "Pause": "Pause", "First step": "Première étape", "Previous step (←)": "Étape précédente (←)", "Next step (→)": "Étape suivante (→)",
+    "Previous step": "Étape précédente", "Next step": "Étape suivante", "Contents": "Sommaire" };
+  window.DOC_FR = window.DOC_FR || {};
+  Object.keys(FR).forEach(function (k) { if (!(k in window.DOC_FR)) window.DOC_FR[k] = FR[k]; });
+  var tr = function (s) { return window.docI18n ? window.docI18n.tr(s) : s; };
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var FADE = 160; // ms of each half of a fade (out, then in)
+  // Icons of the controls: same 16x16 grid, filled with currentColor
+  var svg16 = function (d) { return '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="' + d + '"/></svg>'; };
+  var ICON = {
+    first: svg16('M3 3h2v10H3zM13 3v10L6 8z'),
+    prev: svg16('M11.5 3v10L4.5 8z'),
+    play: svg16('M4.5 3v10l8-5z'),
+    pause: svg16('M4 3h3v10H4zM9 3h3v10H9z'),
+    next: svg16('M4.5 3v10l7-5z')
+  };
+  function moveTo(el, spec, animate) {
+    var p = (spec || '0,0').split(',').map(Number), dx = p[0] || 0, dy = p[1] || 0;
+    var old = el._at || [0, 0];
+    el._at = [dx, dy];
+    var t = 'translate(' + dx + 'px, ' + dy + 'px)';
+    if (old[0] === dx && old[1] === dy) { el.style.transform = t; return; }
+    var box = { width: 1, height: 1 };
+    try { box = el.getBBox(); } catch (e) { /* not rendered */ }
+    var far = Math.abs(dx - old[0]) > 2 * Math.max(box.width, 1) || Math.abs(dy - old[1]) > 2 * Math.max(box.height, 1);
+    var fade = el.hasAttribute('data-fade') || (far && !el.hasAttribute('data-slide'));
+    if (!animate || reduced) { el.style.transition = 'none'; el.style.transform = t; return; }
+    if (!fade) { el.style.transition = ''; el.style.transform = t; return; }
+    el.classList.add('fading');
+    clearTimeout(el._fadeTimer);
+    el._fadeTimer = setTimeout(function () {
+      el.style.transition = 'none';
+      el.style.transform = t;
+      el.getBoundingClientRect(); // apply the jump before fading back in
+      el.style.transition = '';
+      el.classList.remove('fading');
+    }, FADE);
+  }
+  function textTo(el, value, animate) {
+    if (value === null || el.textContent === value) return;
+    if (!animate || reduced) { el.textContent = value; return; }
+    el.classList.add('fading');
+    clearTimeout(el._textTimer);
+    el._textTimer = setTimeout(function () {
+      el.textContent = value;
+      el.classList.remove('fading');
+      el.classList.add('changed');
+      setTimeout(function () { el.classList.remove('changed'); }, 900);
+    }, FADE);
+  }
+  document.querySelectorAll('.stepper').forEach(function (fig) {
+    var total = +fig.dataset.steps || 1, step = 0, timer = null;
+    var delay = +fig.dataset.delay || 3200;
+    var list = fig.querySelector('.captions');
+    var captions = fig.querySelectorAll('.captions > li');
+    var controls = document.createElement('div');
+    controls.className = 'controls';
+    controls.innerHTML = '<button type="button" data-a="first" aria-label="First step" title="First step" data-i18n-aria-label data-i18n-title>' + ICON.first + '</button>' +
+      '<button type="button" data-a="prev" aria-label="Previous step" title="Previous step (←)" data-i18n-aria-label data-i18n-title>' + ICON.prev + '</button>' +
+      '<button type="button" class="play" data-a="play" aria-label="Play">' + ICON.play + '<span>' + tr('Play') + '</span></button>' +
+      '<button type="button" data-a="next" aria-label="Next step" title="Next step (→)" data-i18n-aria-label data-i18n-title>' + ICON.next + '</button>' +
+      '<span class="progress"><i></i></span><span class="count"></span>';
+    var svg = fig.querySelector('svg');
+    var view = document.createElement('div');
+    view.className = 'view';
+    svg.replaceWith(view);
+    view.appendChild(svg);
+    // Controls + explanation above the drawing: what happens is read while the drawing changes
+    var head = document.createElement('div');
+    head.className = 'step-head';
+    head.appendChild(controls);
+    if (list) { list.setAttribute('aria-live', 'polite'); head.appendChild(list); }
+    view.insertAdjacentElement('beforebegin', head);
+    var play = controls.querySelector('[data-a="play"]');
+    // Sticky head only for a figure taller than the visible area (under the 56px top bar): a figure that fits
+    // the screen keeps its controls in place
+    function fit() { fig.classList.toggle('tall', fig.getBoundingClientRect().height > window.innerHeight - 72); }
+    fit();
+    window.addEventListener('resize', fit);
+    if (window.docI18n) window.docI18n.onChange(fit);
+    levelListeners.push(function () { setTimeout(fit, 0); });
+    function render(animate) {
+      svg.querySelectorAll('[data-show]').forEach(function (el) { el.classList.toggle('off', !inRange(el.dataset.show, step)); });
+      svg.querySelectorAll('[data-hl]').forEach(function (el) { el.classList.toggle('hl', inRange(el.dataset.hl, step)); });
+      svg.querySelectorAll('[data-warn]').forEach(function (el) { el.classList.toggle('hl-warn', inRange(el.dataset.warn, step)); });
+      svg.querySelectorAll('[data-at]').forEach(function (el) { moveTo(el, valueAt(el.dataset.at, step), animate); });
+      svg.querySelectorAll('[data-text]').forEach(function (el) { textTo(el, valueAt(el.dataset.text, step), animate); });
+      captions.forEach(function (li, i) { li.classList.toggle('on', i === step); li.setAttribute('aria-hidden', i === step ? 'false' : 'true'); });
+      controls.querySelector('.count').textContent = (step + 1) + ' / ' + total;
+      controls.querySelector('.progress i').style.width = (100 * step / Math.max(1, total - 1)) + '%';
+    }
+    function playLabel() { var k = timer ? 'Pause' : 'Play'; play.innerHTML = (timer ? ICON.pause : ICON.play) + '<span>' + tr(k) + '</span>'; play.setAttribute('aria-label', tr(k)); }
+    if (window.docI18n) window.docI18n.onChange(playLabel);
+    function stop() { clearInterval(timer); timer = null; playLabel(); }
+    // One step at a time animates; a jump (first step, restart) is applied at once
+    function go(s) { var next = Math.max(0, Math.min(total - 1, s)); var near = Math.abs(next - step) === 1; step = next; render(near); }
+    controls.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      var a = b.dataset.a;
+      if (a !== 'play') stop();
+      if (a === 'first') go(0);
+      else if (a === 'prev') go(step - 1);
+      else if (a === 'next') go(step + 1);
+      else if (timer) stop();
+      else {
+        if (step === total - 1) go(0);
+        timer = setInterval(function () { if (step >= total - 1) stop(); else go(step + 1); }, reduced ? Math.max(delay, 4500) : delay);
+        playLabel();
+      }
+    });
+    fig.tabIndex = 0;
+    fig.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') { stop(); go(step + 1); e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { stop(); go(step - 1); e.preventDefault(); }
+    });
+    // First state drawn without transitions (no flash of every step at load)
+    fig.classList.add('init');
+    render(false);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { fig.classList.remove('init'); }); });
+  });
+
+  if (window.docI18n && window.docI18n.apply) window.docI18n.apply(); // labels of the controls created above
+
+  // ---------- Playgrounds: <div class="playground" data-play="name"> ----------
+  // Inputs [data-in="x"] (range / number / text / checkbox / select), outputs [data-out="y"]; the page registers
+  // explain.play('name', function (values, el) { return { y: 'text' }; }): called at load and on every input.
+  var plays = {};
+  function values(el) {
+    var v = {};
+    el.querySelectorAll('[data-in]').forEach(function (i) {
+      v[i.dataset.in] = i.type === 'checkbox' ? i.checked : (i.type === 'range' || i.type === 'number') ? +i.value : i.value;
+    });
+    return v;
+  }
+  function run(name) {
+    var el = document.querySelector('.playground[data-play="' + name + '"]');
+    if (!el || !plays[name]) return;
+    var out = plays[name](values(el), el) || {};
+    Object.keys(out).forEach(function (k) {
+      el.querySelectorAll('[data-out="' + k + '"]').forEach(function (o) { o.textContent = out[k]; });
+    });
+  }
+  function fmt(x, d) {
+    if (!isFinite(x)) return '∞';
+    return Number(x).toLocaleString(root.lang || 'en', { minimumFractionDigits: d || 0, maximumFractionDigits: d === undefined ? 2 : d });
+  }
+  window.explain = {
+    play: function (name, fn) {
+      plays[name] = fn;
+      var el = document.querySelector('.playground[data-play="' + name + '"]');
+      if (el) el.addEventListener('input', function () { run(name); });
+      run(name);
+    },
+    run: run,
+    fmt: fmt,
+    level: function () { return root.getAttribute('data-level'); },
+    onLevel: function (f) { levelListeners.push(f); }
+  };
+
+  // ---------- Glossary terms reachable with the keyboard ----------
+  document.querySelectorAll('dfn[data-def]').forEach(function (d) { d.tabIndex = 0; d.setAttribute('aria-label', d.textContent + ': ' + d.dataset.def); });
+})();
+</script>
+</body>
+</html>

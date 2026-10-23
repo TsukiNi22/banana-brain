@@ -1,7 +1,7 @@
 # banana-brain
 
 > [!TIP]
-> Technical documentation and project graph: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v0.0.0).
+> Technical documentation, project graph and explanations of the [layered](https://tsukini22.github.io/banana-brain/docs/layer-network.html) and [brain](https://tsukini22.github.io/banana-brain/docs/brain-network.html) networks: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v0.0.0).
 
 C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling several kinds of networks (layered, brain), their configuration, training and usage, plus the dataset, randomness and serialization tools.
 Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB/Arch (pacman) packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
