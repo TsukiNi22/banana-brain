@@ -34,6 +34,7 @@ File Description:
 #include <cstdint>
 #include <limits>
 #include <vector>
+#include <tuple>
 #include <cmath>
 
 brain::RawBrainNetwork::RawBrainNetwork(const brain::UIType neuron, const std::pair<brain::FType, brain::FType>& size, const utils::system::MemoryMode mode)
@@ -442,6 +443,11 @@ _hot void brain::RawBrainNetwork::learn_(const brain::Values& rewards)
 
     // the memories stored on the gpu are changed there (an external activation function can only run on the host)
     const bool onGpu = this->_rawNeurons.isOnGpu() && !this->_activationFunction.second && brain::tools::gpu::stepsBack(this->_gpu.get(), this->_rawNeurons.native(), this->_rawLinks.native(), this->_neuron, this->_cap, input, this->_activationFunction.first, this->_states, rewards);
+
+    // no link at a limit: nothing is linked or unlinked, the execution copy is rebuilt on the device and nothing is read back
+    bool any = true;
+    if (onGpu && brain::tools::gpu::triggered(this->_gpu.get(), this->_rawLinks.native(), this->_neuron, this->_cap, this->_weightLimits.first, this->_weightLimits.second, any) && !any
+        && brain::tools::gpu::reduce(this->_gpu.get(), this->_rawNeurons.native(), this->_rawLinks.native(), this->_neurons.native(), this->_links.native(), this->_neuron, this->_cap)) return;
     std::vector<brain::RawBrainNeuron> neurons = this->_rawNeurons.toVector();
     std::vector<brain::RawBrainLink> links = this->_rawLinks.toVector();
     brain::Values grad(this->_neuron, 0.0); // gain of the score for the output of each neuron, at the step read
@@ -509,50 +515,68 @@ _cold bool brain::RawBrainNetwork::relink_(const std::vector<brain::RawBrainNeur
     bool changed = false;
 
     for (brain::UIType owner = 0; owner < count && this->_cap > 0; ++owner) {
-        brain::UIType farthest = this->_cap;
-        brain::FType distance = -1.0;
-        brain::UIType used = 0;
+        std::vector<std::pair<brain::FType, brain::UIType>> list; // <squared distance, slot> of the links of the neuron, the nearest first
 
-        // the farthest linked neuron
         for (brain::UIType slot = 0; slot < this->_cap; ++slot) {
             const brain::RawBrainLink& link = links[owner * this->_cap + slot];
-            brain::FType far;
-
-            if (!occupied(link)) continue;
-            ++used;
-            far = neurons[owner] | neurons[link.id];
-            if (far > distance || (far == distance && link.id > links[owner * this->_cap + farthest].id)) {
-                distance = far;
-                farthest = slot;
-            }
+            if (occupied(link)) list.push_back({neurons[owner] | neurons[link.id], slot});
         }
-        if (farthest == this->_cap) continue;
-        const brain::RawBrainLink link = links[owner * this->_cap + farthest];
-        const brain::FType weight = std::abs(link.weight);
+        std::sort(list.begin(), list.end(), [&](const std::pair<brain::FType, brain::UIType>& a, const std::pair<brain::FType, brain::UIType>& b) {
+            return a.first != b.first ? a.first < b.first : links[owner * this->_cap + a.second].id < links[owner * this->_cap + b.second].id;
+        });
 
-        if (weight <= min) {
-            // too weak: removed (with its clone), unless it is the last link of one of the two neurons
-            if (this->_orphans || (survives(degree(links, this->_cap, owner), owner < input, link.inward) && survives(degree(links, this->_cap, link.id), link.id < input, !link.inward))) {
-                links[link.id * this->_cap + cloneSlot(links, this->_cap, owner, link)] = brain::RawBrainLink{};
-                links[owner * this->_cap + farthest] = brain::RawBrainLink{};
-                changed = true;
+        // the links as they are before any change of this neuron: <slot, id, absolute weight, too weak | too strong | neither>
+        std::vector<std::tuple<brain::UIType, brain::UIType, brain::FType, int>> snapshot;
+        for (const std::pair<brain::FType, brain::UIType>& entry: list) {
+            const brain::RawBrainLink& link = links[owner * this->_cap + entry.second];
+            const brain::FType weight = std::abs(link.weight);
+
+            snapshot.push_back({entry.second, link.id, weight, weight <= min ? -1 : (weight >= max ? 1 : 0)});
+        }
+        for (brain::UIType k = 0; k < snapshot.size(); ++k) {
+            const brain::UIType slot = std::get<0>(snapshot[k]);
+            const brain::RawBrainLink link = links[owner * this->_cap + slot];
+
+            // removed by the other neuron since (its clone was)
+            if (!occupied(link) || link.id != std::get<1>(snapshot[k]) || std::get<3>(snapshot[k]) == 0) continue;
+            if (std::get<3>(snapshot[k]) < 0) {
+                // too weak: removed (with its clone), unless it is the last link of one of the two neurons
+                if (this->_orphans || (survives(degree(links, this->_cap, owner), owner < input, link.inward) && survives(degree(links, this->_cap, link.id), link.id < input, !link.inward))) {
+                    links[link.id * this->_cap + cloneSlot(links, this->_cap, owner, link)] = brain::RawBrainLink{};
+                    links[owner * this->_cap + slot] = brain::RawBrainLink{};
+                    changed = true;
+                }
+                continue;
             }
-        } else if (weight >= max && used < this->_cap) {
-            // too strong: the next nearest neuron that can be linked gets a link too
+
+            // too strong: the nearest neuron that is still free gets a link, a weight like the two nearest links of the list that did not cause it (or fewer)
+            if (freeSlot(links, this->_cap, owner) == this->_cap) continue;
+            brain::FType reference = 0.0;
+            brain::UIType used = 0;
+            for (brain::UIType distance = 1; distance < snapshot.size() && used < 2; ++distance) {
+                for (const brain::IType side: {-1, 1}) {
+                    const brain::IType at = static_cast<brain::IType>(k) + side * static_cast<brain::IType>(distance);
+
+                    if (at < 0 || at >= static_cast<brain::IType>(snapshot.size()) || used >= 2 || std::get<3>(snapshot[at]) != 0) continue;
+                    reference += std::get<2>(snapshot[at]);
+                    ++used;
+                }
+            }
+            reference = used == 0 ? (min + max) / 2 : reference / static_cast<brain::FType>(used);
             for (const brain::UIType other: brain::tools::sort(owner, neurons, count - 1)) {
                 const bool canReceive = owner >= input && other < count - output; // owner <- other
                 const bool canSend = owner < count - output && other >= input; // owner -> other
-                brain::UIType slot = 0;
+                brain::UIType found = 0;
                 brain::UIType otherSlot;
 
-                while (slot < this->_cap && !(occupied(links[owner * this->_cap + slot]) && links[owner * this->_cap + slot].id == other)) ++slot;
+                while (found < this->_cap && !(occupied(links[owner * this->_cap + found]) && links[owner * this->_cap + found].id == other)) ++found;
                 otherSlot = freeSlot(links, this->_cap, other);
-                if (slot < this->_cap || otherSlot == this->_cap || (!canReceive && !canSend)) continue;
+                if (found < this->_cap || otherSlot == this->_cap || (!canReceive && !canSend)) continue;
                 const bool receive = canReceive && (!canSend || brain::tools::rand_floating() < 0.5f);
-                const brain::FType start = this->random_(static_cast<brain::FType>(0.01)); // a weight in the middle of the limits, so the new link stays
-                const brain::FType low = min + (max - min) * static_cast<brain::FType>(0.25);
-                const brain::FType high = min + (max - min) * static_cast<brain::FType>(0.75);
-                const brain::FType value = (start < 0 ? -1 : 1) * std::clamp(std::abs(start), low, high);
+                const brain::FType low = min + (max - min) * static_cast<brain::FType>(0.05);
+                const brain::FType high = min + (max - min) * static_cast<brain::FType>(0.95);
+                const brain::FType start = this->random_(static_cast<brain::FType>(0.01)); // only the sign: the size comes from the nearest links
+                const brain::FType value = (start < 0 ? -1 : 1) * std::clamp(reference * (static_cast<brain::FType>(0.5) + static_cast<brain::FType>(0.5) * brain::tools::rand_floating()), low, high); // between half and all of the reference
 
                 links[owner * this->_cap + freeSlot(links, this->_cap, owner)] = {other, value, receive};
                 links[other * this->_cap + otherSlot] = {owner, value, !receive};

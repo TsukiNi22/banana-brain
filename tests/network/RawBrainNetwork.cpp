@@ -747,3 +747,58 @@ TEST(RawBrainNetwork, WeightLimitsAreCheckedAndSerialized) {
     EXPECT_FLOAT_EQ(other.weightMax(), 4.0f);
     EXPECT_TRUE(other.orphans());
 }
+
+TEST(RawBrainNetwork, ANewLinkIsSmallerThanTheNearestOnesAndInsideTheLimits) {
+    brain::RawBrainNetwork network(30, {10.0, 10.0});
+
+    brain::tools::rand(11);
+    network.size(2, 2);
+    network.weightInit();
+    network.weightLimits(0.0, 1e-6); // every link is too strong: no other link to look at, the reference is the middle of the limits
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    const ParsedRaw before = parseRaw(network.serialize());
+    network.backpropagation(0.0);
+    const ParsedRaw after = parseRaw(network.serialize());
+    brain::UIType created = 0;
+
+    for (brain::UIType neuron = 0; neuron < 30; ++neuron) {
+        for (brain::UIType slot = 0; slot < after.cap; ++slot) {
+            const brain::RawBrainLink& link = after.links[neuron * after.cap + slot];
+            const brain::RawBrainLink& was = before.links[neuron * after.cap + slot];
+
+            if (link.weight == 0.0f || (was.weight != 0.0f && was.id == link.id)) continue; // a free slot, or an old link
+            ++created;
+            EXPECT_LT(std::abs(link.weight), 1e-6f); // under the max
+            EXPECT_GT(std::abs(link.weight), 0.0f); // over the min
+        }
+    }
+    EXPECT_GT(created, 0u);
+    expectMirrors(after);
+}
+
+TEST(RawBrainNetwork, AnyWeakLinkIsRemovedNotOnlyTheFarthest) {
+    brain::RawBrainNetwork network(40, {10.0, 10.0});
+
+    brain::tools::rand(2);
+    network.size(2, 2);
+    network.weightInit();
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    const ParsedRaw before = parseRaw(network.serialize());
+
+    // make the weights of the nearest links weak: only they trigger
+    network.weightLimits(0.5, 1e9);
+    network.backpropagation(0.0);
+    const ParsedRaw after = parseRaw(network.serialize());
+    brain::UIType weak = 0;
+    brain::UIType gone = 0;
+
+    for (brain::UIType i = 0; i < before.links.size(); ++i) {
+        weak += before.links[i].weight != 0.0f && std::abs(before.links[i].weight) <= 0.5f;
+        gone += before.links[i].weight != 0.0f && after.links[i].weight == 0.0f && !after.links[i].inward;
+    }
+    EXPECT_GT(weak, 0u);
+    EXPECT_GT(gone, 0u); // some links were removed, whatever their place in the list
+    expectMirrors(after);
+}
