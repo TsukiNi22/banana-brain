@@ -274,3 +274,23 @@ TEST(BrainNetwork, ThresholdIsSerialized) {
     EXPECT_EQ(other.serialize(), network.serialize());
     EXPECT_TRUE(throwsCode([&] {other.deserialize(chain(3, -1.0));}, utils::exception::ExternalCode::InvalidNetworkFile));
 }
+
+TEST(BrainNetwork, AnInputOnlySendsAndAnOutputOnlyReceives) {
+    brain::BrainNetwork network(1);
+
+    EXPECT_NO_THROW(network.deserialize(chain(3)));
+    // the input (neuron 0) receives a link
+    EXPECT_TRUE(throwsCode([&] {network.deserialize(brainBytes(4, 1, 3, 1, 1, {0.0, 0.0, 0.0, 0.0}, {{1, 1.0}, {0, 2.0}, {1, 3.0}, {2, 0.5}}));}, utils::exception::ExternalCode::InvalidNetworkFile));
+    // the output (neuron 3) sends a link to the neuron 2
+    EXPECT_TRUE(throwsCode([&] {network.deserialize(brainBytes(4, 1, 3, 1, 1, {0.0, 0.0, 0.0, 0.0}, {{0, 0.0}, {0, 2.0}, {3, 3.0}, {2, 0.5}}));}, utils::exception::ExternalCode::InvalidNetworkFile));
+}
+
+TEST(BrainNetwork, NewSizesHaveToKeepTheRolesOfTheLinks) {
+    brain::BrainNetwork network(1);
+
+    network.deserialize(chain(3)); // 0 -> 1 -> 2 -> 3, sizes (1, 1)
+    EXPECT_THROW(network.size(1, 2), utils::exception::IException); // the neuron 2 would be an output that sends to 3
+    EXPECT_EQ(network.size(), (std::pair<brain::UIType, brain::UIType>{1, 1})); // restored
+    EXPECT_THROW(network.size(2, 1), utils::exception::IException); // the neuron 1 would be an input that receives from 0
+    EXPECT_NO_THROW(network.size(1, 1));
+}

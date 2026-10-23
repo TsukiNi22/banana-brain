@@ -50,7 +50,8 @@ class BrainNetwork: public brain::ANetwork {
         // ---------- Pre-Function -------- //
         void init_(void) override; // nothing to place, the neurons and the links come from deserialize
         brain::Values compute_(const brain::Values& inputs) const override; // time steps: the first `input` neurons hold the inputs, the others compute from the previous step, the last `output` neurons are the outputs
-        void resized_(void) override; // the inputs and the outputs have to fit in the neurons
+        void resized_(void) override; // the inputs and the outputs have to fit in the neurons, an input receives no link and an output sends none
+        void fits_(void) const; // the inputs and the outputs fit in the neurons (InvalidArgument)
         void serializeBody_(brain::Bytes& out) const; // the neurons and the links
         void deserializeBody_(const brain::Bytes& data, brain::UIType offset); // read the neurons and the links, the end of the data included (nothing is edited on an invalid data)
 

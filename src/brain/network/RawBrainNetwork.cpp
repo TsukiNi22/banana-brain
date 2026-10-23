@@ -106,7 +106,7 @@ _cold void brain::RawBrainNetwork::init_(void)
 
 _cold void brain::RawBrainNetwork::resized_(void)
 {
-    this->BrainNetwork::resized_(); // the inputs and the outputs fit in the neurons
+    this->fits_(); // the inputs and the outputs fit in the neurons (the links are set up again for the new sizes)
     if (this->_ioSize != this->_placed) this->init_();
 }
 
@@ -275,6 +275,19 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unexpected data after the links");
     } else if (!links.empty() && !clonesMatch(links, neuron, cap)) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "a link has no clone with the same weight on the other neuron");
+    }
+
+    // an input only sends (outward links), an output only receives (inward links)
+    for (brain::UIType owner = 0; owner < neuron && cap > 0; ++owner) {
+        for (brain::UIType slot = 0; slot < cap; ++slot) {
+            const brain::RawBrainLink& link = links[owner * cap + slot];
+
+            if (owner < this->_ioSize.first && link.inward) _unlikely {
+                throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "the input " + std::to_string(owner) + " receives a link (an input only sends)");
+            } else if (owner >= neuron - this->_ioSize.second && !link.inward && (link.id != 0 || link.weight != 0)) _unlikely {
+                throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "the output " + std::to_string(owner) + " sends a link (an output only receives)");
+            }
+        }
     }
 
     // everything is valid: the network is replaced, then its reduced copy is rebuilt

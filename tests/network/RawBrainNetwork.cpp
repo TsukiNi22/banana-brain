@@ -802,3 +802,35 @@ TEST(RawBrainNetwork, AnyWeakLinkIsRemovedNotOnlyTheFarthest) {
     EXPECT_GT(gone, 0u); // some links were removed, whatever their place in the list
     expectMirrors(after);
 }
+
+// The file of a network with other sizes in its header (the input and output sizes: 2 x u64 after the magic bytes and the activation byte)
+static brain::Bytes withSizes(brain::Bytes data, const std::uint64_t input, const std::uint64_t output)
+{
+    for (brain::UIType i = 0; i < 8; ++i) {
+        data[3 + i] = static_cast<std::uint8_t>(input >> (8 * i));
+        data[11 + i] = static_cast<std::uint8_t>(output >> (8 * i));
+    }
+    return data;
+}
+
+TEST(RawBrainNetwork, AFileWhereAnInputReceivesOrAnOutputSendsIsRefused) {
+    brain::RawBrainNetwork network(20, {10.0, 10.0}); // no inputs nor outputs: every neuron sends and receives
+    brain::RawBrainNetwork other(2);
+    const brain::Bytes data = network.serialize();
+    const ParsedRaw parsed = parseRaw(data);
+    bool firstReceives = false;
+    bool lastSends = false;
+
+    for (brain::UIType slot = 0; slot < parsed.cap; ++slot) {
+        const brain::RawBrainLink& first = parsed.links[slot];
+        const brain::RawBrainLink& last = parsed.links[19 * parsed.cap + slot];
+        firstReceives = firstReceives || first.inward;
+        lastSends = lastSends || (!last.inward && (last.id != 0 || last.weight != 0.0f));
+    }
+    ASSERT_NO_THROW(other.deserialize(data));
+    if (firstReceives) EXPECT_TRUE(throwsCode([&] {other.deserialize(withSizes(data, 1, 0));}, utils::exception::ExternalCode::InvalidNetworkFile));
+    if (lastSends) EXPECT_TRUE(throwsCode([&] {other.deserialize(withSizes(data, 0, 1));}, utils::exception::ExternalCode::InvalidNetworkFile));
+    EXPECT_TRUE(firstReceives || lastSends); // the case is really tested
+    network.size(2, 1); // set up again for these sizes: always valid
+    EXPECT_NO_THROW(other.deserialize(network.serialize()));
+}

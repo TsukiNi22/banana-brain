@@ -30,6 +30,7 @@ File Description:
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <string>
 #include <cmath>
 
 brain::BrainNetwork::BrainNetwork(const brain::UIType neuron, const brain::UIType cap, const utils::system::MemoryMode mode, const bool setup)
@@ -83,6 +84,21 @@ _cold void brain::BrainNetwork::serializeBody_(brain::Bytes& out) const
     }
 }
 
+// The first link that breaks the roles of the inputs and the outputs: an input receives a link or an output sends one (empty: none)
+_cold static std::string brokenRole(const std::vector<brain::BrainLink>& links, const brain::UIType neuron, const brain::UIType cap, const std::pair<brain::UIType, brain::UIType>& io)
+{
+    for (brain::UIType receiver = 0; receiver < neuron && cap > 0; ++receiver) {
+        for (brain::UIType slot = 0; slot < cap; ++slot) {
+            const brain::BrainLink& link = links[receiver * cap + slot];
+
+            if (link.id == 0 && link.weight == 0) continue; // a free slot
+            if (receiver < io.first) return "the input " + std::to_string(receiver) + " receives a link";
+            if (link.id >= neuron - io.second) return "the output " + std::to_string(link.id) + " sends a link";
+        }
+    }
+    return "";
+}
+
 _cold void brain::BrainNetwork::deserializeBody_(const brain::Bytes& data, brain::UIType offset)
 {
     const brain::UIType neuron = brain::tools::get<std::uint64_t>(data, offset);
@@ -118,6 +134,10 @@ _cold void brain::BrainNetwork::deserializeBody_(const brain::Bytes& data, brain
     if (offset != data.size()) _unlikely {
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "unexpected data after the links");
     }
+    const std::string broken = brokenRole(links, neuron, cap, this->_ioSize);
+    if (!broken.empty()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, broken + " (an input only sends, an output only receives)");
+    }
 
     // everything is valid: the memories are replaced
     this->_neuron = neuron;
@@ -148,11 +168,21 @@ _cold void brain::BrainNetwork::threshold(const brain::FType threshold)
     this->_threshold = threshold;
 }
 
-_cold void brain::BrainNetwork::resized_(void)
+_cold void brain::BrainNetwork::fits_(void) const
 {
     // the inputs are the first neurons and the outputs the last ones: they can't overlap
     if (this->_ioSize.first > this->_neuron || this->_ioSize.second > this->_neuron - this->_ioSize.first) _unlikely {
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the inputs and the outputs (" + std::to_string(this->_ioSize.first) + " + " + std::to_string(this->_ioSize.second) + ") don't fit in the " + std::to_string(this->_neuron) + " neurons");
+    }
+}
+
+_cold void brain::BrainNetwork::resized_(void)
+{
+    // the links already there have to keep the roles of the new sizes (a reduced network is not set up again)
+    this->fits_();
+    const std::string broken = brokenRole(this->_links.toVector(), this->_neuron, this->_cap, this->_ioSize);
+    if (!broken.empty()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "these sizes don't match the links: " + broken);
     }
 }
 
