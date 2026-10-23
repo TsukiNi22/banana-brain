@@ -100,6 +100,7 @@ add_compile_options(
     -Wunused-parameter
     -Wshadow
     -Wuninitialized
+    $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-nan-infinity-disabled> # the checks of finite numbers (std::isfinite) are kept under -ffast-math (Optimized)
 )
 
 # =========================
