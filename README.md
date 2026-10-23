@@ -4,7 +4,7 @@
 > Technical documentation and project graph: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v0.0.0).
 
 C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling several kinds of networks (layered, brain), their configuration, training and usage, plus the dataset, randomness and serialization tools.
-Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
+Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB/Arch (pacman) packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
 
 > [!NOTE]
 > The library is in progress (the tag `v0.0.0` was the architecture only). Written: the checks and errors of every function, the memories of the neurons (`utils::system::HybridMemory`, GPU when available), the default setup of the three networks, the serialization (`save` / `load`) and the tools. The forward pass and the backpropagation of the networks are written.
@@ -34,15 +34,16 @@ Built as a static library on top of [libutils](https://github.com/TsukiNi22/libu
 > The content of the packages is chosen at the top of the `CMakeLists.txt` (layout of [cpp_project_template](https://github.com/TsukiNi22/cpp_project_template)): `BRAIN_KIND` (`library`) sets the defaults of `BRAIN_PACKAGE_BIN` (executable, `OFF`), `BRAIN_PACKAGE_LIB` (library, `BRAIN_SHARED_LIB` for a `.so`) and `BRAIN_PACKAGE_DEV` (headers + CMake config), each one can be forced with `-D...=ON/OFF`.
 > After a change, update `PACKAGE_BIN` / `PACKAGE_LIB` / `PACKAGE_DEV` in `.github/workflows/build.yml` and `build-packages.yml`.
 
-| Name | Version | Fedora (`dnf`) | Debian/Ubuntu (`apt`) |
-| ---- | ------- | -------------- | --------------------- |
-| `clang++` | C++20 | `clang` | `clang` |
-| `cmake` | >= 3.20 | `cmake` | `cmake` |
-| `python3` (exception header generation) | >= 3.10 | `python3` | `python3` |
-| libutils | >= 4.1.0 | `libutils` (+ `libutils-db` / `libutils-as` for the `Debug` / `Asan` modes) | `libutils` (+ `libutils-db` / `libutils-as`) |
-| GoogleTest (tests only) | — | `gtest-devel` | `libgtest-dev` |
-| MinGW-w64 (Windows only) | GCC >= 13 | `mingw64-gcc-c++ mingw64-libutils` | `g++-mingw-w64-x86-64` + libutils built for MinGW |
-| Wine (Windows tests only) | — | `wine` | `wine64` |
+| Name | Version | Fedora (`dnf`) | Debian/Ubuntu (`apt`) | Arch (`pacman`) |
+| ---- | ------- | -------------- | --------------------- | --------------- |
+| `clang++` | C++20 | `clang` | `clang` | `clang` |
+| `cmake` | >= 3.20 | `cmake` | `cmake` | `cmake` |
+| `python3` (exception header generation) | >= 3.10 | `python3` | `python3` | `python` |
+| libutils | >= 4.1.0 (>= 4.2.0 on Arch) | `libutils` (+ `libutils-db` / `libutils-as` for the `Debug` / `Asan` modes) | `libutils` (+ `libutils-db` / `libutils-as`) | `libutils` (+ `libutils-db` / `libutils-as`) |
+| GoogleTest (tests only) | — | `gtest-devel` | `libgtest-dev` | `gtest` |
+| MinGW-w64 (Windows only) | GCC >= 13 | `mingw64-gcc-c++ mingw64-libutils` | `g++-mingw-w64-x86-64` + libutils built for MinGW | — |
+| Wine (Windows tests only) | — | `wine` | `wine64` | — |
+| `rpm-build`, `dpkg`, `bsdtar` (packages only, `bsdtar` for the Arch ones) | — | `rpm-build dpkg bsdtar` | `rpm dpkg-dev libarchive-tools` | `rpm-tools dpkg libarchive` |
 
 ## Packages
 
@@ -98,16 +99,17 @@ sudo cmake --build $BUILD_DIR --target install_release --parallel $(nproc)  # De
 > If the error still persists, it might be due to an error in the repository.
 
 > [!WARNING]
-> Restriction: `fedora-based (rpm)`, `debian-based (deb)`
+> Restriction: `fedora-based (rpm)`, `debian-based (deb)`, `arch-based (pacman)` (no `--windows` packages on Arch)
 
 > [!NOTE]
 > The usage of `sudo` in the script can be removed with the `--no-sudo` argument.
 
 Run the setup script directly, without cloning the repository. It registers the banana-brain package repository so the system package manager can install the packages, then installs `libbrain`:
-1. Detect the distribution from `/etc/os-release` (`rpm` or `deb` based).
+1. Detect the distribution from `/etc/os-release` (`rpm`, `deb` or `pacman` based).
 2. `rpm`: add `/etc/yum.repos.d/brain.repo` and import the GPG key.
 3. `deb`: add the GPG key in `/etc/apt/keyrings/brain.gpg`, the source in `/etc/apt/sources.list.d/brain.list`, then `apt-get update`.
-4. Install the package `libbrain` (`--pre` for the unstable one, `--windows` for `mingw64-libbrain`), unless `--no-install`.
+4. `pacman`: trust the GPG key in the pacman keyring (`pacman-key --add` / `--lsign-key`), add the `[brain]` repository (`Server = https://tsukini22.github.io/banana-brain/arch/$arch`, `SigLevel = Required`) to `/etc/pacman.conf`, then `pacman -Sy`.
+5. Install the package `libbrain` (`--pre` for the unstable one, `--windows` for `mingw64-libbrain`), unless `--no-install`.
 
 ```bash
 wget -qO- https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s
@@ -144,7 +146,7 @@ export BUILD_DIR=build-windows
 cmake -S . -B $BUILD_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/mingw-w64.cmake -DCMAKE_BUILD_TYPE=Optimized
 cmake --build $BUILD_DIR --parallel $(nproc)
 cmake --install $BUILD_DIR --prefix <windows_prefix>          # include/, lib/libbrain.a, lib/cmake/brain/
-cmake --build $BUILD_DIR --target package_release               # mingw64-libbrain-* RPM/DEB (MinGW sysroot)
+cmake --build $BUILD_DIR --target package_release               # mingw64-libbrain-* RPM/DEB (MinGW sysroot, no Arch packages)
 ```
 
 > [!NOTE]
@@ -278,7 +280,7 @@ ctest --test-dir $BUILD_DIR --output-on-failure --timeout 30   # or ./unit_tests
 - `Dispatch (CI/CD)`: runs on every push (branch `main` or tag `v*`, not for `*.md` / `*.txt` / `docs/` only changes) and decides what to trigger from the ref / commit message
 - `Unit Tests (CI)`: builds and runs the unit tests, always first (Linux in the `unit-tests` image, Windows in the `mingw64-unit-tests` image under `wine`)
 - `Build (CI)`: only builds the libraries (Linux in the `ci` image, Windows in the `mingw64-ci` image) and checks the outputs, without producing packages
-- `Build - Packages (CI/CD)`: builds the packages (RPM/DEB: Linux in the `ci` image, Windows `mingw64-*` in the `mingw64-ci` image), checks them against the `PACKAGE_*` content, signs them and publishes them on the `gh-pages` repository
+- `Build - Packages (CI/CD)`: builds the packages (RPM/DEB/Arch: Linux in the `ci` image, Windows `mingw64-*` in the `mingw64-ci` image), checks them against the `PACKAGE_*` content, signs them and publishes them on the `gh-pages` repository (`fedora/44/x86_64`, `debian/`, `arch/x86_64`, 5 last `-pre` versions kept)
 - `Release - GitHub (CD)`: creates the GitHub release of a tag from its section of the `CHANGELOG.md`, once the packages are published
 - `Docs - Pages (CD)`: copies `docs/` on the `gh-pages` branch on every push changing it (https://tsukini22.github.io/banana-brain/docs/)
 - `Sync Packages (CD)` (on `gh-pages`): rebuilds the metadata and signatures of the package repository after a manual push on the branch

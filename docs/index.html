@@ -415,6 +415,7 @@ html, body { overscroll-behavior: none; }
     <button type="button" data-tab="script">setup.sh</button>
     <button type="button" data-tab="rpm">Fedora / RPM</button>
     <button type="button" data-tab="deb">Debian / Ubuntu</button>
+    <button type="button" data-tab="arch">Arch / pacman</button>
     <button type="button" data-tab="src"><span data-lang="en">Sources</span><span data-lang="fr">Sources</span></button>
   </div>
   <div class="ctab-panel" data-tabs="install" data-tab="script">
@@ -428,6 +429,10 @@ sudo dnf install mingw64-libbrain         # Windows (MinGW sysroot)</code></pre>
   <div class="ctab-panel" data-tabs="install" data-tab="deb">
 <pre data-title="Install"><code>sudo apt install libbrain
 sudo apt install libbrain-db libbrain-as</code></pre>
+  </div>
+  <div class="ctab-panel" data-tabs="install" data-tab="arch">
+<pre data-title="Install"><code>sudo pacman -S libbrain                  # libbrain-dev + libbrain-op (repository [brain] added by setup.sh)
+sudo pacman -S libbrain-db libbrain-as</code></pre>
   </div>
   <div class="ctab-panel" data-tabs="install" data-tab="src">
 <pre data-title="Build & install (/usr/local)"><code>cmake -S . -B build
@@ -689,7 +694,7 @@ brain::Values outputs = network.exec({0.0, 1.0});</code></pre>
 <!-- 8 -->
 <section id="build">
   <h2><span data-lang="en">8. Build, tests & CI</span><span data-lang="fr">8. Build, tests & CI</span></h2>
-  <p><span data-lang="en">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (exception header). Modes: <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code>: the compiler removes the finite checks, a NaN is not refused there); the <code>release</code> target builds the three libraries, <code>install_release</code> installs them, <code>package_release</code> builds every RPM/DEB package (<code>BRAIN_STABLE_RELEASE=ON</code> for the stable channel).</span><span data-lang="fr">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (en-tête d'exceptions). Modes : <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code> : le compilateur retire les vérifications de valeurs finies, un NaN n'y est pas refusé) ; la cible <code>release</code> construit les trois bibliothèques, <code>install_release</code> les installe, <code>package_release</code> construit tous les paquets RPM/DEB (<code>BRAIN_STABLE_RELEASE=ON</code> pour le canal stable).</span></p>
+  <p><span data-lang="en">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (exception header). Modes: <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code>: the compiler removes the finite checks, a NaN is not refused there); the <code>release</code> target builds the three libraries, <code>install_release</code> installs them, <code>package_release</code> builds every RPM/DEB/Arch package (Arch: <code>.pkg.tar.zst</code> written by <code>cmake/package/CPackArch.cmake</code>, needs <code>bsdtar</code>; <code>BRAIN_STABLE_RELEASE=ON</code> for the stable channel).</span><span data-lang="fr">CMake 3.20+, <code>clang++</code> (C++20), libutils 4.1.0+, Python 3 (en-tête d'exceptions). Modes : <code>Debug</code> (<code>-g -ggdb3</code>), <code>Asan</code> (AddressSanitizer), <code>Optimized</code> (<code>-O3 -ffast-math -funroll-loops -fno-plt</code> : le compilateur retire les vérifications de valeurs finies, un NaN n'y est pas refusé) ; la cible <code>release</code> construit les trois bibliothèques, <code>install_release</code> les installe, <code>package_release</code> construit tous les paquets RPM/DEB/Arch (Arch : <code>.pkg.tar.zst</code> écrits par <code>cmake/package/CPackArch.cmake</code>, demande <code>bsdtar</code> ; <code>BRAIN_STABLE_RELEASE=ON</code> pour le canal stable).</span></p>
 <pre data-title="Unit tests (GoogleTest)"><code>cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
 cmake --build build --parallel $(nproc)
 ctest --test-dir build --output-on-failure --timeout 30     # or ./unit_tests</code></pre>
