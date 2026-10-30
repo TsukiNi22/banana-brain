@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 22/10/2026 by @author Tsukini
+##  @date 23/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NetworkDefine.hpp
@@ -17,8 +17,8 @@ File Description:
 ##  Enums of the neural network: kind of network, internal activation & loss functions
 \**************************************************************/
 
-#ifndef NETWORKDEFINE_H
-    #define NETWORKDEFINE_H
+#ifndef BRAIN_NETWORKDEFINE_H
+    #define BRAIN_NETWORKDEFINE_H
 
     //----------------------------------------------------------------//
     /* INCLUDE */
@@ -47,13 +47,13 @@ File Description:
     // 0x01 -> 0xFE: internal mode, the value of brain::ActivationFunction
 
     /* limits */
-    #define BRAIN_LINKS_CAP_PERCENTAGE 0.1 // (default value) percentage of the total number of neurons
-    #define BRAIN_LINKS_CAP_COMPUTING(n) (2.0 * std::log2(static_cast<double>(n)) * std::log(static_cast<double>(n)) / std::log(1.1)) // (default value) computing of the default limits of links: log1.1(x^(2log2(x))) written without the pow (no overflow on a big network)
+    #define BRAIN_LINKS_CAP_PERCENTAGE 1.0 // (default value) percentage of the total number of neurons
+    #define BRAIN_LINKS_CAP_COMPUTING(n) (3.0 * std::sqrt(static_cast<double>(n))) // (default value) computing of the default limits of links: 3 sqrt(n) (12 links at 16 neurons, 94 at 1000, 300 at 10000)
 
     #define BRAIN_SIGNAL_THRESHOLD 0.0 // (default value, placeholder to give) a signal under it (absolute value) is cancelled in a brain network: 0 = nothing is cancelled
     #define BRAIN_WEIGHT_MIN 0.01 // (default value) a raw brain network removes a link (and its clone) when the absolute value of its weight falls to it (or under), unless it is the last link the neuron needs
     #define BRAIN_WEIGHT_MAX 2.0 // (default value) a raw brain network links the neuron to its nearest free neuron (within the cap) when the absolute value of the weight of one of its links rises to it (or over)
-    #define BRAIN_STEPS_CAP_PERCENTAGE 0.25 // (default value) percentage of the total number of neurons
+    #define BRAIN_STEPS_CAP_PERCENTAGE 1.0 // (default value) percentage of the total number of neurons
     #define BRAIN_STEPS_CAP_COMPUTING(n) (4.0 * std::log2(static_cast<double>(n))) // (default value) computing of the default number of time steps of a brain network from the number of neurons n: a signal crosses the network in about log2(n) hops, twice for the loops
 
 namespace brain { // namespace start
@@ -88,5 +88,12 @@ enum class LossFunction {
     CrossEntropy,
 };
 
+// Internal score functions: what is sent to the backpropagation for one output, before the rates (the error d = expected - output for a brain network, output - expected for a layered one)
+enum class ScoreFunction {
+    Difference, // d
+    Sign, // -1, 0 or 1 (the direction of d only)
+    Loss, // d squared
+};
+
 } // namespace end
-#endif /* NETWORKDEFINE_H */
+#endif /* BRAIN_NETWORKDEFINE_H */

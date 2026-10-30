@@ -141,6 +141,49 @@ _cold void brain::ANetwork::internalActivationFunction(const brain::ActivationFu
     this->_activationFunction = {fn, nullptr};
 }
 
+_cold void brain::ANetwork::scoreFunction(const brain::ScoreFn& fn)
+{
+    // check inputs
+    if (!fn) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the score function is empty");
+    }
+    this->_scoreFunction = {brain::ScoreFunction::Difference, fn};
+}
+
+_cold void brain::ANetwork::internalScoreFunction(const brain::ScoreFunction fn)
+{
+    this->_scoreFunction = {fn, nullptr};
+}
+
+_cold void brain::ANetwork::scoreRate(const brain::FType rate)
+{
+    // check inputs
+    if (!std::isfinite(rate) || rate <= 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the score rate should be a finite number above 0");
+    }
+    this->_scoreRate = rate;
+}
+
+_hot brain::Values brain::ANetwork::scores(const brain::Values& outputs, const brain::Values& expected) const
+{
+    brain::Values out(outputs.size());
+
+    // check inputs
+    if (outputs.size() != expected.size()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "both output and expected values must be of the same size");
+    }
+    for (std::size_t k = 0; k < outputs.size(); ++k) {
+        const brain::FType error = this->scored_() ? expected[k] - outputs[k] : outputs[k] - expected[k]; // positive = good for a score, too high for an error
+
+        if (this->_scoreFunction.second) out[k] = this->_scoreFunction.second(outputs[k], expected[k]);
+        else if (this->_scoreFunction.first == brain::ScoreFunction::Sign) out[k] = error > 0 ? 1.0f : (error < 0 ? -1.0f : 0.0f);
+        else if (this->_scoreFunction.first == brain::ScoreFunction::Loss) out[k] = error * error;
+        else out[k] = error;
+        out[k] *= this->_scoreRate;
+    }
+    return out;
+}
+
 _cold void brain::ANetwork::serializeHeader_(brain::Bytes& out, const std::uint8_t kind) const
 {
     brain::tools::put<std::uint8_t>(out, static_cast<std::uint8_t>(BRAIN_MAGIC));

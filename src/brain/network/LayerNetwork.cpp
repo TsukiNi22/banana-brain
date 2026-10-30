@@ -197,12 +197,15 @@ _hot brain::Values brain::LayerNetwork::forward_(const brain::Values& inputs, st
         for (brain::UIType k = 0; k < layer; ++k, ++index) {
             const brain::LayerNeuron& neuron = neurons[index];
 
-            sum[k] = neuron.bias;
+            const brain::FType* row = weights + neuron.incoming;
+            brain::FType total = neuron.bias; // a local sum: the compiler keeps it in a register (same order, same result)
+
             for (brain::UIType j = 0; j < neuron.count; ++j)
-                sum[k] += weights[neuron.incoming + j] * previous[j];
-            output[k] = this->activate_(sum[k]);
+                total += row[j] * previous[j];
+            sum[k] = total;
+            output[k] = this->activate_(total);
         }
-        if (sums) sums->push_back(sum);
+        if (sums) sums->push_back(std::move(sum));
         if (outputs) outputs->push_back(output);
         previous = std::move(output);
     }
@@ -256,31 +259,48 @@ _hot void brain::LayerNetwork::learn_(const brain::Values& errors)
 
     // the memories stored on the gpu are changed there (an external activation function can only run on the host)
     if (this->_neurons.isOnGpu() && !this->_activationFunction.second && brain::tools::gpu::layersBack(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), this->_layers, this->_activationFunction.first, this->_inputs, this->_sums, this->_outputs, errors)) return;
-    std::vector<brain::LayerNeuron> neurons = this->_neurons.toVector();
-    std::vector<brain::FType> weights = this->_weights.toVector();
+
+    // the memories of the host are changed in place, a gpu memory is fetched then stored back
+    std::vector<brain::LayerNeuron> fetchedNeurons;
+    std::vector<brain::FType> fetchedWeights;
+    const bool host = this->_neurons.data() != nullptr && (this->_weights.empty() || this->_weights.data() != nullptr);
+    if (!host) {
+        fetchedNeurons = this->_neurons.toVector();
+        fetchedWeights = this->_weights.toVector();
+    }
+    brain::LayerNeuron* neurons = host ? this->_neurons.data() : fetchedNeurons.data();
+    brain::FType* weights = host ? this->_weights.data() : fetchedWeights.data();
     brain::Values delta = errors; // error of the outputs of the layer, from the last one to the first one
-    brain::UIType first = neurons.size();
+    brain::Values below; // error given to the previous layer (swapped with delta: no new buffer per layer)
+    brain::UIType first = this->_neurons.size();
 
     for (brain::UIType l = this->_layers.size(); l-- > 0;) {
         const brain::UIType size = this->_layers[l];
         const brain::Values& previous = l == 0 ? this->_inputs : this->_outputs[l - 1];
-        brain::Values below(l == 0 ? 0 : this->_layers[l - 1], 0.0); // error given to the previous layer
 
+        below.assign(l == 0 ? 0 : this->_layers[l - 1], 0.0);
         first -= size;
         for (brain::UIType k = 0; k < size; ++k) {
             brain::LayerNeuron& neuron = neurons[first + k];
             const brain::FType slope = delta[k] * this->derivative_(this->_sums[l][k], this->_outputs[l][k]);
+            brain::FType* row = weights + neuron.incoming;
 
-            for (brain::UIType j = 0; j < neuron.count; ++j) {
-                if (l > 0) below[j] += slope * weights[neuron.incoming + j]; // with the weight before the update
-                weights[neuron.incoming + j] -= slope * previous[j];
+            if (l > 0) {
+                for (brain::UIType j = 0; j < neuron.count; ++j) {
+                    below[j] += slope * row[j]; // with the weight before the update
+                    row[j] -= slope * previous[j];
+                }
+            } else {
+                for (brain::UIType j = 0; j < neuron.count; ++j)
+                    row[j] -= slope * previous[j];
             }
             neuron.bias -= slope;
         }
-        delta = std::move(below);
+        std::swap(delta, below);
     }
-    this->_neurons.store(neurons);
-    this->_weights.store(weights);
+    if (host) return;
+    this->_neurons.store(fetchedNeurons);
+    this->_weights.store(fetchedWeights);
 }
 
 _cold void brain::LayerNetwork::weightInit(const brain::FType fallback)

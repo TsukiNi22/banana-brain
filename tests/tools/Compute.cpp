@@ -167,6 +167,7 @@ TEST(Gpu, RawBackpropagationMatchesTheHost) {
         brain::RawBrainNetwork ram(30, {10.0, 10.0}, utils::system::MemoryMode::Ram);
         const brain::Values inputs = {0.5, -0.25, 1.0};
 
+        gpu.linksCap(0.1); // 3 links: without activation a dense network grows past the floats over the steps
         gpu.size(3, 2);
         gpu.rand(-1.0, 1.0);
         gpu.weightInit();
@@ -188,4 +189,38 @@ TEST(Gpu, RawBackpropagationMatchesTheHost) {
         expectNear(gpu.apply(), ram.apply());
         expectNear(gpu.reduce()->apply(inputs), ram.reduce()->apply(inputs)); // the execution copy follows
     }
+}
+
+TEST(Gpu, RawTrainingOptionsMatchTheHost) {
+    REQUIRE_CUDA();
+    brain::RawBrainNetwork gpu(30, {10.0, 10.0}, utils::system::MemoryMode::Cuda);
+    brain::RawBrainNetwork ram(30, {10.0, 10.0}, utils::system::MemoryMode::Ram);
+    const brain::Values inputs = {0.5, -0.25, 1.0};
+
+    gpu.linksCap(0.2);
+    gpu.size(3, 2);
+    gpu.rand(-1.0, 1.0);
+    gpu.weightInit();
+    gpu.biasInit();
+    gpu.weightLimits(1e-9, 1.5); // the clamp keeps the weights under 1.5, the links stay
+    gpu.momentum(0.5);
+    gpu.adam(0.05);
+    gpu.stepLimit(0.2);
+    gpu.clampWeights(true);
+    gpu.batch(true);
+    ram.deserialize(gpu.serialize());
+    for (brain::UIType round = 0; round < 3; ++round) {
+        for (brain::RawBrainNetwork* network: {&gpu, &ram}) {
+            network->inputs(inputs);
+            (void)network->apply();
+            network->backpropagation(brain::Values{0.5, -0.2});
+            network->backpropagation(brain::Values{0.1, 0.3});
+            network->applyBatch();
+        }
+    }
+    ASSERT_TRUE(gpu.onGpu());
+    gpu.inputs(inputs);
+    ram.inputs(inputs);
+    expectNear(gpu.apply(), ram.apply());
+    expectNear(gpu.reduce()->apply(inputs), ram.reduce()->apply(inputs)); // the execution copy follows
 }

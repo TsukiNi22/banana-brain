@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 20/10/2026 by @author Tsukini
+##  @date 27/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NeuralNetwork.hpp
@@ -55,7 +55,8 @@ class NeuralNetwork: public utils::type::Freezable {
         std::unique_ptr<brain::INetwork> _network; // nullptr = no network (init<...> first)
 
         // ---------- Pre-Function -------- //
-        void warnLoss_(void) const; // warn when the mean squared error is used on a brain network (it grows with the error, a brain network reinforces a score that grows with the quality)
+        template<bool mean>
+        void learn_(const brain::Values& outputs, const brain::Values& expected); // backpropagation of the signed errors times the learning rate (a score for a brain network), then the decay
         void decay_(void); // decay the learning rate
         void checkDataset_(const brain::Dataset& inputs, const brain::Dataset& expected_outputs) const; // same number of samples, not empty, each sample of the size set (the size of the network, 0 = not set: not checked)
 
@@ -82,7 +83,10 @@ class NeuralNetwork: public utils::type::Freezable {
         void internalActivationFunction(const brain::ActivationFunction fn); // internal, more optimized than an external one, applied to the network
         _nodiscard const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& rand(void) const; // <<min, max>, function> of the network
         _nodiscard const std::pair<brain::ActivationFunction, brain::ActivationFn>& activationFunction(void) const; // <internal, function> of the network
-        void internalLossFunction(const brain::LossFunction fn); // internal, more optimized than an external one (the mean squared error warns on a brain network: it is an error to minimize, not a score)
+        void scoreFunction(const brain::ScoreFn& fn); // external score function (none by default), applied to the network: what train() sends to the backpropagation for one output (before the rates)
+        void internalScoreFunction(const brain::ScoreFunction fn); // internal (Difference by default: the signed error), applied to the network
+        void scoreRate(const brain::FType rate); // the score rate of the network (> 0, 1 by default), applied to the network: train() sends score * score rate * learning rate
+        void internalLossFunction(const brain::LossFunction fn); // internal, more optimized than an external one (train only uses it to measure and to stop: the coefficients are the signed errors)
         void learningRate(const brain::FType learning_rate, const brain::UIType learning_rate_decay = 0, const std::pair<bool, brain::FType>& coef = {true, 1.0}); // decay 0 = none, otherwise the learning rate is multiplied by the coef every n steps, <smooth, coef>: smooth decay or by step
         void resetLearningRate(void);
 
@@ -117,6 +121,8 @@ class NeuralNetwork: public utils::type::Freezable {
 
         /* getter */
         _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const; // <layers, neurons> of the network (NoNetwork without one)
+        _nodiscard brain::INetwork& get(void); // the network itself by reference, the NeuralNetwork keeps it (NoNetwork without one, refused when frozen)
+        _nodiscard const brain::INetwork& get(void) const; // read only access to the network, allowed when frozen (NoNetwork without one)
 
         /* miscellaneous */
         void load(const std::filesystem::path& path); // load a network from a file
@@ -127,7 +133,7 @@ class NeuralNetwork: public utils::type::Freezable {
         /* setter (size) */
 
         /* setter (function) */
-        _cold inline void lossFunction(const brain::LossFn& fn)                          {this->requireUnfrozen(); this->_lossFunction = {brain::LossFunction::None, fn};}; // external loss function (none by default)
+        _cold inline void lossFunction(const brain::LossFn& fn) {this->requireUnfrozen(); this->_lossFunction = {brain::LossFunction::None, fn};}; // external loss function (none by default)
 
         /* getter */
         _cold _nodiscard inline brain::FType learningRate(void) const        {return this->_learningRate;};

@@ -86,21 +86,12 @@ _cold void brain::NeuralNetwork::init<brain::NetworkType::Brain>(const brain::UI
     std::unique_ptr<brain::INetwork> network = std::make_unique<brain::RawBrainNetwork>(neurons, size); // the network checks its parameters, the actual one is kept on an error
     this->clear();
     this->_network = std::move(network);
-    this->warnLoss_();
-}
-
-_cold void brain::NeuralNetwork::warnLoss_(void) const
-{
-    if (this->_lossFunction.first == brain::LossFunction::MSE && !this->_lossFunction.second && dynamic_cast<const brain::RawBrainNetwork*>(this->_network.get())) {
-        std::cerr << utils::exception::WarningException(utils::exception::ExternalCode::ErrorLossOnBrain).formated() << std::endl;
-    }
 }
 
 _cold void brain::NeuralNetwork::internalLossFunction(const brain::LossFunction fn)
 {
     this->requireUnfrozen();
     this->_lossFunction = {fn, nullptr};
-    this->warnLoss_();
 }
 
 _cold void brain::NeuralNetwork::size(const brain::UIType input, const brain::UIType output)
@@ -190,6 +181,33 @@ _cold void brain::NeuralNetwork::internalActivationFunction(const brain::Activat
     this->_network->internalActivationFunction(fn);
 }
 
+_cold void brain::NeuralNetwork::scoreFunction(const brain::ScoreFn& fn)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->scoreFunction(fn);
+}
+
+_cold void brain::NeuralNetwork::internalScoreFunction(const brain::ScoreFunction fn)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->internalScoreFunction(fn);
+}
+
+_cold void brain::NeuralNetwork::scoreRate(const brain::FType rate)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->scoreRate(rate);
+}
+
 _cold const std::pair<std::pair<brain::FType, brain::FType>, brain::RandFn>& brain::NeuralNetwork::rand(void) const
 {
     if (!this->_network) _unlikely {
@@ -243,6 +261,25 @@ template void brain::NeuralNetwork::train<true>(const brain::UIType, const brain
 template void brain::NeuralNetwork::train<false>(const brain::FType, const brain::Dataset&, const brain::Dataset&);
 template void brain::NeuralNetwork::train<true>(const brain::FType, const brain::Dataset&, const brain::Dataset&);
 
+// The signed error of each output times the learning rate: (output - expected) to descend for a layered network, (expected - output) as a score for a brain one (mean: one coefficient, their mean)
+template<bool mean>
+_hot void brain::NeuralNetwork::learn_(const brain::Values& outputs, const brain::Values& expected)
+{
+    brain::Values coefs = this->_network->scores(outputs, expected); // the score function of the network and its score rate
+    brain::FType total = 0.0;
+
+    for (brain::FType& coef: coefs) {
+        coef *= this->_learningRateDecayed;
+        total += coef;
+    }
+    if constexpr (mean) {
+        this->backpropagation(outputs.empty() ? 0.0 : total / static_cast<brain::FType>(outputs.size()));
+    } else {
+        this->backpropagation(coefs);
+    }
+    this->decay_();
+}
+
 template<bool mean>
 _hot void brain::NeuralNetwork::train(const brain::UIType round, const brain::Dataset& inputs, const brain::Dataset& expected_outputs)
 {
@@ -261,9 +298,7 @@ _hot void brain::NeuralNetwork::train(const brain::UIType round, const brain::Da
     for (std::size_t n = 0; n < round; ++n) {
         for (std::size_t i = 0; i < size; ++i) {
             this->inputs(inputs[i]);
-            brain::Values values = this->apply();
-            this->backpropagation(this->loss<mean>(values, expected_outputs[i], this->_learningRateDecayed));
-            this->decay_();
+            this->learn_<mean>(this->apply(), expected_outputs[i]);
         }
     }
 }
@@ -291,14 +326,7 @@ _hot void brain::NeuralNetwork::train(const brain::FType loss, const brain::Data
         this->inputs(inputs[i % size]);
         brain::Values values = this->apply();
         actual_loss = this->loss(values, expected_outputs[i % size]);
-        if constexpr (mean) {
-            this->backpropagation(actual_loss.second * this->_learningRateDecayed);
-        } else {
-            if (this->_learningRateDecayed != 1.0)
-                for (brain::FType& value: actual_loss.first) value *= this->_learningRateDecayed;
-            this->backpropagation(actual_loss.first);
-        }
-        this->decay_();
+        this->learn_<mean>(values, expected_outputs[i % size]);
     }
 }
 
@@ -468,6 +496,24 @@ _cold std::pair<brain::UIType, brain::UIType> brain::NeuralNetwork::neurons(void
         throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
     }
     return this->_network->neurons();
+}
+
+_cold brain::INetwork& brain::NeuralNetwork::get(void)
+{
+    // a reference that can change the network: refused when frozen, like every other change
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return *this->_network;
+}
+
+_cold const brain::INetwork& brain::NeuralNetwork::get(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return *this->_network;
 }
 
 _hot brain::Values brain::NeuralNetwork::exec(const brain::Values& inputs) const

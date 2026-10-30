@@ -25,14 +25,22 @@ File Description:
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <vector>
+#include <cmath>
 
 static constexpr brain::UIType HEADER = 28; // magic (2) + activation (1) + sizes (16) + random range (8) + random mode (1)
 
 static bool throwsCode(const std::function<void()>& fn, const utils::exception::ExternalCode code)
 {
     try {fn();} catch (const utils::exception::IException& e) {return e.getCode() == static_cast<utils::exception::InternalCode>(code);}
+    return false;
+}
+
+static bool throwsCode(const std::function<void()>& fn, const utils::exception::InternalCode code)
+{
+    try {fn();} catch (const utils::exception::IException& e) {return e.getCode() == code;}
     return false;
 }
 
@@ -58,6 +66,21 @@ static brain::Bytes rawData(const brain::UIType broken = 6)
     brain::tools::put<brain::FType>(data, 0.01f); // weight min
     brain::tools::put<brain::FType>(data, 2.0f); // weight max
     brain::tools::put<std::uint8_t>(data, 0); // orphans
+    brain::tools::put<std::uint8_t>(data, 0); // left to right
+    brain::tools::put<std::uint64_t>(data, 0); // far links
+    brain::tools::put<std::uint64_t>(data, 0); // path at the init
+    brain::tools::put<brain::FType>(data, 0); // momentum
+    brain::tools::put<brain::FType>(data, 0); // step limit
+    brain::tools::put<std::uint8_t>(data, 0); // clamp of the weights
+    brain::tools::put<std::uint8_t>(data, 0); // low new links
+    brain::tools::put<std::uint8_t>(data, 0); // mini-batch
+    brain::tools::put<std::uint8_t>(data, 0); // direct output
+    brain::tools::put<std::uint8_t>(data, 0); // keep the paths
+    brain::tools::put<brain::FType>(data, 0); // Adam
+    brain::tools::put<brain::FType>(data, 0); // rate decay
+    brain::tools::put<std::uint8_t>(data, 0); // inverted links
+    brain::tools::put<std::uint8_t>(data, 0); // random links
+    brain::tools::put<std::uint64_t>(data, 0); // minimum of links
     brain::tools::put<std::uint64_t>(data, 3);
     for (std::uint64_t i = 0; i < 3; ++i) {
         brain::tools::put<brain::FType>(data, static_cast<brain::FType>(i));
@@ -88,7 +111,7 @@ static ParsedRaw parseRaw(const brain::Bytes& data)
 
     (void)brain::tools::get<std::uint64_t>(data, offset); // neurons
     parsed.cap = brain::tools::get<std::uint64_t>(data, offset);
-    offset += 3 * sizeof(brain::FType) + sizeof(std::uint8_t) + sizeof(brain::FType) + sizeof(std::uint8_t) + sizeof(std::uint64_t) + sizeof(brain::FType) + 2 * sizeof(brain::FType) + sizeof(std::uint8_t); // the size of the space, the links limit, the time steps limit, the signal threshold, the limits of the weights and the orphans mode
+    offset += 3 * sizeof(brain::FType) + sizeof(std::uint8_t) + sizeof(brain::FType) + sizeof(std::uint8_t) + sizeof(std::uint64_t) + sizeof(brain::FType) + 2 * sizeof(brain::FType) + 2 * sizeof(std::uint8_t) + 2 * sizeof(std::uint64_t) + 3 * sizeof(brain::FType) + 5 * sizeof(std::uint8_t) + sizeof(brain::FType) + 2 * sizeof(std::uint8_t) + sizeof(std::uint64_t); // the rate decay, the inverted and random links modes, the minimum of links (after Adam); the size of the space, the links limit, the time steps limit, the signal threshold, the limits of the weights, the orphans and left to right modes, the far links, the path, the momentum, the step limit, the clamp, the new links, the mini-batch, the direct output and the paths modes, the rate of Adam
     count = brain::tools::get<std::uint64_t>(data, offset);
     for (brain::UIType i = 0; i < count; ++i) {
         brain::RawBrainNeuron neuron;
@@ -149,7 +172,7 @@ TEST(RawBrainNetwork, IsABrainNetworkThatTrains) {
 }
 
 TEST(RawBrainNetwork, LinksCapIsThePercentageOfTheNeurons) {
-    EXPECT_EQ(brain::RawBrainNetwork(100).links(), 10u); // 10% of 100, the default hook gives more
+    EXPECT_EQ(brain::RawBrainNetwork(100).links(), 30u); // 100 % of 100, the default hook (3 sqrt(100) = 30) is the smallest
     EXPECT_EQ(brain::RawBrainNetwork(2).links(), 1u); // at least one link
     EXPECT_EQ(brain::RawBrainNetwork(1).links(), 0u); // nobody to link to
 }
@@ -157,14 +180,16 @@ TEST(RawBrainNetwork, LinksCapIsThePercentageOfTheNeurons) {
 TEST(RawBrainNetwork, LinksCapSetters) {
     brain::RawBrainNetwork network(100);
 
-    network.linksCap(0.5f);
-    EXPECT_EQ(network.links(), 50u);
+    network.linksCap(0.1f);
+    EXPECT_EQ(network.links(), 10u); // the percentage is the smallest here
     network.linksCap(1.0f);
+    EXPECT_EQ(network.links(), 30u); // the default hook: 3 sqrt(100)
+    network.linksCap([](const brain::UIType n) {return n * 10;});
     EXPECT_EQ(network.links(), 99u); // never more than the other neurons
     network.linksCap([](const brain::UIType n) {return n / 50;}); // the hook is the smallest here
     EXPECT_EQ(network.links(), 2u);
     network.resetLinksCap();
-    EXPECT_EQ(network.links(), 10u);
+    EXPECT_EQ(network.links(), 30u);
     EXPECT_THROW(network.linksCap(0.0f), utils::exception::IException);
     EXPECT_THROW(network.linksCap(1.5f), utils::exception::IException);
     EXPECT_THROW(network.linksCap(std::nanf("")), utils::exception::IException);
@@ -172,10 +197,10 @@ TEST(RawBrainNetwork, LinksCapSetters) {
 }
 
 TEST(RawBrainNetwork, DefaultHookStaysFiniteOnABigNetwork) {
-    // log1.1(x^(2log2(x))) written without the pow: finite even where the pow overflows a double
+    // 3 sqrt(n): finite on a big network, under the neurons as soon as n > 9 (the hook is the limit)
     EXPECT_TRUE(std::isfinite(BRAIN_LINKS_CAP_COMPUTING(1e9)));
-    EXPECT_GT(BRAIN_LINKS_CAP_COMPUTING(100), 100.0); // over the neurons on a small network: the percentage is the limit
-    EXPECT_LT(BRAIN_LINKS_CAP_COMPUTING(1e6), 0.1 * 1e6); // under 10% on a big one: the hook is the limit
+    EXPECT_DOUBLE_EQ(BRAIN_LINKS_CAP_COMPUTING(100), 30.0);
+    EXPECT_LT(BRAIN_LINKS_CAP_COMPUTING(1e6), 0.01 * 1e6); // 3000 links at a million neurons
 }
 
 TEST(RawBrainNetwork, SerializeStartsWithTheMagicBytes) {
@@ -264,8 +289,8 @@ TEST(RawBrainNetwork, InitLinksEachNeuronToItsNearest) {
     const ParsedRaw parsed = parseRaw(brain::RawBrainNetwork(30).serialize());
     brain::UIType inward = 0;
 
-    ASSERT_EQ(parsed.cap, 3u);
-    ASSERT_EQ(parsed.links.size(), 90u); // 3 slots for each neuron
+    ASSERT_EQ(parsed.cap, 16u); // 3 sqrt(30) = 16.4
+    ASSERT_EQ(parsed.links.size(), 480u); // 16 slots for each neuron
     for (const brain::RawBrainLink& link: parsed.links) {
         inward += link.inward;
         EXPECT_LT(link.id, 30u);
@@ -277,6 +302,8 @@ TEST(RawBrainNetwork, InitLinksEachNeuronToItsNearest) {
 
 TEST(RawBrainNetwork, InitFillsTheCapWithLinksInBothDirections) {
     brain::RawBrainNetwork network(60, {10.0, 10.0});
+
+    network.randomLinks(false); // the default gives each neuron a random number of links
 
     brain::tools::rand(7);
     network.size(3, 2);
@@ -378,7 +405,7 @@ TEST(RawBrainNetwork, InitSetsTheReducedCopyUp) {
         inward += link.inward;
     offset += count * sizeof(brain::FType); // the biases
     count = brain::tools::get<std::uint64_t>(reduced, offset);
-    EXPECT_EQ(count, 90u);
+    EXPECT_EQ(count, 480u);
     for (brain::UIType i = 0; i < count; ++i) {
         (void)brain::tools::get<std::uint64_t>(reduced, offset);
         used += brain::tools::get<brain::FType>(reduced, offset) != 0.0f;
@@ -501,7 +528,7 @@ TEST(RawBrainNetwork, TrainingForwardGivesTheOutputsOfTheReducedNetwork) {
 TEST(RawBrainNetwork, StepsCapIsThePercentageOfTheNeurons) {
     brain::RawBrainNetwork network(10);
 
-    EXPECT_EQ(network.steps(), 2u); // min(10 * 25 %, 4 log2(10) = 13)
+    EXPECT_EQ(network.steps(), 10u); // min(10 * 100 %, 4 log2(10) = 13)
     network.stepsCap(0.5f);
     EXPECT_EQ(network.steps(), 5u);
     network.stepsCap(1.0f);
@@ -512,7 +539,7 @@ TEST(RawBrainNetwork, StepsCapIsThePercentageOfTheNeurons) {
     network.stepsCap([](const brain::UIType) {return 0;});
     EXPECT_EQ(network.steps(), 1u); // at least one step
     network.resetStepsCap();
-    EXPECT_EQ(network.steps(), 2u);
+    EXPECT_EQ(network.steps(), 10u);
     EXPECT_THROW(network.stepsCap(0.0f), utils::exception::IException);
     EXPECT_THROW(network.stepsCap(1.5f), utils::exception::IException);
     EXPECT_THROW(network.stepsCap(brain::StepsCapFn{}), utils::exception::IException);
@@ -666,6 +693,7 @@ TEST(RawBrainNetwork, OrphansCanBeAllowed) {
 
     EXPECT_FALSE(network.orphans());
     network.allowOrphans();
+    network.minLinks(0); // the default minimum of 1 keeps the last link of a neuron
     EXPECT_TRUE(network.orphans());
     network.disallowOrphans();
     EXPECT_FALSE(network.orphans());
@@ -841,4 +869,595 @@ TEST(RawBrainNetwork, AFileWhereAnInputReceivesOrAnOutputSendsIsRefused) {
     EXPECT_TRUE(firstReceives || lastSends); // the case is really tested
     network.size(2, 1); // set up again for these sizes: always valid
     EXPECT_NO_THROW(other.deserialize(network.serialize()));
+}
+
+// Every inward link comes from a neuron strictly on the left of its receiver
+static bool onlyLeftToRight(const ParsedRaw& parsed)
+{
+    for (brain::UIType owner = 0; owner < parsed.neurons.size(); ++owner) {
+        for (brain::UIType slot = 0; slot < parsed.cap; ++slot) {
+            const brain::RawBrainLink& link = parsed.links[owner * parsed.cap + slot];
+            if (link.inward && !(parsed.neurons[link.id].pos.x < parsed.neurons[owner].pos.x)) return false;
+        }
+    }
+    return true;
+}
+
+TEST(RawBrainNetwork, LeftToRightLinksOnlyGoToTheRight) {
+    brain::RawBrainNetwork network(40, {10.0, 10.0});
+
+    EXPECT_FALSE(network.leftToRight());
+    network.size(3, 2);
+    brain::tools::rand(5);
+    EXPECT_FALSE(onlyLeftToRight(parseRaw(network.serialize()))); // random directions by default
+    network.leftToRight(true);
+    EXPECT_TRUE(network.leftToRight());
+    const ParsedRaw parsed = parseRaw(network.serialize());
+    brain::UIType links = 0;
+
+    EXPECT_TRUE(onlyLeftToRight(parsed));
+    for (const brain::RawBrainLink& link: parsed.links) links += link.inward;
+    EXPECT_GT(links, 0u);
+    expectMirrors(parsed);
+    network.leftToRight(false);
+    EXPECT_FALSE(network.leftToRight());
+}
+
+TEST(RawBrainNetwork, LeftToRightIsSavedAndCheckedAtTheLoad) {
+    brain::RawBrainNetwork network(30, {10.0, 10.0});
+    brain::RawBrainNetwork other(2);
+
+    brain::tools::rand(9);
+    network.size(2, 1);
+    network.leftToRight(true);
+    other.deserialize(network.serialize());
+    EXPECT_TRUE(other.leftToRight());
+    EXPECT_EQ(other.serialize(), network.serialize());
+
+    // a network with random directions read as a left to right one: refused
+    network.leftToRight(false);
+    brain::Bytes data = network.serialize();
+    ASSERT_FALSE(onlyLeftToRight(parseRaw(data)));
+    data[HEADER + 55] = 1; // the left to right byte, after the neurons, the slots, the space, the limits, the steps, the threshold, the weight limits and the orphans mode
+    EXPECT_TRUE(throwsCode([&] {other.deserialize(data);}, utils::exception::ExternalCode::InvalidNetworkFile));
+}
+
+TEST(RawBrainNetwork, LeftToRightNewLinksComeFromTheLeft) {
+    brain::RawBrainNetwork network(30, {10.0, 10.0});
+
+    brain::tools::rand(4);
+    network.size(2, 2);
+    network.leftToRight(true);
+    network.weightInit();
+    network.weightLimits(1e9, 2e9); // a removal pass first: the init fills the cap, the growth needs free slots
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    network.backpropagation(0.0);
+    const brain::UIType before = parseRaw(network.serialize()).links.size();
+    network.weightLimits(0.0, 1e-6); // every link is too strong: the neurons link the nearest free ones on their left
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    network.backpropagation(0.0);
+    const ParsedRaw after = parseRaw(network.serialize());
+
+    EXPECT_EQ(after.links.size(), before);
+    EXPECT_TRUE(onlyLeftToRight(after));
+    expectMirrors(after);
+}
+
+// The neurons each input reaches through inward links (-1: not reached)
+static std::vector<brain::IType> reachedFrom(const ParsedRaw& parsed, const brain::UIType from)
+{
+    std::vector<brain::IType> distance(parsed.neurons.size(), -1);
+    std::vector<brain::UIType> queue = {from};
+
+    distance[from] = 0;
+    for (brain::UIType head = 0; head < queue.size(); ++head) {
+        for (brain::UIType owner = 0; owner < parsed.neurons.size(); ++owner) {
+            for (brain::UIType slot = 0; slot < parsed.cap; ++slot) {
+                const brain::RawBrainLink& link = parsed.links[owner * parsed.cap + slot];
+
+                if (!link.inward || link.id != queue[head] || distance[owner] >= 0) continue;
+                distance[owner] = distance[queue[head]] + 1;
+                queue.push_back(owner);
+            }
+        }
+    }
+    return distance;
+}
+
+// A network whose links never change (limits out of reach), trained on the same input
+static std::unique_ptr<brain::RawBrainNetwork> trainingNetwork(const brain::IType seed)
+{
+    std::unique_ptr<brain::RawBrainNetwork> network = std::make_unique<brain::RawBrainNetwork>(12, std::pair<brain::FType, brain::FType>{4.0, 4.0});
+
+    brain::tools::rand(seed);
+    network->size(2, 1);
+    network->weightInit();
+    network->biasInit();
+    network->weightLimits(0.0, 1e9);
+    return network;
+}
+
+TEST(RawBrainNetwork, MomentumKeepsThePreviousStep) {
+    std::unique_ptr<brain::RawBrainNetwork> plain_ = trainingNetwork(3);
+    std::unique_ptr<brain::RawBrainNetwork> moving_ = trainingNetwork(3);
+    brain::RawBrainNetwork& plain = *plain_;
+    brain::RawBrainNetwork& moving = *moving_;
+
+    EXPECT_EQ(moving.momentum(), 0);
+    moving.momentum(0.5);
+    EXPECT_EQ(moving.momentum(), 0.5);
+    EXPECT_TRUE(throwsCode([&] {moving.momentum(1.0);}, utils::exception::InternalCode::InvalidArgument));
+    EXPECT_TRUE(throwsCode([&] {moving.momentum(-0.1);}, utils::exception::InternalCode::InvalidArgument));
+    for (brain::RawBrainNetwork* network: {&plain, &moving}) {
+        network->inputs(brain::Values{0.3, 0.8});
+        (void)network->apply();
+        network->backpropagation(1.0);
+    }
+    EXPECT_EQ(plain.serialize().size(), moving.serialize().size());
+    EXPECT_EQ(parseRaw(plain.serialize()).neurons[11].bias, parseRaw(moving.serialize()).neurons[11].bias); // the first step: no previous one
+    for (brain::RawBrainNetwork* network: {&plain, &moving}) {
+        network->inputs(brain::Values{0.3, 0.8});
+        (void)network->apply();
+        network->backpropagation(1.0);
+    }
+    EXPECT_NE(parseRaw(plain.serialize()).neurons[11].bias, parseRaw(moving.serialize()).neurons[11].bias);
+}
+
+TEST(RawBrainNetwork, StepLimitAndClampKeepTheWeightsInBounds) {
+    std::unique_ptr<brain::RawBrainNetwork> owned = trainingNetwork(5);
+    brain::RawBrainNetwork& network = *owned;
+    ParsedRaw before = parseRaw(network.serialize());
+
+    EXPECT_TRUE(throwsCode([&] {network.stepLimit(-1.0);}, utils::exception::InternalCode::InvalidArgument));
+    network.stepLimit(0.01);
+    EXPECT_EQ(network.stepLimit(), static_cast<brain::FType>(0.01));
+    network.inputs(brain::Values{1.0, 1.0});
+    (void)network.apply();
+    network.backpropagation(1000.0);
+    ParsedRaw after = parseRaw(network.serialize());
+    for (brain::UIType k = 0; k < after.links.size(); ++k)
+        EXPECT_LE(std::abs(after.links[k].weight - before.links[k].weight), 0.01 + 1e-6);
+    for (brain::UIType i = 0; i < after.neurons.size(); ++i)
+        EXPECT_LE(std::abs(after.neurons[i].bias - before.neurons[i].bias), 0.01 + 1e-6);
+
+    // clamp: a huge score can't push a weight or a bias over weightMax
+    network.stepLimit(0.0);
+    network.weightLimits(0.0, 2.0);
+    network.clampWeights(true);
+    EXPECT_TRUE(network.clampWeights());
+    for (int round = 0; round < 5; ++round) {
+        network.inputs(brain::Values{1.0, 1.0});
+        (void)network.apply();
+        network.backpropagation(1000.0);
+    }
+    after = parseRaw(network.serialize());
+    for (const brain::RawBrainLink& link: after.links)
+        EXPECT_LE(std::abs(link.weight), 2.0);
+    for (const brain::RawBrainNeuron& neuron: after.neurons)
+        EXPECT_LE(std::abs(neuron.bias), 2.0);
+    expectMirrors(after);
+}
+
+TEST(RawBrainNetwork, BatchAppliesTheMeanOfThePendingGradients) {
+    std::unique_ptr<brain::RawBrainNetwork> single_ = trainingNetwork(8);
+    std::unique_ptr<brain::RawBrainNetwork> batched_ = trainingNetwork(8);
+    brain::RawBrainNetwork& single = *single_;
+    brain::RawBrainNetwork& batched = *batched_;
+
+    batched.batch(true);
+    EXPECT_TRUE(batched.batch());
+    for (int i = 0; i < 2; ++i) {
+        batched.inputs(brain::Values{0.2, 0.9});
+        (void)batched.apply();
+        batched.backpropagation(0.5);
+    }
+    EXPECT_EQ(batched.pending(), 2u);
+    batched.batch(false);
+    batched.batch(true); // a change of mode drops what is pending
+    EXPECT_EQ(batched.pending(), 0u);
+    for (int i = 0; i < 2; ++i) {
+        batched.inputs(brain::Values{0.2, 0.9});
+        (void)batched.apply();
+        batched.backpropagation(0.5);
+    }
+    batched.applyBatch();
+    EXPECT_EQ(batched.pending(), 0u);
+    batched.applyBatch(); // nothing pending: nothing done
+    single.inputs(brain::Values{0.2, 0.9});
+    (void)single.apply();
+    single.backpropagation(0.5);
+    const ParsedRaw a = parseRaw(single.serialize());
+    const ParsedRaw b = parseRaw(batched.serialize());
+    for (brain::UIType k = 0; k < a.links.size(); ++k)
+        EXPECT_NEAR(a.links[k].weight, b.links[k].weight, 1e-5);
+    for (brain::UIType i = 0; i < a.neurons.size(); ++i)
+        EXPECT_NEAR(a.neurons[i].bias, b.neurons[i].bias, 1e-5);
+}
+
+TEST(RawBrainNetwork, LowNewLinksStartAtFivePercentOfTheLimits) {
+    brain::RawBrainNetwork network(30, {10.0, 10.0});
+
+    brain::tools::rand(4);
+    network.size(2, 2);
+    network.weightInit();
+    network.lowNewLinks(true);
+    EXPECT_TRUE(network.lowNewLinks());
+    network.weightLimits(1e9, 2e9); // a removal pass first: the init fills the cap, the growth needs free slots
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    network.backpropagation(0.0);
+    const ParsedRaw before = parseRaw(network.serialize());
+    network.weightLimits(0.0, 1e-3); // every link is too strong: new links, at 5 % of the limits
+    network.inputs(brain::Values{0.5, 0.5});
+    (void)network.apply();
+    network.backpropagation(0.0);
+    const ParsedRaw after = parseRaw(network.serialize());
+    brain::UIType added = 0;
+
+    for (brain::UIType k = 0; k < after.links.size(); ++k) {
+        const brain::RawBrainLink& link = after.links[k];
+
+        if (!link.inward || (before.links[k].inward && before.links[k].id == link.id)) continue;
+        EXPECT_NEAR(std::abs(link.weight), 0.05e-3, 1e-9);
+        ++added;
+    }
+    EXPECT_GT(added, 0u);
+}
+
+TEST(RawBrainNetwork, PathInitLinksEveryInputToEveryOutput) {
+    brain::RawBrainNetwork network(80, {20.0, 4.0});
+
+    brain::tools::rand(2);
+    network.linksCap([](const brain::UIType) {return static_cast<brain::UIType>(3);});
+    network.size(3, 2);
+    EXPECT_EQ(network.pathInit(), 0u);
+    EXPECT_TRUE(throwsCode([&] {network.pathInit(1);}, utils::exception::InternalCode::InvalidArgument));
+    network.pathInit(4);
+    EXPECT_EQ(network.pathInit(), 4u);
+    const ParsedRaw parsed = parseRaw(network.serialize());
+
+    for (brain::UIType from = 0; from < 3; ++from) {
+        const std::vector<brain::IType> distance = reachedFrom(parsed, from);
+
+        EXPECT_GE(distance[78], 1);
+        EXPECT_GE(distance[79], 1);
+    }
+    expectMirrors(parsed);
+}
+
+TEST(RawBrainNetwork, FarLinksAndTheTrainingModesAreSaved) {
+    brain::RawBrainNetwork network(40, {10.0, 10.0});
+    brain::RawBrainNetwork other(2);
+
+    brain::tools::rand(6);
+    network.size(2, 1);
+    network.farLinks(2);
+    EXPECT_EQ(network.farLinks(), 2u);
+    expectMirrors(parseRaw(network.serialize()));
+    network.pathInit(3);
+    network.momentum(0.9);
+    network.stepLimit(0.3);
+    network.clampWeights(true);
+    network.lowNewLinks(true);
+    network.batch(true);
+    network.directOutput(true);
+    network.keepPaths(true);
+    network.adam(0.01);
+    other.deserialize(network.serialize());
+    EXPECT_EQ(other.farLinks(), 2u);
+    EXPECT_EQ(other.pathInit(), 3u);
+    EXPECT_EQ(other.momentum(), static_cast<brain::FType>(0.9));
+    EXPECT_EQ(other.stepLimit(), static_cast<brain::FType>(0.3));
+    EXPECT_TRUE(other.clampWeights());
+    EXPECT_TRUE(other.lowNewLinks());
+    EXPECT_TRUE(other.batch());
+    EXPECT_TRUE(other.directOutput());
+    EXPECT_TRUE(other.keepPaths());
+    EXPECT_EQ(other.adam(), static_cast<brain::FType>(0.01));
+    EXPECT_EQ(other.serialize(), network.serialize());
+
+    // a momentum of 1 is refused at the load
+    brain::Bytes data = network.serialize();
+    const brain::FType one = 1.0;
+    std::memcpy(data.data() + HEADER + 56 + 2 * sizeof(std::uint64_t), &one, sizeof(brain::FType)); // the momentum, after the left to right byte, the far links and the path
+    EXPECT_TRUE(throwsCode([&] {other.deserialize(data);}, utils::exception::ExternalCode::InvalidNetworkFile));
+}
+
+TEST(RawBrainNetwork, DirectOutputStillLearnsWhenTheOutputIsSaturated) {
+    std::unique_ptr<brain::RawBrainNetwork> plain_ = trainingNetwork(9);
+    std::unique_ptr<brain::RawBrainNetwork> direct_ = trainingNetwork(9);
+    brain::RawBrainNetwork& plain = *plain_;
+    brain::RawBrainNetwork& direct = *direct_;
+
+    direct.directOutput(true);
+    EXPECT_TRUE(direct.directOutput());
+    plain.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+    direct.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+    // the output pushed to a saturated value by a huge negative score first (its slope is then ~0)
+    for (brain::RawBrainNetwork* network: {&plain, &direct}) {
+        for (int i = 0; i < 3; ++i) {
+            network->inputs(brain::Values{0.5, 0.5});
+            (void)network->apply();
+            network->backpropagation(-1e4);
+        }
+    }
+    const brain::FType plainBefore = parseRaw(plain.serialize()).neurons[11].bias;
+    const brain::FType directBefore = parseRaw(direct.serialize()).neurons[11].bias;
+    for (brain::RawBrainNetwork* network: {&plain, &direct}) {
+        network->inputs(brain::Values{0.5, 0.5});
+        (void)network->apply();
+        network->backpropagation(1.0);
+    }
+    EXPECT_LT(std::abs(parseRaw(plain.serialize()).neurons[11].bias - plainBefore), 1e-6); // the slope of a saturated sigmoid: nothing moves
+    EXPECT_NEAR(parseRaw(direct.serialize()).neurons[11].bias - directBefore, 1.0, 1e-4); // the score itself
+}
+
+TEST(RawBrainNetwork, KeepPathsNeverCutsTheLastPathOfAnInput) {
+    for (const bool keep: {false, true}) {
+        brain::RawBrainNetwork network(30, {10.0, 10.0});
+        brain::UIType joined = 0;
+
+        brain::tools::rand(4);
+        network.size(2, 2);
+        network.allowOrphans(); // only the paths hold the links back
+        network.keepPaths(keep);
+        EXPECT_EQ(network.keepPaths(), keep);
+        network.weightLimits(1e9, 2e9); // every link is too weak: all of them would be removed
+        network.inputs(brain::Values{0.5, 0.5});
+        (void)network.apply();
+        network.backpropagation(0.0);
+        const ParsedRaw parsed = parseRaw(network.serialize());
+        for (brain::UIType from = 0; from < 2; ++from) {
+            const std::vector<brain::IType> distance = reachedFrom(parsed, from);
+            joined += (distance[28] >= 0) + (distance[29] >= 0);
+        }
+        EXPECT_EQ(joined, keep ? 4u : 0u);
+        expectMirrors(parsed);
+    }
+}
+
+TEST(RawBrainNetwork, AdamStepsByItsRateWhateverTheScore) {
+    std::unique_ptr<brain::RawBrainNetwork> big_ = trainingNetwork(12);
+    std::unique_ptr<brain::RawBrainNetwork> small_ = trainingNetwork(12);
+    brain::RawBrainNetwork& big = *big_;
+    brain::RawBrainNetwork& small = *small_;
+    const ParsedRaw start = parseRaw(big.serialize());
+    brain::UIType moved = 0;
+
+    EXPECT_TRUE(throwsCode([&] {big.adam(-0.1);}, utils::exception::InternalCode::InvalidArgument));
+    big.adam(0.1);
+    small.adam(0.1);
+    big.momentum(0.9); // replaced by Adam
+    EXPECT_EQ(big.adam(), static_cast<brain::FType>(0.1));
+    big.inputs(brain::Values{0.3, 0.8});
+    small.inputs(brain::Values{0.3, 0.8});
+    (void)big.apply();
+    (void)small.apply();
+    big.backpropagation(1000.0);
+    small.backpropagation(0.001);
+    const ParsedRaw a = parseRaw(big.serialize());
+    const ParsedRaw b = parseRaw(small.serialize());
+
+    // the first step of Adam is the rate in the direction of the gradient: the same move for both scores
+    for (brain::UIType k = 0; k < a.links.size(); ++k) {
+        if (!a.links[k].inward || a.links[k].weight == start.links[k].weight) continue;
+        EXPECT_NEAR(std::abs(a.links[k].weight - start.links[k].weight), 0.1, 1e-3);
+        EXPECT_NEAR(a.links[k].weight, b.links[k].weight, 1e-3);
+        ++moved;
+    }
+    EXPECT_GT(moved, 0u);
+    expectMirrors(a);
+}
+
+TEST(RawBrainNetwork, ReviveResetsASaturatedNeuron) {
+    std::unique_ptr<brain::RawBrainNetwork> owned = trainingNetwork(9);
+    brain::RawBrainNetwork& network = *owned;
+
+    network.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+    EXPECT_EQ(network.revive(), 0u); // nothing executed yet
+    for (int i = 0; i < 3; ++i) { // a huge negative score saturates the output at 0
+        network.inputs(brain::Values{0.5, 0.5});
+        (void)network.apply();
+        network.backpropagation(-1e4);
+    }
+    (void)network.revive(); // the watch starts after the saturation
+    for (const brain::Values& inputs: {brain::Values{0.0, 1.0}, brain::Values{1.0, 0.0}, brain::Values{0.5, 0.5}}) {
+        network.inputs(inputs);
+        (void)network.apply();
+    }
+    EXPECT_GT(network.revive(), 0u);
+    const ParsedRaw parsed = parseRaw(network.serialize());
+    EXPECT_EQ(parsed.neurons[11].bias, 0.0f);
+    expectMirrors(parsed);
+    EXPECT_EQ(network.revive(), 0u); // the watch starts again after each call
+}
+
+TEST(RawBrainNetwork, SequenceGivesTheInputsOfEachStep) {
+    std::unique_ptr<brain::RawBrainNetwork> owned = trainingNetwork(4);
+    brain::RawBrainNetwork& network = *owned;
+    const brain::UIType steps = network.steps();
+    const brain::Values constant = {0.3, 0.8};
+
+    // the same inputs at every step: the same as inputs()
+    network.inputs(constant);
+    const brain::Values plain = network.apply();
+    network.sequence(brain::Dataset(steps + 1, constant));
+    ASSERT_EQ(plain.size(), 1u);
+    EXPECT_NEAR(network.apply()[0], plain[0], 1e-4); // the sequence runs on the host, the plain call on the gpu when there is one
+    EXPECT_NEAR(network.applySequence(brain::Dataset(steps + 1, constant))[0], plain[0], 1e-4);
+
+    // a pulse: the inputs at the first step only, then 0 (what the network kept)
+    const brain::Dataset pulse = {constant};
+    network.sequence(pulse);
+    const brain::Values trained = network.apply();
+    ASSERT_EQ(network.states().size(), steps + 1);
+    EXPECT_EQ(network.states()[1][0], 0.0f); // the inputs are silent after the sequence
+    EXPECT_EQ(network.states()[0][0], constant[0]);
+    EXPECT_EQ(network.applySequence(pulse), trained);
+    EXPECT_NE(trained, plain);
+    network.backpropagation(0.5); // the gradient of a sequence goes back through its steps
+    network.inputs(constant); // cancels the sequence
+    (void)network.apply();
+    EXPECT_EQ(network.states()[1][0], constant[0]);
+    EXPECT_THROW(network.sequence({}), utils::exception::IException);
+    EXPECT_THROW(network.sequence({{0.1}}), utils::exception::IException);
+}
+
+TEST(RawBrainNetwork, ManyInputsAndOutputsInit) {
+    // 35 inputs and 10 outputs on 85 neurons (the digits of the lab): every path asked, kept, the links of the inputs full
+    for (const brain::IType seed: {1, 2, 3, 7, 42, 48282}) {
+        brain::RawBrainNetwork network(85, {8.0f, 5.0f});
+
+        network.weightLimits(0.01f, 5.0f);
+        network.rand(-3.0f, 3.0f);
+        network.allowOrphans();
+        network.keepPaths(true);
+        network.lowNewLinks(true);
+        network.pathInit(3);
+        network.adam(0.03f);
+        network.batch(true);
+        brain::tools::rand(seed);
+        ASSERT_NO_THROW(network.size(35, 10));
+        network.weightInit();
+        network.biasInit();
+        network.inputs(brain::Values(35, 1.0f));
+        EXPECT_EQ(network.apply().size(), 10u);
+        network.backpropagation(brain::Values(10, 0.1f));
+        network.applyBatch();
+    }
+}
+
+// ---------- rate decay, inverted links, random links, minimum of links ----------
+
+static bool sameLinks(const std::vector<brain::RawBrainLink>& a, const std::vector<brain::RawBrainLink>& b)
+{
+    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](const brain::RawBrainLink& x, const brain::RawBrainLink& y) {return x.id == y.id && x.weight == y.weight && x.inward == y.inward;});
+}
+
+TEST(RawBrainNetwork, RateDecayShrinksTheStepsAndIsSerialized) {
+    std::unique_ptr<brain::RawBrainNetwork> constant_ = trainingNetwork(3);
+    std::unique_ptr<brain::RawBrainNetwork> decayed_ = trainingNetwork(3);
+    brain::RawBrainNetwork& constant = *constant_;
+    brain::RawBrainNetwork& decayed = *decayed_;
+    const brain::Values inputs = {0.4, 0.9};
+    const std::function<brain::FType(brain::RawBrainNetwork&, const std::vector<brain::RawBrainLink>&)> moved = [&](brain::RawBrainNetwork& network, const std::vector<brain::RawBrainLink>& start) { // the distance the weights went since the start
+        const std::vector<brain::RawBrainLink> now = network.rawLinks();
+        brain::FType sum = 0;
+        for (brain::UIType k = 0; k < now.size(); ++k) sum += now[k].id == start[k].id && now[k].inward == start[k].inward ? std::abs(now[k].weight - start[k].weight) : 0; // the links that stayed
+        return sum;
+    };
+
+    EXPECT_EQ(decayed.rateDecay(), 0);
+    EXPECT_TRUE(throwsCode([&] {decayed.rateDecay(-1.0);}, utils::exception::InternalCode::InvalidArgument));
+    decayed.rateDecay(1.0);
+    EXPECT_EQ(decayed.rateDecay(), 1.0f);
+    const std::vector<brain::RawBrainLink> start = constant.rawLinks();
+    ASSERT_TRUE(sameLinks(start, decayed.rawLinks()));
+    // the first update is the same, the next ones are divided by 1 + decay * updates (2, then 3...)
+    for (brain::UIType round = 0; round < 4; ++round) {
+        for (brain::RawBrainNetwork* network: {&constant, &decayed}) {
+            brain::tools::rand(77); // the same draws for the links that change
+            network->inputs(inputs);
+            (void)network->apply();
+            network->backpropagation(brain::Values{0.01});
+        }
+        if (round == 0) EXPECT_NEAR(moved(constant, start), moved(decayed, start), 1e-3); // the same first update (the decayed one is applied on the host, the other on the gpu when there is one)
+    }
+    EXPECT_GT(moved(constant, start), 0.0f);
+    EXPECT_LT(moved(decayed, start), moved(constant, start));
+    brain::RawBrainNetwork loaded(12, {4.0, 4.0});
+    loaded.size(2, 1);
+    loaded.deserialize(decayed.serialize());
+    EXPECT_EQ(loaded.rateDecay(), 1.0f);
+}
+
+TEST(RawBrainNetwork, MinLinksAndRandomLinksAreSerializedAndShapeTheInit) {
+    brain::RawBrainNetwork network(30, {8.0, 5.0});
+    const std::function<std::vector<brain::UIType>()> count = [&] {
+        std::vector<brain::UIType> out;
+        for (brain::UIType owner = 0; owner < 30; ++owner) {
+            brain::UIType used = 0;
+            for (brain::UIType slot = 0; slot < network.links(); ++slot) used += network.rawLinks()[owner * network.links() + slot].weight != 0 ? 1 : 0;
+            out.push_back(used);
+        }
+        return out;
+    };
+
+    EXPECT_TRUE(network.randomLinks()); // the defaults: a random number of links, one at least
+    EXPECT_EQ(network.minLinks(), 1u);
+    network.randomLinks(false);
+    brain::tools::rand(5);
+    network.size(2, 1);
+    const std::vector<brain::UIType> full = count();
+    EXPECT_FALSE(network.randomLinks());
+    network.minLinks(3);
+    EXPECT_EQ(network.minLinks(), 3u);
+    EXPECT_EQ(count(), full); // no change without the random init
+    network.randomLinks(true);
+    EXPECT_TRUE(network.randomLinks());
+    const std::vector<brain::UIType> random = count();
+    EXPECT_NE(random, full); // fewer links than the cap on some neurons
+    for (const brain::UIType used: random) EXPECT_LE(used, network.links());
+    brain::RawBrainNetwork loaded(30, {8.0, 5.0});
+    loaded.size(2, 1);
+    loaded.deserialize(network.serialize());
+    EXPECT_TRUE(loaded.randomLinks());
+    EXPECT_EQ(loaded.minLinks(), 3u);
+}
+
+TEST(RawBrainNetwork, MinLinksKeepsTheLinksOfAWeakNeuron) {
+    for (const brain::UIType minimum: {0u, 4u}) {
+        brain::RawBrainNetwork network(12, {4.0, 4.0});
+
+        network.allowOrphans();
+        network.weightLimits(0.5f, 5.0f);
+        network.minLinks(minimum);
+        brain::tools::rand(4);
+        network.size(2, 1);
+        network.weightInit();
+        network.inputs({0.5, 0.5});
+        (void)network.apply();
+        // every link under weightMin: the ones the minimum protects stay
+        network.backpropagation(brain::Values{0.0});
+        std::vector<brain::RawBrainLink> links = network.rawLinks();
+        brain::UIType before = 0;
+        for (const brain::RawBrainLink& link: links) before += link.weight != 0 ? 1 : 0;
+        EXPECT_GT(before, 0u);
+        EXPECT_EQ(network.minLinks(), minimum);
+    }
+}
+
+TEST(RawBrainNetwork, InvertedLinksSwapsTheLimits) {
+    // the same network and the same training: the links that change at the limits are not the same in the two modes
+    std::vector<std::vector<brain::RawBrainLink>> result;
+
+    for (const bool inverted: {false, true}) {
+        brain::RawBrainNetwork network(14, {4.0, 4.0});
+
+        network.allowOrphans();
+        network.weightLimits(0.01f, 1.0f);
+        network.invertedLinks(inverted);
+        EXPECT_EQ(network.invertedLinks(), inverted);
+        brain::tools::rand(9);
+        network.size(2, 1);
+        network.weightInit();
+        network.biasInit();
+        brain::tools::rand(11);
+        for (brain::UIType round = 0; round < 40; ++round) {
+            network.inputs({1.0, 0.0});
+            (void)network.apply();
+            network.backpropagation(brain::Values{1.0});
+        }
+        result.push_back(network.rawLinks());
+    }
+    EXPECT_FALSE(sameLinks(result[0], result[1]));
+    brain::RawBrainNetwork loaded(14, {4.0, 4.0});
+    loaded.size(2, 1);
+    loaded.invertedLinks(true);
+    brain::RawBrainNetwork copy(14, {4.0, 4.0});
+    copy.size(2, 1);
+    copy.deserialize(loaded.serialize());
+    EXPECT_TRUE(copy.invertedLinks());
 }

@@ -17,8 +17,8 @@ File Description:
 ##  Value types, data / hook aliases and the neuron structs of the neural network
 \**************************************************************/
 
-#ifndef NETWORKTYPE_H
-    #define NETWORKTYPE_H
+#ifndef BRAIN_NETWORKTYPE_H
+    #define BRAIN_NETWORKTYPE_H
 
     //----------------------------------------------------------------//
     /* INCLUDE */
@@ -58,6 +58,7 @@ using LinksCapFn = std::function<brain::UIType(const brain::UIType n)>; // exter
 using StepsCapFn = std::function<brain::UIType(const brain::UIType n)>; // external time steps limit computing function (brain network)
 using ActivationFn = std::function<brain::FType(const brain::FType value)>; // external activation function
 using LossFn = std::function<brain::FType(const brain::FType output, const brain::FType expected)>; // external loss function
+using ScoreFn = std::function<brain::FType(const brain::FType output, const brain::FType expected)>; // external score function: the value sent to the backpropagation for one output (brain network: positive = good, layered network: positive = too high)
 using RandFn = std::function<brain::FType(const brain::IType seed)>; // weight / bias generator from the seed
 
 //----------------------------------------------------------------//
@@ -107,4 +108,4 @@ static_assert(std::is_trivially_copyable_v<brain::LayerNeuron> && std::is_trivia
 static_assert(std::is_trivially_copyable_v<brain::RawBrainNeuron> && std::is_trivially_copyable_v<brain::RawBrainLink>, "the raw neurons and links are stored in a HybridMemory");
 
 } // namespace end
-#endif /* NETWORKTYPE_H */
+#endif /* BRAIN_NETWORKTYPE_H */

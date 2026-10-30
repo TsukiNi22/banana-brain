@@ -226,8 +226,12 @@ _hot brain::Values brain::BrainNetwork::compute_(const brain::Values& inputs) co
                 next[i] = inputs[i];
                 continue;
             }
-            for (brain::UIType slot = 0; links != nullptr && slot < this->_cap; ++slot)
-                sum += links[i * this->_cap + slot].weight * state[links[i * this->_cap + slot].id];
+            for (brain::UIType slot = 0; links != nullptr && slot < this->_cap; ++slot) {
+                const brain::BrainLink& link = links[i * this->_cap + slot];
+
+                if (link.weight == 0) break; // the inward links are packed first: the rest of the slots is free (a real weight is never 0)
+                sum += link.weight * state[link.id];
+            }
             next[i] = this->activate_(sum);
             if (std::abs(next[i]) < this->_threshold) next[i] = 0.0; // too weak to matter
         }

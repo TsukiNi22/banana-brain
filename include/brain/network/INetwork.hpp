@@ -67,6 +67,10 @@ class INetwork {
         /* setter (function) */
         virtual void activationFunction(const brain::ActivationFn& fn) = 0; // external activation function (none by default)
         virtual void internalActivationFunction(const brain::ActivationFunction fn) = 0; // internal, more optimized than an external one
+        virtual void scoreFunction(const brain::ScoreFn& fn) = 0; // external score function (none by default: the internal one)
+        virtual void internalScoreFunction(const brain::ScoreFunction fn) = 0; // internal score function (Difference by default)
+        virtual void scoreRate(const brain::FType rate) = 0; // the score rate (> 0, 1 by default): the scores() are multiplied by it
+        virtual brain::Values scores(const brain::Values& outputs, const brain::Values& expected) const = 0; // the coefficients of the backpropagation for the outputs and the expected ones: score function, then score rate
 
         /* getter */
         virtual brain::UIType input(void) const = 0; // number of inputs (0 = not set)

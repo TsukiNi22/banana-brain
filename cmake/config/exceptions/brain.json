@@ -69,12 +69,6 @@
             "restrictions": ["Error", "Warning"]
         },
         {
-            "code": "ErrorLossOnBrain",
-            "message": "The mean squared error is an error to minimize, a brain network reinforces a score (positive = good)",
-            "info": "Use a loss that grows with the quality of the outputs, or give the scores to backpropagation()",
-            "restrictions": ["Error", "Warning"]
-        },
-        {
             "code": "CustomStepsCapRequired",
             "message": "The network used a custom steps cap function, it can't be restored from a file",
             "info": "Give it again with stepsCap()",

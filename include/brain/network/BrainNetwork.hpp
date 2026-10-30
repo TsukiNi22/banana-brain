@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 22/10/2026 by @author Tsukini
+##  @date 27/10/2026 by @author Tsukini
 
 File Name:
 ##  @file BrainNetwork.hpp
@@ -84,7 +84,7 @@ class BrainNetwork: public brain::ANetwork {
         _cold _nodiscard inline brain::FType threshold(void) const                         {return this->_threshold;}; // the signal threshold
         _cold _nodiscard inline brain::UIType steps(void) const                            {return this->_steps;}; // time steps of the execution
         _cold _nodiscard inline brain::UIType links(void) const                            {return this->_cap;}; // slots of links of each neuron
-        _cold _nodiscard std::size_t memory(void) const override {return this->_neurons.bytes() + this->_links.bytes();}; // neurons and links
+        _cold _nodiscard std::size_t memory(void) const override                           {return this->_neurons.bytes() + this->_links.bytes();}; // neurons and links
         _cold _nodiscard std::pair<brain::UIType, brain::UIType> neurons(void) const final {return {0, this->_neuron};}; // <0, total neurons> (no layer)
 
         // ------------ Operator ---------- //
