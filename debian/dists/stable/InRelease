@@ -1,0 +1,48 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: TsukiNi22
+Label: brain
+Suite: stable
+Codename: stable
+Architectures: amd64
+Components: main
+Description: brain APT repository
+Date: Fri, 30 Oct 2026 20:47:38 +0000
+Date: Fri, 30 Oct 2026 20:47:38 +0000
+MD5Sum:
+ aa9c5bb68ccc83efeb5c306f398d93fe              210 Release
+ 956590560f233bae964fe3ffdcae6c95             8740 main/binary-amd64/Packages
+ 13a22e8980b755a8f22d5cb8d7bc077d             2161 main/binary-amd64/Packages.gz
+ e47b85bda2c30868429943e631e6f362             2032 main/binary-amd64/Packages.xz
+SHA1:
+ e6c5dd1d16474835633137fc74c436c10d2324b7              210 Release
+ f68a95b83423c241e919fa160c23d3b1a98138c1             8740 main/binary-amd64/Packages
+ 523c97c5229b14c4523fbcd5f87027b8d1f34bbb             2161 main/binary-amd64/Packages.gz
+ a668f36f1b4b967a45e6e3e52fb587109b5c07ec             2032 main/binary-amd64/Packages.xz
+SHA256:
+ 2b551c1962ff1be83dcd2524db0cb96dc1f3d9ec98992b83fea38ea2db4dc1bd              210 Release
+ 45834cbb451fcebbfce999df58bd61e917f7c8e9b8cb6752a140f1e9b3c37c0e             8740 main/binary-amd64/Packages
+ df3c64c0be6733be2a93c67e0d43306051de82e97514d7f5a67ba4d833643e53             2161 main/binary-amd64/Packages.gz
+ 7e7da7c1ddda5ff415b8a7d2ea7d3dc5bf927d293ced341f332df9e6a792dd8f             2032 main/binary-amd64/Packages.xz
+SHA512:
+ 7a6b59a85b584cf34068aaa040012e5897d0f7b7335ed19517cda0703a8a0d3f6eb1d322065e819b8e9444882375f88ac536ab2cd7ca4347bb0cca3dcccd2445              210 Release
+ 35e3cd333a5f4c6c6dd39b32d23cec11fe5bbce62ed9016e644b97316519ed399403bf7a40de89d451317cec43a1ad8564ece2f3ae51f7ba2a593b5ab68c9a29             8740 main/binary-amd64/Packages
+ e2d2df45dbdf51e14e4d8f3c672722cc82149c3a4a47d2beadbfbe5b428a90c47099c1972a28b64d52c7738a491ce13f023f27f78a7cd2dd80faa6ddf3abbe0e             2161 main/binary-amd64/Packages.gz
+ b0159dbd8375abf04800c57bad69e7290621a92bfbd3a6b522b0cb5406cc6241b0b0a23b191dcde8d67d9368dcc8050b90095c6a3d94aa235b57da2acc2b85ac             2032 main/binary-amd64/Packages.xz
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEEabgoTZm5pynFvpNbBnA1xqffqRYFAmrlAmoACgkQBnA1xqff
+qRYPLQ//dOz670b9r5lVs1auJGm/6r0RJ6/DMOXXIvE3LnTAfXz1ygFUDmwoVkDt
+JL4n20e/V22Xaj1Jc3YcNtzV+xEp4CoB4YX6orFWUUik8gcQVvhbaF7IRSZRfZxI
+ff+l2XIZGms4izXP/+lnZA7OJZDJIdpZ0LeeTrxjtcYUoI+3bGHXkL33yKTWiQyY
+dyESUnYeQnwhjEhqRLOmBsPxYDLDAPvmYqJ9iA3maw5HHz2Q3YZN65KUyqx0SolZ
+EO2Vc1wu5DZFrqqbvq87Yp5YDEkZ9WbXOQa08ZFEPhyAYPqgRwIgLTD7aVkJRdLI
+pyvb3YBmk7NeeJ+lHLIIYO3hKvu/IxUzwgmyh+AuO1BGsEPRUP47O7bNVFKjZkRF
+0UHC9k1nl2Xa+hgAk7awEWO7A4RJUJW92NouAhMCVRq6R+Agn2puzeErvLWeeHkW
+idotw4qgaooo3dCxPlf0Rec4dxtCs0IeanSBIEE5VPZJaEl8BSJwKmCzU0ql4QBS
+63q/EFucrfYHw90Rjgb6WBpR1BNxDViESsFPyzVfMKV18yB2Z3fn5jYibvQit7r8
+ccTTCStPaNuKlkzPHCHFLZ9satCQC2m4ZOuGU5bOQgfFHDKzPa24iZ9kUOBedUFG
+aaiNeZFGnvOPebOzF5YtwDEaUI+jK07PhQBIBTtgND5Yvl6N0Ak=
+=7GyT
+-----END PGP SIGNATURE-----
