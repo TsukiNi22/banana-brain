@@ -67,7 +67,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON) # Moderne compilation -fPIE
 # =========================
 # Requirement
 # =========================
-set(LIBUTILS_VERSION 4.1.0) # Minimal libutils (v4.1.0: Windows packages mingw64-libutils*)
+set(LIBUTILS_VERSION 4.3.0) # Minimal libutils: the first one with utils::system::HybridMemory (v4.3.0-pre, the stable channel gets it later)
 find_package(utils ${LIBUTILS_VERSION} CONFIG REQUIRED) # Check utils dependencies existance
 find_package(PkgConfig REQUIRED)
 find_package(Python3 REQUIRED) # Used for the special dependencie
@@ -560,6 +560,14 @@ else() # 0 is impossible for github.run_number
     set(CPACK_ARCH_PACKAGE_RELEASE "0")
 endif()
 
+# The packages need libutils of the stable channel OR of the pre-release one (at least LIBUTILS_VERSION, the first one with HybridMemory): <package>[-pre]
+# RPM: a boolean dependency, DEB: an alternative (a | b), Arch has no "or" in its depends: the stable package only
+function(libutils_requires OUT SUFFIX)
+    set(NAME "${LIBUTILS_PACKAGE}${SUFFIX}")
+    set(${OUT}_RPM "(${NAME} >= ${LIBUTILS_VERSION} or ${NAME}-pre >= ${LIBUTILS_VERSION})" PARENT_SCOPE)
+    set(${OUT}_DEB "${NAME} (>= ${LIBUTILS_VERSION}) | ${NAME}-pre (>= ${LIBUTILS_VERSION})" PARENT_SCOPE)
+endfunction()
+
 # Arch: libutils is packaged for Arch since v4.2.0
 if(LIBUTILS_VERSION VERSION_LESS 4.2.0)
     set(ARCH_LIBUTILS_VERSION 4.2.0)
@@ -640,8 +648,9 @@ elseif(BRAIN_DEV_PACKAGE)
     set(CPACK_RPM_HEADERS_PACKAGE_NAME "${CPACK_PACKAGE_NAME}")
     set(CPACK_DEBIAN_HEADERS_PACKAGE_NAME "${CPACK_PACKAGE_NAME}")
     package_channel_conflict("" "${PACKAGE_DEV}")
-    set(CPACK_RPM_PACKAGE_REQUIRES "${LIBUTILS_PACKAGE}-dev >= ${LIBUTILS_VERSION}") # public headers include <utils/utils.hpp>
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "${LIBUTILS_PACKAGE}-dev (>= ${LIBUTILS_VERSION})")
+    libutils_requires(LIBUTILS_DEV "-dev")
+    set(CPACK_RPM_PACKAGE_REQUIRES "${LIBUTILS_DEV_RPM}") # public headers include <utils/utils.hpp>
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "${LIBUTILS_DEV_DEB}")
     set(CPACK_ARCH_PACKAGE_DEPENDS "${LIBUTILS_PACKAGE}-dev>=${ARCH_LIBUTILS_VERSION}")
 
     if(BRAIN_PACKAGE_LIB)
@@ -655,8 +664,9 @@ elseif(BRAIN_DEV_PACKAGE)
             list(APPEND CPACK_COMPONENTS_ALL headers-${variant})
             set(CPACK_RPM_HEADERS-${VARIANT_UPPER}_PACKAGE_NAME "${PACKAGE_DEV}-${variant}${CHANNEL}")
             set(CPACK_DEBIAN_HEADERS-${VARIANT_UPPER}_PACKAGE_NAME "${PACKAGE_DEV}-${variant}${CHANNEL}")
-            set(CPACK_RPM_HEADERS-${VARIANT_UPPER}_PACKAGE_REQUIRES "${LIBUTILS_PACKAGE}-${variant} >= ${LIBUTILS_VERSION}") # the variant links libutils of the same variant
-            set(CPACK_DEBIAN_HEADERS-${VARIANT_UPPER}_PACKAGE_DEPENDS "${LIBUTILS_PACKAGE}-${variant} (>= ${LIBUTILS_VERSION})")
+            libutils_requires(LIBUTILS_HEADERS "-${variant}")
+            set(CPACK_RPM_HEADERS-${VARIANT_UPPER}_PACKAGE_REQUIRES "${LIBUTILS_HEADERS_RPM}") # the variant links libutils of the same variant
+            set(CPACK_DEBIAN_HEADERS-${VARIANT_UPPER}_PACKAGE_DEPENDS "${LIBUTILS_HEADERS_DEB}")
             set(CPACK_ARCH_HEADERS-${VARIANT_UPPER}_PACKAGE_NAME "${PACKAGE_DEV}-${variant}${CHANNEL}")
             set(CPACK_ARCH_HEADERS-${VARIANT_UPPER}_PACKAGE_DEPENDS "${LIBUTILS_PACKAGE}-${variant}>=${ARCH_LIBUTILS_VERSION}")
             package_channel_conflict("HEADERS-${VARIANT_UPPER}" "${PACKAGE_DEV}-${variant}")
@@ -720,13 +730,14 @@ else()
         set(CPACK_DEBIAN_LIB_PACKAGE_NAME "${PACKAGE_LIB}-${VARIANT}${CHANNEL}")
         set(CPACK_ARCH_LIB_PACKAGE_NAME "${PACKAGE_LIB}-${VARIANT}${CHANNEL}")
         package_channel_conflict("LIB" "${PACKAGE_LIB}-${VARIANT}")
+        libutils_requires(LIBUTILS_LIB "-${VARIANT}")
         if(BRAIN_PACKAGE_DEV)
-            set(CPACK_RPM_LIB_PACKAGE_REQUIRES "${PACKAGE_DEV}${CHANNEL} ${RPM_SAME_VERSION}, ${PACKAGE_DEV}-${VARIANT}${CHANNEL} ${RPM_SAME_VERSION}, ${LIBUTILS_PACKAGE}-${VARIANT} >= ${LIBUTILS_VERSION}${RPM_SYSTEM_REQUIRES}")
-            set(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS "${PACKAGE_DEV}${CHANNEL} ${DEB_SAME_VERSION}, ${PACKAGE_DEV}-${VARIANT}${CHANNEL} ${DEB_SAME_VERSION}, ${LIBUTILS_PACKAGE}-${VARIANT} (>= ${LIBUTILS_VERSION})${SYSTEM_DEPENDS}")
+            set(CPACK_RPM_LIB_PACKAGE_REQUIRES "${PACKAGE_DEV}${CHANNEL} ${RPM_SAME_VERSION}, ${PACKAGE_DEV}-${VARIANT}${CHANNEL} ${RPM_SAME_VERSION}, ${LIBUTILS_LIB_RPM}${RPM_SYSTEM_REQUIRES}")
+            set(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS "${PACKAGE_DEV}${CHANNEL} ${DEB_SAME_VERSION}, ${PACKAGE_DEV}-${VARIANT}${CHANNEL} ${DEB_SAME_VERSION}, ${LIBUTILS_LIB_DEB}${SYSTEM_DEPENDS}")
             set(CPACK_ARCH_LIB_PACKAGE_DEPENDS "${PACKAGE_DEV}${CHANNEL}${ARCH_SAME_VERSION}" "${PACKAGE_DEV}-${VARIANT}${CHANNEL}${ARCH_SAME_VERSION}" "${LIBUTILS_PACKAGE}-${VARIANT}>=${ARCH_LIBUTILS_VERSION}")
         else()
-            set(CPACK_RPM_LIB_PACKAGE_REQUIRES "${LIBUTILS_PACKAGE}-${VARIANT} >= ${LIBUTILS_VERSION}${RPM_SYSTEM_REQUIRES}")
-            set(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS "${LIBUTILS_PACKAGE}-${VARIANT} (>= ${LIBUTILS_VERSION})${SYSTEM_DEPENDS}")
+            set(CPACK_RPM_LIB_PACKAGE_REQUIRES "${LIBUTILS_LIB_RPM}${RPM_SYSTEM_REQUIRES}")
+            set(CPACK_DEBIAN_LIB_PACKAGE_DEPENDS "${LIBUTILS_LIB_DEB}${SYSTEM_DEPENDS}")
             set(CPACK_ARCH_LIB_PACKAGE_DEPENDS "${LIBUTILS_PACKAGE}-${VARIANT}>=${ARCH_LIBUTILS_VERSION}")
         endif()
         if(VARIANT STREQUAL "db" AND NOT WIN32)
