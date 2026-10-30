@@ -293,13 +293,12 @@ ctest --test-dir $BUILD_DIR --output-on-failure --timeout 30   # or ./unit_tests
 - `Docs - Pages (CD)`: copies `docs/` on the `gh-pages` branch on every push changing it (https://tsukini22.github.io/banana-brain/docs/)
 - `Sync Packages (CD)` (on `gh-pages`): rebuilds the metadata and signatures of the package repository after a manual push on the branch
 - `Style - xstyle (CI)`: checks the coding style with `xstyle` (whole project on a push, changed lines on a pull request, fails on a major issue)
-- `Merge - libutils (CD)`: reserved for the future automatic merge of the library into libutils, does nothing yet (manual trigger only)
 
 > [!NOTE]
 > `Build (CI)` only runs when `Dispatch (CI/CD)` decides **not** to build the packages, to check that the code still compiles.
 
 > [!IMPORTANT]
-> The workflows need the repository variable `RUNNER` (`gh variable set RUNNER --body <runner>`), the containers `ghcr.io/tsukini22/ci`, `unit-tests`, `mingw64-ci`, `mingw64-unit-tests`, `package`, `git`, the secrets `GPG_PRIVATE_KEY` (base64), `GPG_KEY_ID`, `GPG_PASSPHRASE` to sign and publish the packages, and `DOWNSTREAM_REPO_TOKEN` for the downstream notification.
+> The workflows need the repository variable `RUNNER` (`gh variable set RUNNER --body <runner>`), the containers `ghcr.io/tsukini22/ci`, `unit-tests`, `mingw64-ci`, `mingw64-unit-tests`, `package`, `git`, the secrets `GPG_PRIVATE_KEY` (base64), `GPG_KEY_ID`, `GPG_PASSPHRASE` to sign and publish the packages.
 
 > [!TIP]
 > A commit containing `[ignore]` (preferably in the description) skips the whole CI.
@@ -314,11 +313,6 @@ The pre-release of the packages (`<package_name>-pre`) is triggered by:
 
 ### Release (stable)
 The release of the packages (channel `stable`) and the GitHub release are only triggered by a tag matching exactly `vx.x.x` (ex: `v1.0.0`), whose section must exist in the `CHANGELOG.md`.
-
-### Downstream notification
-`Dispatch (CI/CD)` notifies the `docker-image` repository (`notify-downstream` job: `repository_dispatch`, event `banana-brain-released`, secret `DOWNSTREAM_REPO_TOKEN`) after the packages are published:
-- on every package build (release or pre-release)
-- or on a commit containing `[release]`, preferably in the description
 
 ## License
 ![CC-BY-NC-SA-4.0](https://img.shields.io/badge/build-CC--BY--NC--SA--4.0-brightgreen?style=for-the-badge&logo=github&label=Licence&link=https%3A%2F%2Fgithub.com%2FTsukiNi22%2Fbanana-brain%2Fblob%2Fmain%2FLICENSE.md)
