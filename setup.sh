@@ -1,18 +1,13 @@
 #!/bin/bash
-# Usage: setup.sh [--no-sudo] [--pre] [--windows] [--no-install]
-# Options:
-#   --no-sudo      Run without sudo (requires the script to be run as root already)
-#   --pre          Install the pre-release/unstable package (libbrain-pre)
-#   --windows      Install the Windows packages (mingw64-libbrain, MinGW sysroot) instead of the Linux ones (rpm / deb only)
-#   --no-install   Only setup the mirror & gpg key, don't install the package
-#   -h, --help     Display this usage
+# Package repository setup of banana-brain: registers the gh-pages mirror (RPM / DEB / Arch, signed) in the system package
+# manager (--install also installs the package).
 set -euo pipefail
 
 BASE_URL="https://tsukini22.github.io/banana-brain"
 KEY_NAME="RPM-GPG-KEY-tsukini"
 PACKAGE="libbrain"
 SUDO="sudo"
-INSTALL=true
+INSTALL=false
 CHANNEL=""
 PREFIX=""
 
@@ -20,7 +15,11 @@ PREFIX=""
 # Parse arguments
 # =========================
 usage() {
-    sed -n '2,8s/^# \{0,1\}//p' "$0" # the usage block of the header
+    echo "Usage: $0 [--no-sudo] [--install] [--pre] [--windows]"
+    echo "  --no-sudo      Run without sudo (requires the script to be run as root already)"
+    echo "  --install      Also install the package (by default only the mirror & gpg key are setup)"
+    echo "  --pre          Select the pre-release/unstable package (libbrain-pre)"
+    echo "  --windows      Select the Windows packages (mingw64-libbrain, MinGW sysroot) instead of the Linux ones (rpm / deb only)"
     exit 1
 }
 
@@ -29,14 +28,14 @@ for arg in "$@"; do
         --no-sudo)
             SUDO=""
             ;;
+        --install)
+            INSTALL=true
+            ;;
         --pre)
             CHANNEL="-pre"
             ;;
         --windows)
             PREFIX="mingw64-"
-            ;;
-        --no-install)
-            INSTALL=false
             ;;
         -h|--help)
             usage
