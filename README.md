@@ -39,7 +39,7 @@ Built as a static library on top of [libutils](https://github.com/TsukiNi22/libu
 | `clang++` | C++20 | `clang` | `clang` | `clang` |
 | `cmake` | >= 3.20 | `cmake` | `cmake` | `cmake` |
 | `python3` (exception header generation) | >= 3.10 | `python3` | `python3` | `python` |
-| libutils | >= 4.1.0 (>= 4.2.0 on Arch) | `libutils` (+ `libutils-db` / `libutils-as` for the `Debug` / `Asan` modes) | `libutils` (+ `libutils-db` / `libutils-as`) | `libutils` (+ `libutils-db` / `libutils-as`) |
+| libutils | >= 4.3.0, stable or `-pre` (the first with `HybridMemory`; Arch: the stable package only) | `libutils` (+ `libutils-db` / `libutils-as` for the `Debug` / `Asan` modes) | `libutils` (+ `libutils-db` / `libutils-as`) | `libutils` (+ `libutils-db` / `libutils-as`) |
 | GoogleTest (tests only) | — | `gtest-devel` | `libgtest-dev` | `gtest` |
 | MinGW-w64 (Windows only) | GCC >= 13 | `mingw64-gcc-c++ mingw64-libutils` | `g++-mingw-w64-x86-64` + libutils built for MinGW | — |
 | Wine (Windows tests only) | — | `wine` | `wine64` | — |
