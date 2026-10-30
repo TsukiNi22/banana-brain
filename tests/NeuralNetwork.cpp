@@ -567,17 +567,21 @@ TEST(NeuralNetwork, MiniBatchIsTheMeanOfTheGradients) {
     const brain::Dataset expectedOnce = {{0.9f}};
     const brain::Dataset expectedTwice = {{0.9f}, {0.9f}};
 
-    for (const bool layered: {true, false}) {
-        brain::NeuralNetwork single;
-        brain::NeuralNetwork grouped;
+    for (const brain::IType seed: {6, 7, 8, 9}) { // the weights depend on the standard library: several starts
+        for (const bool layered: {true, false}) {
+            brain::NeuralNetwork single;
+            brain::NeuralNetwork grouped;
 
-        setupTraining(single, layered, 6);
-        setupTraining(grouped, layered, 6);
-        for (brain::UIType epoch = 0; epoch < 5; ++epoch) {
-            (void)single.train(once, expectedOnce);
-            (void)grouped.train(twice, expectedTwice, {.batchSize = 2});
+            setupTraining(single, layered, seed);
+            setupTraining(grouped, layered, seed);
+            for (brain::UIType epoch = 0; epoch < 5; ++epoch) {
+                brain::tools::rand(100 + epoch); // the links of a brain network can change at an update: the same draws for both networks
+                (void)single.train(once, expectedOnce);
+                brain::tools::rand(100 + epoch);
+                (void)grouped.train(twice, expectedTwice, {.batchSize = 2});
+            }
+            EXPECT_NEAR(grouped.exec(once[0])[0], single.exec(once[0])[0], 1e-5f) << "layered " << layered << " seed " << seed;
         }
-        EXPECT_NEAR(grouped.exec(once[0])[0], single.exec(once[0])[0], 1e-5f) << "layered " << layered;
     }
 }
 
