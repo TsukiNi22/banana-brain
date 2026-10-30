@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `size()`, `input()` and `output()` restore the previous sizes when the network refuses the new ones
 
 ### Fixed
+- The minimal libutils is `4.3.0`, the first with `utils::system::HybridMemory` (the packages asked for `4.1.0`, which has not got it): `find_package(utils 4.3.0)`
+- The RPM and DEB packages need libutils of the stable channel **or** of the pre-release one, at least `4.3.0` (`(libutils-op >= 4.3.0 or libutils-op-pre >= 4.3.0)` for RPM, `libutils-op (>= 4.3.0) | libutils-op-pre (>= 4.3.0)` for DEB), so a machine with the `-pre` libutils can install `libbrain` (the Arch packages still need the stable one: pacman has no "or")
 - `pathInit()` read past the end of its tables on some seeds in the `Optimized` mode (a crash of the init, ex: 35 inputs and 10 outputs on 85 neurons): it marked "no path" with the infinity, and `-ffast-math` folds the comparisons with it away; the mark is the largest finite value
 - The include guards of `brain/NetworkType.hpp` and `brain/NetworkDefine.hpp` were the ones of `utils/network/NetworkType.hpp` and `utils/network/NetworkDefine.hpp`: a program using the network of libutils could not include banana-brain (renamed `BRAIN_NETWORKTYPE_H`, `BRAIN_NETWORKDEFINE_H`)
 - A program that used a GPU crashed at its exit (each test run alone by `ctest`): the shared GPU handlers and the CUDA libraries are released at the exit, before the statics of libutils they use
