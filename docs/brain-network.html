@@ -699,8 +699,8 @@ details.quiz > :not(summary) { padding: 0 14px; }
 <!-- 5 -->
 <section id="watch">
   <h2>5. <span data-lang="en">Watch it learn</span><span data-lang="fr">Le voir apprendre</span></h2>
-  <p data-level="simple"><span data-lang="en">16 neurons on a map, 2 inputs on the left, 1 output on the right. The output must copy the first input. <em>New random network</em> places and links them again and draws their weights and biases (as <code>weightInit()</code> and <code>biasInit()</code> do), always with a short path from an input to the output. Watch each sample spread step by step, then the score strengthen or weaken the links, create new ones (green dashed) and cut others (orange dotted).</span><span data-lang="fr">16 neurones sur une carte, 2 entrées à gauche, 1 sortie à droite. La sortie doit recopier la première entrée. <em>Nouveau réseau aléatoire</em> les replace, les relie à nouveau et tire leurs poids et biais (comme <code>weightInit()</code> et <code>biasInit()</code>), toujours avec un chemin court d'une entrée à la sortie. Regardez chaque exemple se propager pas à pas, puis le score renforcer ou affaiblir les liens, en créer (vert pointillé) et en couper (orange pointillé).</span></p>
-  <p data-level="technical"><span data-lang="en"><code>RawBrainNetwork(16, {8, 5})</code>, <code>size(2, 1)</code>, <code>cap</code> 6, 8 steps, sigmoid, <code>rand(-3, 3)</code> then <code>weightInit()</code> and <code>biasInit()</code> (a new network starts with weights at 1.0 and biases at 0.0 without them), <code>weightLimits(0.01, 5)</code>, score <code>10·(t − y)</code> after each sample. The page runs the same rules as <code>init_</code>, <code>apply</code>, <code>learn_</code> and <code>relink_</code> (gradient checked against finite differences): the example goes from a mean error of 0.50 to about 0.01 in 300 rounds. <em>New random network</em> draws until the output is at most 3 hops from an input: 3 random networks out of 4 learn then (30 of 40 measured), further the signal fades through the sigmoids.</span><span data-lang="fr"><code>RawBrainNetwork(16, {8, 5})</code>, <code>size(2, 1)</code>, <code>cap</code> 6, 8 pas, sigmoïde, <code>rand(-3, 3)</code> puis <code>weightInit()</code> et <code>biasInit()</code> (sans eux, un réseau neuf part avec des poids à 1.0 et des biais à 0.0), <code>weightLimits(0.01, 5)</code>, score <code>10·(t − y)</code> après chaque exemple. La page applique les mêmes règles que <code>init_</code>, <code>apply</code>, <code>learn_</code> et <code>relink_</code> (gradient vérifié par différences finies) : l'exemple passe d'une erreur moyenne de 0.50 à environ 0.01 en 300 tours. <em>Nouveau réseau aléatoire</em> tire jusqu'à avoir la sortie à au plus 3 sauts d'une entrée : 3 réseaux aléatoires sur 4 apprennent alors (30 sur 40 mesurés), au-delà le signal s'éteint à travers les sigmoïdes.</span></p>
+  <p data-level="simple"><span data-lang="en">16 neurons on a map, the inputs on the left, 1 output on the right, learning the <strong>same tasks as on the layer page</strong> (AND by default, OR, COPY, XOR, MAJ3) so the two can be compared. <em>New random network</em> places and links them again and draws their weights and biases (as <code>weightInit()</code> and <code>biasInit()</code> do), always with a short path from an input to the output. Watch each sample spread step by step, then the score strengthen or weaken the links, create new ones (green dashed) and cut others (orange dotted).</span><span data-lang="fr">16 neurones sur une carte, les entrées à gauche, 1 sortie à droite, qui apprennent les <strong>mêmes tâches que sur la page des couches</strong> (AND par défaut, OR, COPY, XOR, MAJ3) pour pouvoir les comparer. <em>Nouveau réseau aléatoire</em> les replace, les relie à nouveau et tire leurs poids et biais (comme <code>weightInit()</code> et <code>biasInit()</code>), toujours avec un chemin court d'une entrée à la sortie. Regardez chaque exemple se propager pas à pas, puis le score renforcer ou affaiblir les liens, en créer (vert pointillé) et en couper (orange pointillé).</span></p>
+  <p data-level="technical"><span data-lang="en"><code>RawBrainNetwork(16, {8, 5})</code>, <code>size(2, 1)</code>, <code>cap</code> 6, 8 steps, sigmoid, <code>rand(-3, 3)</code> then <code>weightInit()</code> and <code>biasInit()</code> (a new network starts with weights at 1.0 and biases at 0.0 without them), <code>weightLimits(0.01, 5)</code>, score <code>10·(t − y)</code> after each sample. The page runs the same rules as <code>init_</code>, <code>apply</code>, <code>learn_</code> and <code>relink_</code> (gradient checked against finite differences): the example goes from a mean error of 0.50 to about 0.01 in 300 rounds on AND, OR, COPY and MAJ3, but stays at 0.29 on XOR (the layered network: 0.10). <em>New random network</em> draws until the output is at most 3 hops from an input: 3 random networks out of 4 learn then (30 of 40 measured), further the signal fades through the sigmoids.</span><span data-lang="fr"><code>RawBrainNetwork(16, {8, 5})</code>, <code>size(2, 1)</code>, <code>cap</code> 6, 8 pas, sigmoïde, <code>rand(-3, 3)</code> puis <code>weightInit()</code> et <code>biasInit()</code> (sans eux, un réseau neuf part avec des poids à 1.0 et des biais à 0.0), <code>weightLimits(0.01, 5)</code>, score <code>10·(t − y)</code> après chaque exemple. La page applique les mêmes règles que <code>init_</code>, <code>apply</code>, <code>learn_</code> et <code>relink_</code> (gradient vérifié par différences finies) : l'exemple passe d'une erreur moyenne de 0.50 à environ 0.01 en 300 tours sur AND, OR, COPY et MAJ3, mais reste à 0.29 sur XOR (le réseau par couches : 0.10). <em>Nouveau réseau aléatoire</em> tire jusqu'à avoir la sortie à au plus 3 sauts d'une entrée : 3 réseaux aléatoires sur 4 apprennent alors (30 sur 40 mesurés), au-delà le signal s'éteint à travers les sigmoïdes.</span></p>
   <div class="viz" id="vizBrain">
     <div class="viz-bar">
       <button type="button" data-act="play" aria-pressed="false">Play</button>
@@ -708,7 +708,8 @@ details.quiz > :not(summary) { padding: 0 14px; }
       <button type="button" data-act="reset"><span data-lang="en">Reset</span><span data-lang="fr">Recommencer</span></button>
       <button type="button" data-act="random"><span data-lang="en">New random network</span><span data-lang="fr">Nouveau réseau aléatoire</span></button>
       <button type="button" data-act="example"><span data-lang="en">Back to the example</span><span data-lang="fr">Revenir à l'exemple</span></button>
-      <select aria-label="Speed"><option value="slow" data-en="Animated" data-fr="Animé">Animated</option><option value="fast" data-en="Fast (1 round per frame)" data-fr="Rapide (1 tour par image)">Fast (1 round per frame)</option><option value="turbo" data-en="Very fast (25 rounds)" data-fr="Très rapide (25 tours)">Very fast (25 rounds)</option></select>
+      <select data-speed aria-label="Speed"><option value="slow" data-en="Animated" data-fr="Animé">Animated</option><option value="fast" data-en="Fast (1 round per frame)" data-fr="Rapide (1 tour par image)">Fast (1 round per frame)</option><option value="turbo" data-en="Very fast (25 rounds)" data-fr="Très rapide (25 tours)">Very fast (25 rounds)</option></select>
+      <select data-task aria-label="Task"><option value="AND" selected>AND</option><option value="OR">OR</option><option value="COPY">COPY</option><option value="XOR">XOR</option><option value="MAJ3">MAJ3</option></select>
     </div>
     <p class="viz-phase"></p>
     <div class="viz-draw"><svg viewBox="0 0 760 360" role="img" aria-label="Live simulation of the network"></svg></div>
@@ -751,8 +752,8 @@ details.quiz > :not(summary) { padding: 0 14px; }
     <li><span data-lang="en"><strong>"A high threshold cleans the noise."</strong> It also cuts the real signal before it arrives (threshold 2.5 on the chain: output 0).</span><span data-lang="fr"><strong>« Un seuil haut nettoie le bruit. »</strong> Il coupe aussi le vrai signal avant qu'il arrive (seuil 2.5 sur la chaîne : sortie 0).</span></li>
   </ul>
   <ul data-level="technical">
-    <li><span data-lang="en"><strong>Steps vs depth:</strong> the default steps <code>min(25 % n, 4 log2 n)</code> are tight on small networks (10 neurons: 2 steps); raise <code>stepsCap</code> when the inputs and outputs are many hops apart.</span><span data-lang="fr"><strong>Pas et profondeur :</strong> les pas par défaut <code>min(25 % n, 4 log2 n)</code> sont justes sur les petits réseaux (10 neurones : 2 pas) ; montez <code>stepsCap</code> quand les entrées et les sorties sont à plusieurs sauts.</span></li>
-    <li><span data-lang="en"><strong>Score, not error:</strong> <code>train</code> sends the loss value; with the MSE (0 = perfect) the ascent rewards the wrong outputs: <code>ErrorLossOnBrain</code> is warned.</span><span data-lang="fr"><strong>Score, pas erreur :</strong> <code>train</code> envoie la valeur de la perte ; avec la MSE (0 = parfait) la montée récompense les mauvaises sorties : <code>ErrorLossOnBrain</code> est signalé.</span></li>
+    <li><span data-lang="en"><strong>Steps vs depth:</strong> the default steps <code>min(n, 4 log2 n)</code> (10 neurons: 10 steps, 1000: 39) can be short when the signal loops; raise <code>stepsCap</code> when the inputs and outputs are many hops apart.</span><span data-lang="fr"><strong>Pas et profondeur :</strong> les pas par défaut <code>min(n, 4 log2 n)</code> (10 neurones : 10 pas, 1000 : 39) peuvent être courts quand le signal boucle ; montez <code>stepsCap</code> quand les entrées et les sorties sont à plusieurs sauts.</span></li>
+    <li><span data-lang="en"><strong>Score, not error:</strong> <code>train</code> sends <code>rate x (expected - output)</code>, a score (positive = go up); by hand, give a score, never the loss value (always positive with the MSE, it would reward the wrong outputs).</span><span data-lang="fr"><strong>Score, pas erreur :</strong> <code>train</code> envoie <code>taux x (attendu - sortie)</code>, un score (positif = monter) ; à la main, donnez un score, jamais la valeur de la perte (toujours positive avec la MSE, elle récompenserait les mauvaises sorties).</span></li>
     <li><span data-lang="en"><strong>Hidden neurons without inward link:</strong> the random directions of the init can leave one; it then only outputs <code>f(bias)</code>.</span><span data-lang="fr"><strong>Neurones cachés sans lien entrant :</strong> les sens aléatoires de l'init peuvent en laisser un ; il ne sort alors que <code>f(biais)</code>.</span></li>
     <li><span data-lang="en"><strong>Orphans:</strong> <code>allowOrphans()</code> lets the limits empty a neuron completely; it stays in the network but takes no part in it.</span><span data-lang="fr"><strong>Orphelins :</strong> <code>allowOrphans()</code> laisse les limites vider complètement un neurone ; il reste dans le réseau sans y participer.</span></li>
     <li><span data-lang="en"><strong>Cost of a relink:</strong> sorting the neighbours is <em>O(n log n)</em> per change and runs on the host; with tight limits every step pays it.</span><span data-lang="fr"><strong>Coût d'un changement de liens :</strong> trier les voisins coûte <em>O(n log n)</em> par changement et tourne sur l'hôte ; avec des limites serrées, chaque pas le paie.</span></li>
@@ -850,33 +851,40 @@ explain.play('relink', function (v) {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 // Simulations of the networks of banana-brain, same rules as the C++ code (LayerNetwork forward_ / learn_, RawBrainNetwork init_ / apply / learn_ / relink_)
+// The options of the lab (activation, link modes, protections...) default to the behavior of the library
 function rng(seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function sigm(x) { return 1 / (1 + Math.exp(-x)); }
+var ACT = { // activation and its derivative at the sum (output = activation of the sum), as ANetwork::activate_ / derivative_
+  sigmoid: { f: sigm, d: function (s, o) { return o * (1 - o); } },
+  relu: { f: function (s) { return s > 0 ? s : 0; }, d: function (s) { return s > 0 ? 1 : 0; } },
+  linear: { f: function (s) { return s; }, d: function () { return 1; } }
+};
 
 // ---------- layered network ----------
-function LayerSim(sizes, seed) { // sizes = [inputs, layer1, ..., output]
-  var r = rng(seed); this.sizes = sizes; this.layers = [];
+function LayerSim(sizes, seed, opt) { // sizes = [inputs, layer1, ..., output]
+  opt = opt || {}; var r = rng(seed), range = opt.range || 1, rw = opt.weightInit !== false, rb = opt.biasInit !== false;
+  this.act = ACT[opt.activation || 'sigmoid']; this.sizes = sizes; this.layers = [];
   for (var l = 1; l < sizes.length; l++) {
     var layer = [];
-    for (var k = 0; k < sizes[l]; k++) { var w = []; for (var j = 0; j < sizes[l - 1]; j++) w.push(r() * 2 - 1); layer.push({ w: w, b: r() * 2 - 1 }); }
+    for (var k = 0; k < sizes[l]; k++) { var w = []; for (var j = 0; j < sizes[l - 1]; j++) w.push(rw ? (r() * 2 - 1) * range : 1); layer.push({ w: w, b: rb ? (r() * 2 - 1) * range : 0 }); }
     this.layers.push(layer);
   }
 }
 LayerSim.prototype.forward = function (x) {
-  var outs = [x.slice()], sums = [];
+  var outs = [x.slice()], sums = [], act = this.act;
   for (var l = 0; l < this.layers.length; l++) {
     var prev = outs[l], s = [], o = [];
-    this.layers[l].forEach(function (n) { var v = n.b; for (var j = 0; j < prev.length; j++) v += n.w[j] * prev[j]; s.push(v); o.push(sigm(v)); });
+    this.layers[l].forEach(function (n) { var v = n.b; for (var j = 0; j < prev.length; j++) v += n.w[j] * prev[j]; s.push(v); o.push(act.f(v)); });
     sums.push(s); outs.push(o);
   }
   this.last = { outs: outs, sums: sums }; return outs[outs.length - 1];
 };
 LayerSim.prototype.learn = function (errors) { // errors = rate * (output - expected), classic descent
-  var outs = this.last.outs, delta = errors.slice(), changes = [];
+  var outs = this.last.outs, sums = this.last.sums, delta = errors.slice(), changes = [], act = this.act;
   for (var l = this.layers.length - 1; l >= 0; l--) {
     var prev = outs[l], below = new Array(prev.length).fill(0), ch = [];
     for (var k = 0; k < this.layers[l].length; k++) {
-      var n = this.layers[l][k], o = outs[l + 1][k], slope = delta[k] * o * (1 - o), row = [];
+      var n = this.layers[l][k], slope = delta[k] * act.d(sums[l][k], outs[l + 1][k]), row = [];
       for (var j = 0; j < prev.length; j++) { below[j] += slope * n.w[j]; var d = slope * prev[j]; n.w[j] -= d; row.push(-d); }
       n.b -= slope; ch.push({ w: row, b: -slope });
     }
@@ -886,9 +894,13 @@ LayerSim.prototype.learn = function (errors) { // errors = rate * (output - expe
 };
 
 // ---------- raw brain network ----------
+// opt: seed, neurons, input, output, cap, steps, min, max, width, height, range, threshold, activation,
+//      weightInit / biasInit (false: 1.0 / 0.0), linkInit ('max' | 'random': 1 -> cap), minLinks, direction ('random' | 'forward': from the left to the right),
+//      relink ('normal' | 'inverted' | 'off'), protectPath (never cut the last path of an input to the output), orphans
 function BrainSim(opt) {
-  var r = this.r = rng(opt.seed); this.n = opt.neurons; this.input = opt.input; this.output = opt.output;
+  var r = this.r = rng(opt.seed); this.n = opt.neurons; this.input = opt.input; this.output = opt.output; this.opt = opt;
   this.cap = opt.cap; this.steps = opt.steps; this.min = opt.min; this.max = opt.max; this.threshold = opt.threshold || 0;
+  this.act = ACT[opt.activation || 'sigmoid']; this.relinkMode = opt.relink || 'normal'; this.minLinks = Math.min(opt.minLinks || 0, opt.cap);
   var W = opt.width, H = opt.height, n = this.n, pos = [], range = opt.range || 1; // weightInit / biasInit in rand(-range, range)
   for (var i = 0; i < n; i++) {
     if (i < this.input) pos.push({ x: 0, y: (i + 0.5) * H / this.input });
@@ -899,30 +911,42 @@ function BrainSim(opt) {
   this.links = []; for (var i2 = 0; i2 < n * this.cap; i2++) this.links.push(null); // {id, w, inward}
   var used = new Array(n).fill(0);
   for (var owner = 0; owner < n; owner++) {
-    var target = this.cap; // as many links as the cap allows
+    var target = opt.linkInit === 'random' ? Math.max(this.minLinks, Math.min(this.cap, 1 + Math.floor(r() * this.cap))) : this.cap; // as many links as the cap allows by default
     var order = this.near(owner);
     for (var q = 0; q < order.length && used[owner] < target; q++) {
       var other = order[q];
       if (this.slotOf(owner, other) >= 0 || used[other] >= this.cap) continue;
-      var canReceive = owner >= this.input && other < n - this.output, canSend = owner < n - this.output && other >= this.input;
-      if (!canReceive && !canSend) continue;
-      var receive = canReceive && (!canSend || r() < 0.5);
-      this.links[owner * this.cap + used[owner]++] = { id: other, w: 1, inward: receive }; // 1.0 by default, the weightInit below draws them
-      this.links[other * this.cap + used[other]++] = { id: owner, w: 1, inward: !receive };
+      var dir = this.direction(owner, other); if (dir === null) continue;
+      this.links[owner * this.cap + used[owner]++] = { id: other, w: 1, inward: dir }; // 1.0 by default, the weightInit below draws them
+      this.links[other * this.cap + used[other]++] = { id: owner, w: 1, inward: !dir };
     }
   }
-  // weightInit / biasInit in [-1, 1], the clone keeps the same weight
-  for (var o = 0; o < n; o++) for (var s = 0; s < this.cap; s++) { var L = this.links[o * this.cap + s]; if (L && L.inward) { L.w = (r() * 2 - 1) * range; this.clone(o, L).w = L.w; } }
-  for (var b = this.input; b < n; b++) this.bias[b] = (r() * 2 - 1) * range;
+  if (opt.weightInit !== false) for (var o = 0; o < n; o++) for (var s = 0; s < this.cap; s++) { var L = this.links[o * this.cap + s]; if (L && L.inward) { L.w = (r() * 2 - 1) * range || 0.01; this.clone(o, L).w = L.w; } }
+  if (opt.biasInit !== false) for (var b = this.input; b < n; b++) this.bias[b] = (r() * 2 - 1) * range;
 }
+// Direction of a new link seen from the owner: true = the owner receives, false = it sends, null = impossible (two inputs, two outputs)
+BrainSim.prototype.direction = function (owner, other) {
+  var n = this.n, canReceive = owner >= this.input && other < n - this.output, canSend = owner < n - this.output && other >= this.input;
+  if (!canReceive && !canSend) return null;
+  if (canReceive && canSend && this.opt.direction === 'forward') return this.pos[other].x < this.pos[owner].x || (this.pos[other].x === this.pos[owner].x && other < owner);
+  return canReceive && (!canSend || this.r() < 0.5);
+};
 BrainSim.prototype.d2 = function (a, b) { var dx = this.pos[a].x - this.pos[b].x, dy = this.pos[a].y - this.pos[b].y; return dx * dx + dy * dy; };
 BrainSim.prototype.near = function (i) { var self = this, ids = []; for (var k = 0; k < this.n; k++) if (k !== i) ids.push(k); return ids.sort(function (a, b) { return self.d2(i, a) - self.d2(i, b) || a - b; }); };
 BrainSim.prototype.slotOf = function (owner, other) { for (var s = 0; s < this.cap; s++) { var L = this.links[owner * this.cap + s]; if (L && L.id === other) return s; } return -1; };
 BrainSim.prototype.free = function (owner) { for (var s = 0; s < this.cap; s++) if (!this.links[owner * this.cap + s]) return s; return -1; };
 BrainSim.prototype.clone = function (owner, L) { for (var s = 0; s < this.cap; s++) { var C = this.links[L.id * this.cap + s]; if (C && C.id === owner && C.inward !== L.inward) return C; } return null; };
 BrainSim.prototype.degree = function (o) { var d = { in: 0, out: 0 }; for (var s = 0; s < this.cap; s++) { var L = this.links[o * this.cap + s]; if (L) { if (L.inward) d.in++; else d.out++; } } return d; };
+BrainSim.prototype.hops = function () { // shortest path of inward links from an input to the first output (-1: none)
+  var n = this.n, dist = new Array(n).fill(-1), q = [];
+  for (var i = 0; i < this.input; i++) { dist[i] = 0; q.push(i); }
+  while (q.length) { var u = q.shift(); for (var v = 0; v < n; v++) { if (dist[v] >= 0) continue; for (var s = 0; s < this.cap; s++) { var L = this.links[v * this.cap + s]; if (L && L.inward && L.id === u) { dist[v] = dist[u] + 1; q.push(v); break; } } } }
+  var best = -1; for (var k = n - this.output; k < n; k++) if (dist[k] >= 0 && (best < 0 || dist[k] > best)) best = dist[k]; // every output reached: the farthest one
+  for (var k2 = n - this.output; k2 < n; k2++) if (dist[k2] < 0) return -1;
+  return best;
+};
 BrainSim.prototype.forward = function (x) {
-  var n = this.n, s0 = new Array(n).fill(0); for (var i = 0; i < this.input; i++) s0[i] = x[i];
+  var n = this.n, s0 = new Array(n).fill(0), act = this.act; for (var i = 0; i < this.input; i++) s0[i] = x[i];
   var states = [s0];
   for (var t = 0; t < this.steps; t++) {
     var prev = states[t], next = new Array(n).fill(0);
@@ -930,14 +954,14 @@ BrainSim.prototype.forward = function (x) {
       if (k < this.input) { next[k] = x[k]; continue; }
       var sum = this.bias[k];
       for (var s = 0; s < this.cap; s++) { var L = this.links[k * this.cap + s]; if (L && L.inward) sum += L.w * prev[L.id]; }
-      var v = sigm(sum); next[k] = Math.abs(v) < this.threshold ? 0 : v;
+      var v = act.f(sum); next[k] = Math.abs(v) < this.threshold ? 0 : v;
     }
     states.push(next);
   }
   this.states = states; return states[states.length - 1].slice(n - this.output);
 };
 BrainSim.prototype.learn = function (scores) { // scores: positive = good (ascent), then the links change at the limits
-  var n = this.n, cap = this.cap, grad = new Array(n).fill(0), bg = new Array(n).fill(0), wg = new Array(n * cap).fill(0);
+  var n = this.n, cap = this.cap, grad = new Array(n).fill(0), bg = new Array(n).fill(0), wg = new Array(n * cap).fill(0), act = this.act;
   for (var k = 0; k < this.output; k++) grad[n - this.output + k] = scores[k];
   for (var t = this.steps; t > 0; t--) {
     var before = this.states[t - 1], below = new Array(n).fill(0);
@@ -945,7 +969,7 @@ BrainSim.prototype.learn = function (scores) { // scores: positive = good (ascen
       if (grad[i] === 0) continue;
       var sum = this.bias[i];
       for (var s = 0; s < cap; s++) { var L = this.links[i * cap + s]; if (L && L.inward) sum += L.w * before[L.id]; }
-      var o = sigm(sum), slope = grad[i] * o * (1 - o);
+      var slope = grad[i] * act.d(sum, act.f(sum));
       bg[i] += slope;
       for (var s2 = 0; s2 < cap; s2++) { var L2 = this.links[i * cap + s2]; if (!L2 || !L2.inward) continue; wg[i * cap + s2] += slope * before[L2.id]; below[L2.id] += slope * L2.w; }
     }
@@ -953,27 +977,33 @@ BrainSim.prototype.learn = function (scores) { // scores: positive = good (ascen
   }
   var events = { added: [], removed: [], changed: [] };
   for (var i3 = this.input; i3 < n; i3++) {
-    this.bias[i3] += bg[i3];
-    for (var s3 = 0; s3 < cap; s3++) { var L3 = this.links[i3 * cap + s3]; if (!L3 || !L3.inward || wg[i3 * cap + s3] === 0) continue; L3.w += wg[i3 * cap + s3]; if (L3.w === 0) L3.w = 1e-38; this.clone(i3, L3).w = L3.w; events.changed.push([L3.id, i3, wg[i3 * cap + s3]]); }
+    if (isFinite(bg[i3])) this.bias[i3] += bg[i3];
+    for (var s3 = 0; s3 < cap; s3++) { var L3 = this.links[i3 * cap + s3]; if (!L3 || !L3.inward || wg[i3 * cap + s3] === 0 || !isFinite(wg[i3 * cap + s3])) continue; L3.w += wg[i3 * cap + s3]; if (L3.w === 0) L3.w = 1e-38; this.clone(i3, L3).w = L3.w; events.changed.push([L3.id, i3, wg[i3 * cap + s3]]); }
   }
-  this.relink(events); return events;
+  if (this.relinkMode !== 'off') this.relink(events);
+  return events;
 };
+BrainSim.prototype.removeLink = function (owner, slot) { var cur = this.links[owner * this.cap + slot], C = this.clone(owner, cur); this.links[cur.id * this.cap + this.links.slice(cur.id * this.cap, cur.id * this.cap + this.cap).indexOf(C)] = null; this.links[owner * this.cap + slot] = null; return { cur: cur, C: C }; };
 BrainSim.prototype.relink = function (events) {
-  var n = this.n, cap = this.cap, self = this, min = this.min, max = this.max;
+  var n = this.n, cap = this.cap, self = this, min = this.min, max = this.max, inverted = this.relinkMode === 'inverted';
   for (var owner = 0; owner < n; owner++) {
     var list = [];
     for (var s = 0; s < cap; s++) { var L = this.links[owner * cap + s]; if (L) list.push({ slot: s, id: L.id, d: this.d2(owner, L.id) }); }
     list.sort(function (a, b) { return a.d - b.d || a.id - b.id; });
-    var snap = list.map(function (e) { var w = Math.abs(self.links[owner * cap + e.slot].w); return { slot: e.slot, id: e.id, w: w, kind: w <= min ? -1 : (w >= max ? 1 : 0) }; });
+    // -1 = cut, 1 = grow, 0 = nothing (inverted: cut at the max, grow at the min)
+    var snap = list.map(function (e) { var w = Math.abs(self.links[owner * cap + e.slot].w), low = w <= min, high = w >= max; return { slot: e.slot, id: e.id, w: w, kind: low ? (inverted ? 1 : -1) : (high ? (inverted ? -1 : 1) : 0) }; });
     for (var k = 0; k < snap.length; k++) {
       var e = snap[k], cur = this.links[owner * cap + e.slot];
       if (!cur || cur.id !== e.id || e.kind === 0) continue;
       if (e.kind < 0) {
         var a = this.degree(owner), b = this.degree(cur.id);
-        if (this.survives(a, owner < this.input, cur.inward) && this.survives(b, cur.id < this.input, !cur.inward)) {
-          var C = this.clone(owner, cur); this.links[cur.id * cap + this.links.slice(cur.id * cap, cur.id * cap + cap).indexOf(C)] = null; this.links[owner * cap + e.slot] = null;
-          events.removed.push(cur.inward ? [cur.id, owner] : [owner, cur.id]);
+        if (a.in + a.out <= this.minLinks || b.in + b.out <= this.minLinks) continue; // the forced minimum of links
+        if (!this.opt.orphans && !(this.survives(a, owner < this.input, cur.inward) && this.survives(b, cur.id < this.input, !cur.inward))) continue;
+        var reached = this.opt.protectPath ? this.hops() >= 0 : false, removed = this.removeLink(owner, e.slot);
+        if (reached && this.hops() < 0) { // the last path to the output: put it back
+          this.links[owner * cap + e.slot] = removed.cur; this.links[removed.cur.id * cap + this.free(removed.cur.id)] = removed.C; continue;
         }
+        events.removed.push(cur.inward ? [cur.id, owner] : [owner, cur.id]);
         continue;
       }
       if (this.free(owner) < 0) continue;
@@ -982,32 +1012,52 @@ BrainSim.prototype.relink = function (events) {
       ref = used === 0 ? (min + max) / 2 : ref / used;
       var order = this.near(owner);
       for (var q = 0; q < order.length; q++) {
-        var other = order[q], canReceive = owner >= this.input && other < n - this.output, canSend = owner < n - this.output && other >= this.input;
-        if (this.slotOf(owner, other) >= 0 || this.free(other) < 0 || (!canReceive && !canSend)) continue;
-        var receive = canReceive && (!canSend || this.r() < 0.5), low = min + (max - min) * 0.05, high = min + (max - min) * 0.95;
-        var value = (this.r() < 0.5 ? -1 : 1) * Math.min(Math.max(ref * (0.5 + 0.5 * this.r()), low), high);
-        this.links[owner * cap + this.free(owner)] = { id: other, w: value, inward: receive };
-        this.links[other * cap + this.free(other)] = { id: owner, w: value, inward: !receive };
-        events.added.push(receive ? [other, owner] : [owner, other]);
+        var other = order[q];
+        if (this.slotOf(owner, other) >= 0 || this.free(other) < 0) continue;
+        var dir = this.direction(owner, other); if (dir === null) continue;
+        var low2 = min + (max - min) * 0.05, high2 = min + (max - min) * 0.95;
+        var value = (this.r() < 0.5 ? -1 : 1) * Math.min(Math.max(ref * (0.5 + 0.5 * this.r()), low2), high2);
+        this.links[owner * cap + this.free(owner)] = { id: other, w: value, inward: dir };
+        this.links[other * cap + this.free(other)] = { id: owner, w: value, inward: !dir };
+        events.added.push(dir ? [other, owner] : [owner, other]);
         break;
       }
     }
   }
 };
 BrainSim.prototype.survives = function (d, isInput, inward) { var i = d.in - (inward ? 1 : 0), o = d.out - (inward ? 0 : 1), before = isInput ? d.out : d.in, after = isInput ? o : i; return i + o >= 1 && !(before >= 1 && after === 0); };
-// Runner of a live simulation: Play / Pause / Step / Reset, the speed, one sample after the other (nothing runs before Play)
+// Caps of the library: min(floor(percentage * n), hook(n)) (links: clamped to [1, n - 1]; steps: at least 1)
+function linksCapOf(n, pct, hook) { if (n < 2) return 0; var h = hook === null || hook === undefined ? Math.floor(2 * Math.log2(n) * Math.log(n) / Math.log(1.1)) : hook; return Math.min(Math.max(Math.min(Math.floor(n * pct), h), 1), n - 1); }
+function stepsCapOf(n, pct, hook) { var h = hook === null || hook === undefined ? Math.floor(4 * Math.log2(n)) : hook; return Math.max(1, Math.min(Math.floor(n * pct), h)); }
+// Tasks shared by the demos and the lab: inputs -> one expected output
+var TASKS = {
+  AND: { in: [[0, 0], [0, 1], [1, 0], [1, 1]], out: [0, 0, 0, 1] },
+  OR: { in: [[0, 0], [0, 1], [1, 0], [1, 1]], out: [0, 1, 1, 1] },
+  NAND: { in: [[0, 0], [0, 1], [1, 0], [1, 1]], out: [1, 1, 1, 0] },
+  XOR: { in: [[0, 0], [0, 1], [1, 0], [1, 1]], out: [0, 1, 1, 0] },
+  COPY: { in: [[0, 0], [0, 1], [1, 0], [1, 1]], out: [0, 0, 1, 1] },
+  NOT: { in: [[0], [1]], out: [1, 0] },
+  MAJ3: { in: [], out: [] }, PAR3: { in: [], out: [] }, SIN: { in: [], out: [] }
+};
+for (var i = 0; i < 8; i++) { var v = [i & 1, (i >> 1) & 1, (i >> 2) & 1], s = v[0] + v[1] + v[2]; TASKS.MAJ3.in.push(v); TASKS.MAJ3.out.push(s >= 2 ? 1 : 0); TASKS.PAR3.in.push(v); TASKS.PAR3.out.push(s % 2); }
+for (var k = 0; k <= 8; k++) { var x = k / 8; TASKS.SIN.in.push([x]); TASKS.SIN.out.push((Math.sin(2 * Math.PI * x) + 1) / 2); } // a curve: (sin(2 pi x) + 1) / 2 on 9 points
+// Runner of a live simulation: Play / Pause / Step / Reset / New random / Back to the example, the speed and the task (nothing runs before Play)
 function vizRunner(root, sim) {
-  var bar = root.querySelector('.viz-bar'), playBtn = bar.querySelector('[data-act="play"]'), speed = bar.querySelector('select');
+  var bar = root.querySelector('.viz-bar'), playBtn = bar.querySelector('[data-act="play"]'), speed = bar.querySelector('select[data-speed]'), task = bar.querySelector('select[data-task]');
   var timer = null, running = false, queue = [];
   function fr() { return document.documentElement.getAttribute('lang') === 'fr'; }
-  function label() { playBtn.textContent = running ? (fr() ? 'Pause' : 'Pause') : (fr() ? 'Lecture' : 'Play'); playBtn.setAttribute('aria-pressed', running ? 'true' : 'false'); Array.prototype.forEach.call(speed.options, function (o) { o.textContent = fr() ? o.getAttribute('data-fr') : o.getAttribute('data-en'); }); }
+  function label() {
+    playBtn.textContent = running ? 'Pause' : (fr() ? 'Lecture' : 'Play'); playBtn.setAttribute('aria-pressed', running ? 'true' : 'false');
+    Array.prototype.forEach.call(speed.options, function (o) { o.textContent = fr() ? o.getAttribute('data-fr') : o.getAttribute('data-en'); });
+  }
+  function stop() { running = false; label(); if (timer) { clearTimeout(timer); timer = null; } queue = []; }
   function tick() {
     timer = null;
     if (!queue.length) {
       if (speed.value === 'slow') queue = sim.sampleFrames();
       else { sim.fastRounds(speed.value === 'turbo' ? 25 : 1); sim.draw(sim.fastFrame()); } // the state of the next sample after the rounds
     }
-    if (queue.length) { var f = queue.shift(); sim.draw(f); }
+    if (queue.length) sim.draw(queue.shift());
     if (running) timer = setTimeout(tick, speed.value === 'slow' ? 650 : 30);
   }
   bar.addEventListener('click', function (e) {
@@ -1015,79 +1065,66 @@ function vizRunner(root, sim) {
     if (!button) return;
     var act = button.getAttribute('data-act');
     if (act === 'play') { running = !running; label(); if (running && !timer) tick(); }
-    else if (act === 'step') { running = false; label(); if (timer) { clearTimeout(timer); timer = null; } if (!queue.length) queue = sim.sampleFrames(); var f = queue.shift(); sim.draw(f); }
+    else if (act === 'step') { var keep = queue; stop(); queue = keep.length ? keep : sim.sampleFrames(); sim.draw(queue.shift()); }
     else if (act === 'reset' || act === 'random' || act === 'example') {
-      running = false; label(); if (timer) { clearTimeout(timer); timer = null; } queue = [];
+      stop();
       if (act === 'random') sim.seed = sim.randomSeed ? sim.randomSeed() : 1 + Math.floor(Math.random() * 1e9); // new positions, weights and biases
       else if (act === 'example') sim.seed = sim.exampleSeed;
       sim.reset(); sim.draw(null);
     }
   });
   speed.addEventListener('change', function () { queue = []; });
+  if (task) task.addEventListener('change', function () { stop(); sim.task = task.value; sim.reset(); sim.draw(null); });
   new MutationObserver(function () { label(); sim.draw(sim.lastFrame || null); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) speed.value = 'fast';
+  if (task) sim.task = task.value;
   label(); sim.reset(); sim.draw(null);
 }
 function vizFr() { return document.documentElement.getAttribute('lang') === 'fr'; }
 function vizT(en, fr) { return vizFr() ? fr : en; }
 function vizNum(v) { return (Math.round(v * 100) / 100).toFixed(2); }
+function vizSample(x) { return '(' + x.join(', ') + ')'; }
 function vizSpark(values, x, y, w, h) {
   if (values.length < 2) return '';
   var max = Math.max.apply(null, values.concat([0.01])), pts = values.map(function (v, i) { return (x + w * i / (values.length - 1)).toFixed(1) + ',' + (y + h - h * v / max).toFixed(1); });
   return '<line class="vz-axis" x1="' + x + '" x2="' + (x + w) + '" y1="' + (y + h) + '" y2="' + (y + h) + '"/><polyline class="vz-spark" points="' + pts.join(' ') + '"/>';
 }
-// Raw brain network: 16 neurons, the output must copy the first input; score = rate * (expected - output), links changing at the weight limits
+// Raw brain network on the task of the list (the same tasks as the layer page); score = rate * (expected - output), links changing at the weight limits
 (function () {
   var root = document.getElementById('vizBrain'); if (!root) return;
-  var svg = root.querySelector('svg'), DATA = [[1, 0, 1], [0, 1, 0], [1, 1, 1], [0, 0, 0]], RATE = 10;
-  var OPT = { seed: 523645, neurons: 16, input: 2, output: 1, cap: 6, steps: 8, min: 0.01, max: 5, width: 8, height: 5, range: 3 };
-  var sim = { net: null, round: 0, sample: 0, history: [], added: 0, removed: 0, lastFrame: null, seed: 523645, exampleSeed: 523645 };
+  var svg = root.querySelector('svg'), RATE = 10;
+  var OPT = { seed: 837832, neurons: 16, input: 2, output: 1, cap: 6, steps: 8, min: 0.01, max: 5, width: 8, height: 5, range: 3 };
+  var sim = { net: null, round: 0, sample: 0, history: [], added: 0, removed: 0, lastFrame: null, seed: 837832, exampleSeed: 837832, task: 'AND' };
+  function data() { return TASKS[sim.task]; }
   function px(i) { return 70 + sim.net.pos[i].x / OPT.width * 560; }
   function py(i) { return 40 + sim.net.pos[i].y / OPT.height * 280; }
-  function meanError() { var e = 0; DATA.forEach(function (d) { e += Math.abs(sim.net.forward([d[0], d[1]])[0] - d[2]); }); return e / DATA.length; }
-  sim.reset = function () { OPT.seed = sim.seed; sim.net = new BrainSim(OPT); sim.round = 0; sim.sample = 0; sim.added = 0; sim.removed = 0; sim.history = [meanError()]; sim.lastFrame = null; };
-  function learnOne(d) { var y = sim.net.forward([d[0], d[1]])[0], ev = sim.net.learn([RATE * (d[2] - y)]); sim.added += ev.added.length; sim.removed += ev.removed.length; return ev; }
-  function nextSample() { var d = DATA[sim.sample]; sim.sample = (sim.sample + 1) % DATA.length; if (sim.sample === 0) { sim.round++; sim.history.push(meanError()); if (sim.history.length > 200) sim.history.shift(); } return d; }
-  sim.fastRounds = function (rounds) { for (var r = 0; r < rounds * DATA.length; r++) learnOne(nextSample()); };
-  sim.fastFrame = function () { var d = DATA[sim.sample]; sim.net.forward([d[0], d[1]]); var states = sim.net.states.map(function (x) { return x.slice(); }); return { d: d, states: states, t: states.length - 1, phase: 'fast' }; };
+  function meanError() { var t = data(), e = 0; t.in.forEach(function (x, i) { e += Math.abs(sim.net.forward(x)[0] - t.out[i]); }); return e / t.in.length; }
+  function build() { OPT.seed = sim.seed; OPT.input = data().in[0].length; sim.net = new BrainSim(OPT); }
+  sim.reset = function () { build(); sim.round = 0; sim.sample = 0; sim.added = 0; sim.removed = 0; sim.history = [meanError()]; sim.lastFrame = null; };
+  function learnOne(i) { var t = data(), y = sim.net.forward(t.in[i])[0], ev = sim.net.learn([RATE * (t.out[i] - y)]); sim.added += ev.added.length; sim.removed += ev.removed.length; return ev; }
+  function nextSample() { var i = sim.sample; sim.sample = (sim.sample + 1) % data().in.length; if (sim.sample === 0) { sim.round++; sim.history.push(meanError()); if (sim.history.length > 200) sim.history.shift(); } return i; }
+  sim.fastRounds = function (rounds) { for (var r = 0; r < rounds * data().in.length; r++) learnOne(nextSample()); };
+  function states(i) { sim.net.forward(data().in[i]); return sim.net.states.map(function (x) { return x.slice(); }); }
+  sim.fastFrame = function () { var st = states(sim.sample); return { x: data().in[sim.sample], t: data().out[sim.sample], states: st, step: st.length - 1, phase: 'fast' }; };
   // A random network whose output is at most 3 hops from an input (further, the signal and the gradient fade through the sigmoids)
   sim.randomSeed = function () {
-    var keep = sim.seed;
-    for (var tries = 0; tries < 500; tries++) {
-      sim.seed = 1 + Math.floor(Math.random() * 1e9); OPT.seed = sim.seed; sim.net = new BrainSim(OPT);
-      var h = hops(); if (h >= 1 && h <= 3) return sim.seed;
-    }
-    return sim.seed || keep;
+    for (var tries = 0; tries < 500; tries++) { sim.seed = 1 + Math.floor(Math.random() * 1e9); build(); var h = sim.net.hops(); if (h >= 1 && h <= 3) break; }
+    return sim.seed;
   };
   sim.sampleFrames = function () {
-    var d = DATA[sim.sample], frames = [];
-    sim.net.forward([d[0], d[1]]);
-    var states = sim.net.states.map(function (s) { return s.slice(); });
-    for (var t = 0; t < states.length; t++) frames.push({ d: d, states: states, t: t, phase: t === 0 ? 'in' : 'step' });
-    frames.push({ d: d, states: states, t: states.length - 1, phase: 'back', run: function () { return learnOne(nextSample()); } });
+    var i = sim.sample, st = states(i), frames = [];
+    for (var t = 0; t < st.length; t++) frames.push({ x: data().in[i], t: data().out[i], states: st, step: t, phase: t === 0 ? 'in' : 'step' });
+    frames.push({ x: data().in[i], t: data().out[i], states: st, step: st.length - 1, phase: 'back', run: function () { return learnOne(nextSample()); } });
     return frames;
   };
   function key(a, b) { return a + '>' + b; }
-  // Shortest path of inward links from an input to the output, in hops (-1: none, the output can't depend on the inputs)
-  function hops() {
-    var net = sim.net, n = net.n, dist = new Array(n).fill(-1), q = [];
-    for (var i = 0; i < net.input; i++) { dist[i] = 0; q.push(i); }
-    while (q.length) {
-      var u = q.shift();
-      for (var v = 0; v < n; v++) {
-        if (dist[v] >= 0) continue;
-        for (var s = 0; s < net.cap; s++) { var L = net.links[v * net.cap + s]; if (L && L.inward && L.id === u) { dist[v] = dist[u] + 1; q.push(v); break; } }
-      }
-    }
-    return dist[n - 1];
-  }
   sim.draw = function (f) {
     var ev = null;
     if (f && f.run && !f.done) { f.ev = f.run(); f.done = true; }
     if (f) ev = f.ev || null;
     sim.lastFrame = f;
     var net = sim.net, n = net.n, cap = net.cap, s = '<defs><marker id="vzArr" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto"><path class="arrow" d="M0 0L10 5L0 10z"/></marker></defs>';
-    var changed = {}, added = {}, state = f ? f.states[f.t] : null, prev = f && f.t > 0 ? f.states[f.t - 1] : null;
+    var changed = {}, added = {}, state = f ? f.states[f.step] : null, prev = f && f.step > 0 ? f.states[f.step - 1] : null;
     if (ev) { ev.changed.forEach(function (c) { if (Math.abs(c[2]) > 0.003) changed[key(c[0], c[1])] = 1; }); ev.added.forEach(function (a) { added[key(a[0], a[1])] = 1; }); }
     // links drawn from the sender to the receiver (the inward slot of the receiver)
     for (var i = 0; i < n; i++) for (var k = 0; k < cap; k++) {
@@ -1110,22 +1147,22 @@ function vizSpark(values, x, y, w, h) {
     s += '<text class="vz-tag" x="750" y="324" text-anchor="end">' + vizT('mean error', 'erreur moyenne') + '</text>' + vizSpark(sim.history, 670, 330, 80, 24);
     svg.innerHTML = s;
     var phase;
-    if (!f) phase = vizT('Press <b>Play</b>: each sample enters on the left, crosses the space step by step, then the score changes the weights and the links.', 'Appuyez sur <b>Lecture</b> : chaque exemple entre à gauche, traverse l\'espace pas à pas, puis le score change les poids et les liens.');
-    else if (f.phase === 'in') phase = vizT('<b>Inputs.</b> Sample (' + f.d[0] + ', ' + f.d[1] + '): the output should copy the first input, ' + f.d[2] + '.', '<b>Entrées.</b> Exemple (' + f.d[0] + ', ' + f.d[1] + ') : la sortie doit recopier la première entrée, ' + f.d[2] + '.');
-    else if (f.phase === 'fast') phase = vizT('<b>Fast training.</b> Round ' + sim.round + ', mean error ' + vizNum(sim.history[sim.history.length - 1]) + '; the drawing shows the last step of the sample (' + f.d[0] + ', ' + f.d[1] + ').', '<b>Entraînement rapide.</b> Tour ' + sim.round + ', erreur moyenne ' + vizNum(sim.history[sim.history.length - 1]) + ' ; le dessin montre le dernier pas de l\'exemple (' + f.d[0] + ', ' + f.d[1] + ').');
-    else if (f.phase === 'step') phase = vizT('<b>Step ' + f.t + ' / ' + net.steps + '.</b> Every neuron reads its inward links at the step before (bright: links carrying a signal).', '<b>Pas ' + f.t + ' / ' + net.steps + '.</b> Chaque neurone lit ses liens entrants au pas d\'avant (vifs : liens qui portent un signal).');
+    if (!f) phase = vizT('Press <b>Play</b>: each sample enters on the left, crosses the space step by step, then the score changes the weights and the links (task ' + sim.task + ').', 'Appuyez sur <b>Lecture</b> : chaque exemple entre à gauche, traverse l\'espace pas à pas, puis le score change les poids et les liens (tâche ' + sim.task + ').');
+    else if (f.phase === 'in') phase = vizT('<b>Inputs.</b> Sample ' + vizSample(f.x) + ', expected ' + f.t + '.', '<b>Entrées.</b> Exemple ' + vizSample(f.x) + ', attendu ' + f.t + '.');
+    else if (f.phase === 'fast') phase = vizT('<b>Fast training.</b> Round ' + sim.round + ', mean error ' + vizNum(sim.history[sim.history.length - 1]) + '; the drawing shows the last step of the sample ' + vizSample(f.x) + '.', '<b>Entraînement rapide.</b> Tour ' + sim.round + ', erreur moyenne ' + vizNum(sim.history[sim.history.length - 1]) + ' ; le dessin montre le dernier pas de l\'exemple ' + vizSample(f.x) + '.');
+    else if (f.phase === 'step') phase = vizT('<b>Step ' + f.step + ' / ' + net.steps + '.</b> Every neuron reads its inward links at the step before (bright: links carrying a signal).', '<b>Pas ' + f.step + ' / ' + net.steps + '.</b> Chaque neurone lit ses liens entrants au pas d\'avant (vifs : liens qui portent un signal).');
     else {
-      var y = f.states[f.states.length - 1][n - 1], sc = RATE * (f.d[2] - y);
+      var y0 = f.states[f.states.length - 1][n - 1], sc = RATE * (f.t - y0);
       phase = vizT('<b>Score ' + vizNum(sc) + '.</b> Bright links changed, green dashed: ' + (ev ? ev.added.length : 0) + ' new link(s), orange dotted: ' + (ev ? ev.removed.length : 0) + ' removed.', '<b>Score ' + vizNum(sc) + '.</b> Liens vifs : modifiés, vert pointillé : ' + (ev ? ev.added.length : 0) + ' nouveau(x) lien(s), orange pointillé : ' + (ev ? ev.removed.length : 0) + ' supprimé(s).');
     }
     root.querySelector('.viz-phase').innerHTML = phase;
     root.querySelector('[data-stat="seed"]').textContent = sim.seed;
-    var h = hops();
+    var h = net.hops();
     root.querySelector('[data-stat="path"]').textContent = h < 0 ? vizT('none: the output can\'t learn', 'aucun : la sortie ne peut pas apprendre') : (h > net.steps ? vizT(h + ' hops, more than the ' + net.steps + ' steps', h + ' sauts, plus que les ' + net.steps + ' pas') : vizT(h + ' hop(s)', h + ' saut(s)'));
     root.querySelector('[data-stat="round"]').textContent = sim.round;
     root.querySelector('[data-stat="error"]').textContent = vizNum(sim.history[sim.history.length - 1]);
     root.querySelector('[data-stat="links"]').textContent = '+' + sim.added + ' / −' + sim.removed;
-    root.querySelector('[data-stat="outs"]').textContent = DATA.map(function (dd) { return '(' + dd[0] + ',' + dd[1] + ')→' + vizNum(sim.net.forward([dd[0], dd[1]])[0]); }).join('  ');
+    var t = data(); root.querySelector('[data-stat="outs"]').textContent = t.in.map(function (x, i) { return vizSample(x) + '→' + vizNum(sim.net.forward(x)[0]); }).join('  ');
   };
   vizRunner(root, sim);
 })();
