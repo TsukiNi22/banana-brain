@@ -41,52 +41,67 @@ namespace brain { // namespace start
 // The reduced network (the memories of brain::BrainNetwork) is the execution copy of this one: kept up to date by sync_() (deserialize, reduce)
 class RawBrainNetwork: public brain::BrainNetwork {
     private:
-        utils::system::HybridMemory<brain::RawBrainNeuron> _rawNeurons; // every neuron of the 2d space (gpu when available)
-        utils::system::HybridMemory<brain::RawBrainLink> _rawLinks; // [neuron * _cap + slot] the links of every neuron, inward and outward (a free slot is all at 0)
-        std::pair<brain::FType, brain::FType> _size = {1.0, 1.0}; // <width, height> of the 2d space (could be applied in 3d in the future)
-        std::pair<brain::FType, brain::LinksCapFn> _limit; // <percentage, hook> limits of linking: the smallest of the two is the number of links of a neuron
-        bool _customLimit = false; // true: the hook was replaced (can't be saved)
-        std::pair<brain::FType, brain::StepsCapFn> _stepsLimit; // <percentage, hook> limits of the time steps: the smallest of the two is the number of steps of the execution
-        bool _customSteps = false; // true: the steps hook was replaced (can't be saved)
-        std::pair<brain::FType, brain::FType> _weightLimits = {BRAIN_WEIGHT_MIN, BRAIN_WEIGHT_MAX}; // <min, max> of the absolute weight: a link is removed at the min and the nearest free neuron is linked at the max (backpropagation)
-        bool _orphans = false; // true: the last links of a neuron can be removed (it can end up alone), false: an input keeps an outward link, the others an inward one
-        bool _leftToRight = false; // true: a link only goes from a neuron to a neuron on its right (no loop, the signal always moves to the outputs)
-        std::vector<std::vector<brain::UIType>> _near; // the first candidates of each neuron for a link, the nearest first (only the left ones in left to right mode), computed once (init / load): the others are sorted only when these are all used
+        /* memory */
+        utils::system::HybridMemory<brain::RawBrainNeuron> _rawNeurons; // every neuron (gpu when available)
+        utils::system::HybridMemory<brain::RawBrainLink> _rawLinks; // [neuron * _cap + slot] inward and outward links (a free slot is all at 0)
+
+        /* space and limits */
+        std::pair<brain::FType, brain::FType> _size = {1.0, 1.0}; // <width, height> of the 2d space
+        std::pair<brain::FType, brain::LinksCapFn> _limit; // <percentage, hook> of the links per neuron (the smallest wins)
+        bool _customLimit = false; // true: the links hook was replaced (not saved)
+        std::pair<brain::FType, brain::StepsCapFn> _stepsLimit; // <percentage, hook> of the time steps (the smallest wins)
+        bool _customSteps = false; // true: the steps hook was replaced (not saved)
+        brain::UIType _stepsFloor = 0; // least time steps: the farthest input -> output path of the init (0 = none)
+        std::pair<brain::FType, brain::FType> _weightLimits = {BRAIN_WEIGHT_MIN, BRAIN_WEIGHT_MAX}; // <min, max> of |weight|: removed at the min, a link grows at the max
+        std::pair<brain::UIType, brain::UIType> _placed = {0, 0}; // <inputs, outputs> the neurons were placed for
+
+        /* execution copy */
+        std::vector<brain::UIType> _inStart; // neuron i: the inward slots _inSlot[_inStart[i]] to _inSlot[_inStart[i + 1] - 1]
+        std::vector<brain::UIType> _inSlot; // slots of the inward links, neuron after neuron
+        std::vector<brain::UIType> _clones; // [inward slot] the slot of its clone on the sender (empty = to rebuild)
+        bool _clonesChanged = false; // true: _clones changed since its last copy on the gpu
+        utils::system::HybridMemory<brain::UIType> _cloneMemory; // _clones on the gpu
+
+        /* links at the init */
+        std::vector<std::vector<brain::UIType>> _near; // candidates of each neuron, the nearest first (computed once)
         std::vector<bool> _nearAll; // true: _near holds every candidate of the neuron
-        std::vector<brain::UIType> _inStart; // the inward links of neuron i are the slots _inSlot[_inStart[i]] to _inSlot[_inStart[i + 1] - 1] (rebuilt with the execution copy)
-        std::vector<brain::UIType> _inSlot;
-        std::vector<brain::UIType> _clones; // [slot of an inward link] the slot of its clone on the sender (rebuilt by sync_ when the links change, empty = to rebuild)
-        bool _clonesChanged = false; // a new link changed _clones since its last copy on the gpu
-        utils::system::HybridMemory<brain::UIType> _cloneMemory; // the same on the gpu of the network (the update of the weights on the device writes the clones with it)
-        std::vector<brain::Values> _sums; // the sum of every neuron at each step of the last apply() on the host (the backpropagation reads them back, empty after a gpu apply)
-        brain::UIType _stepsFloor = 0; // the least time steps: BRAIN_STEPS_PATH_MARGIN times the farthest path from an input to an output at the init (0 = none)
-        brain::UIType _farLinks = 0; // slots of the cap given at the init to neurons drawn at random among the allowed ones (not the nearest)
-        brain::UIType _pathHops = 0; // 0 = off, else at the init every input gets a path of at most this number of links to every output (the missing links are added)
+        brain::UIType _farLinks = 0; // slots given to random far neurons instead of the nearest
+        brain::UIType _pathHops = 0; // 0 = off, else a path of at most this many links from every input to every output
+        bool _randomLinks = true; // true: a random number of links per neuron, between _minLinks and the cap
+        brain::UIType _minLinks = 1; // a neuron keeps at least this many links
+
+        /* rules of the links (true = on) */
+        bool _orphans = false; // the last link of a neuron can be removed
+        bool _leftToRight = false; // a link only goes to the right (no loop)
+        bool _keepPaths = false; // never cut the last path of an input to an output
+        bool _inputPaths = false; // every input keeps a path to at least one output
+        bool _lowNewLinks = false; // a new link starts at 5 % of the limits
+        bool _moveLastLink = false; // the last weak link of a neuron moves to another neuron
+        bool _invertedLinks = false; // removed at weightMax, grown at weightMin
+
+        /* training */
         brain::FType _momentum = 0.0; // step = momentum * last step + gradient (0 = plain gradient)
-        brain::FType _stepLimit = 0.0; // each change of a weight or a bias kept in [-limit, limit] (0 = no limit)
-        bool _clampWeights = false; // true: the absolute value of a weight and of a bias never goes above weightMax (no saturated neuron that can't learn anymore)
-        bool _lowNewLinks = false; // true: a link added at weightMax starts at 5 % of the limits instead of the size of the nearest links (no shock on the outputs)
-        bool _directOutput = false; // true: the score reaches the sum of an output as it is, without the slope of its activation (cross-entropy form: a saturated output still learns)
-        bool _keepPaths = false; // true: a link is never removed when it takes the last path of an input to an output away
-        bool _batch = false; // true: backpropagation() only adds the gradient to the pending one, applyBatch() applies their mean
-        brain::FType _adam = 0.0; // 0 = off, else the rate of Adam: each slot moves by about this rate, the direction from the mean of its gradients (replaces the momentum)
-        std::vector<brain::FType> _moments; // Adam: <mean, mean of the squares> of the gradients of each slot of link, then of each bias
-        brain::FType _rateDecay = 0.0; // the steps of the weights are divided by 1 + rateDecay * (number of updates before) (0 = constant)
-        brain::UIType _updates = 0; // updates of the weights since the init (the decay of the rate)
-        brain::FType _decayScale = 1.0; // 1 / (1 + rateDecay * updates) of the update in progress
-        bool _inputPaths = false; // true: every input keeps a path to at least one output (built at the init, a removal that would cut the last one is put back)
-        bool _moveLastLink = false; // true: the last link of a neuron under weightMin is moved to another neuron (a new link, the weak one removed) instead of being kept
-        bool _invertedLinks = false; // true: at the limits a link is removed at weightMax and a new one grows at weightMin (the opposite of the default)
-        bool _randomLinks = true; // true (default): each neuron gets a random number of links at the init, between minLinks and the cap (false: as many as the cap allows)
-        brain::UIType _minLinks = 1; // (1 by default) a link is never removed when it leaves one of its two neurons with this number of links or fewer (also the least of the random init)
-        brain::UIType _adamSteps = 0; // Adam: number of updates since the moments started (corrections of the first steps)
-        std::vector<std::pair<brain::FType, brain::FType>> _seen; // revive: <min, max> of the last state of each neuron over the executions since the last revive()
-        std::vector<brain::FType> _velocity; // momentum: the last step of each slot of link, then of each bias (neurons * cap + neurons)
-        std::vector<brain::FType> _pending; // mini-batch: the sum of the gradients not applied yet (same layout as _velocity)
+        brain::FType _adam = 0.0; // 0 = off, else the rate of Adam (replaces the momentum)
+        brain::FType _stepLimit = 0.0; // a change of a weight or a bias stays in [-limit, limit] (0 = none)
+        brain::FType _rateDecay = 0.0; // steps divided by 1 + rateDecay * updates (0 = constant)
+        bool _clampWeights = false; // |weight| and |bias| stay under weightMax
+        bool _directOutput = false; // the score reaches the sum of an output without the slope of its activation
+        bool _batch = false; // backpropagation() accumulates, applyBatch() applies the mean
+
+        /* training state */
+        std::vector<brain::FType> _velocity; // momentum: last step of each slot, then of each bias
+        std::vector<brain::FType> _moments; // Adam: <mean, mean of the squares> of each slot, then of each bias
+        brain::UIType _adamSteps = 0; // Adam: updates since the moments started
+        std::vector<brain::FType> _pending; // mini-batch: gradients not applied yet (layout of _velocity)
         brain::UIType _pendingCount = 0; // mini-batch: number of gradients in _pending
-        std::pair<brain::UIType, brain::UIType> _placed = {0, 0}; // number of inputs and outputs the neurons were placed for
-        brain::Dataset _sequence; // inputs of each time step (sequence()), empty = the inputs of inputs() at every step
-        std::vector<brain::Values> _states; // training: the state of every neuron at each time step of the last apply() (the first one is the start)
+        brain::UIType _updates = 0; // updates since the init (for the rate decay)
+        brain::FType _decayScale = 1.0; // 1 / (1 + rateDecay * updates) of the update in progress
+        std::vector<std::pair<brain::FType, brain::FType>> _seen; // revive: <min, max> of the last state of each neuron
+
+        /* last execution */
+        brain::Dataset _sequence; // inputs of each time step (empty = the same inputs at every step)
+        std::vector<brain::Values> _states; // state of every neuron at each time step (the first one is the start)
+        std::vector<brain::Values> _sums; // sum of every neuron at each step (host only: the backpropagation reads them)
 
         // ---------- Pre-Function -------- //
         void init_(void) final; // set the memories up: the input neurons on the left edge and the output ones on the right edge (evenly spread), the others placed randomly, each one linked to as many of its nearest neurons as its cap allows (weights at 1.0, bias at 0.0)
