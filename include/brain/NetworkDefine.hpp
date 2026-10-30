@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 23/10/2026 by @author Tsukini
+##  @date 30/10/2026 by @author Tsukini
 
 File Name:
 ##  @file NetworkDefine.hpp

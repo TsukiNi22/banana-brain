@@ -557,7 +557,6 @@ _hot brain::Values brain::RawBrainNetwork::apply(void)
     std::vector<brain::RawBrainLink> fetchedLinks;
     const brain::RawBrainNeuron* neurons = this->_rawNeurons.data();
     const brain::RawBrainLink* links = this->_rawLinks.data();
-    const brain::UIType input = this->_ioSize.first;
     if (neurons == nullptr) {fetchedNeurons = this->_rawNeurons.toVector(); neurons = fetchedNeurons.data();}
     if (links == nullptr && !this->_rawLinks.empty()) {fetchedLinks = this->_rawLinks.toVector(); links = fetchedLinks.data();}
 
