@@ -34,7 +34,15 @@ File Description:
 lab::LabServer::LabServer(const std::string& page)
 : _page{page}
 {
-    /* Nothing */
+    // the gpu is found and its kernels are compiled now (a few seconds), not by the first request of the page
+    brain::RawBrainNetwork probe(6, {1.0, 1.0}, utils::system::MemoryMode::Auto);
+
+    probe.size(2, 1);
+    probe.weightInit();
+    (void)probe.apply({0.5, 0.5});
+    this->_info["engine"] = "server";
+    this->_info["library"] = "banana-brain";
+    this->_info["gpu"] = probe.onGpu() ? probe.gpuName() : "";
 }
 
 std::string lab::LabServer::reply_(const int status, const std::string& type, const std::string& body)
@@ -61,7 +69,10 @@ nlohmann::json lab::LabServer::route_(const std::string& path, const nlohmann::j
         this->_sessions[id] = std::make_unique<lab::BrainSession>(body["options"], lab::BrainSession::task(body["task"]));
         this->_sessions[id]->points(body);
         if (body.contains("previous") && body["previous"].is_number()) this->_sessions.erase(body["previous"].get<int>()); // the network it replaces
-        out = this->_sessions[id]->snapshot(body);
+        nlohmann::json asked = body;
+
+        asked["positions"] = true; // the page keeps them: the other answers do not send them again
+        out = this->_sessions[id]->snapshot(asked);
         out["id"] = id;
         return out;
     }
@@ -92,15 +103,7 @@ std::string lab::LabServer::answer_(const lab::Request& request, const std::stri
         content << file.rdbuf();
         return reply_(200, "text/html; charset=utf-8", content.str());
     }
-    if (request.method == "GET" && request.path == "/api/info") {
-        brain::RawBrainNetwork probe(2, {1.0, 1.0}, utils::system::MemoryMode::Auto);
-        nlohmann::json info;
-
-        info["engine"] = "server";
-        info["library"] = "banana-brain";
-        info["gpu"] = probe.onGpu() ? probe.gpuName() : "";
-        return reply_(200, "application/json", info.dump());
-    }
+    if (request.method == "GET" && request.path == "/api/info") return reply_(200, "application/json", this->_info.dump());
     if (request.method != "POST") return reply_(404, "text/plain", "not found");
     try {
         return reply_(200, "application/json", this->route_(request.path, nlohmann::json::parse(body)).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));

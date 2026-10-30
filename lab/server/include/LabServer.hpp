@@ -58,6 +58,7 @@ class LabServer {
         std::unordered_map<int, lab::Request> _pending; // <fd, request waiting for its body>
         std::unordered_map<int, std::unique_ptr<lab::BrainSession>> _sessions; // <id, network of the page>
         int _next = 1; // id of the next session
+        nlohmann::json _info; // what /api/info answers: the gpu found at the start
 
         // ---------- Pre-Function -------- //
         std::string answer_(const lab::Request& request, const std::string& body); // the response of a request (whole HTTP message)

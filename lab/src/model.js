@@ -82,6 +82,7 @@ function BrainSim(opt) {
     }
   }
   if (opt.pathInit) for (var pass = 0; pass < 3 && this.hopsAll() < 0; pass++) this.ensurePaths(); // a freed slot can cut an earlier path: checked again
+  this.steps = Math.max(this.steps, Math.ceil(this.farthest() * 1.1)); // the time steps are never under the farthest path + 10 % (the signal has to arrive)
   if (opt.weightInit !== false) for (var o = 0; o < n; o++) for (var s = 0; s < this.cap; s++) { var L = this.links[o * this.cap + s]; if (L && L.inward) { L.w = (r() * 2 - 1) * range || 0.01; this.clone(o, L).w = L.w; } }
   if (opt.biasInit !== false) for (var b = this.input; b < n; b++) this.bias[b] = (r() * 2 - 1) * range;
 }
@@ -95,6 +96,7 @@ BrainSim.prototype.direction = function (owner, other) {
 // Every input gets a path of at most pathHops inward links to every output: the missing ones take the chain of the smallest squared distances (a full neuron gives its farthest link up)
 BrainSim.prototype.reach = function (src) { var n = this.n, cap = this.cap, d = new Array(n).fill(-1), q = [src], head = 0; d[src] = 0; while (head < q.length) { var u = q[head++]; for (var s = 0; s < cap; s++) { var L = this.links[u * cap + s]; if (L && !L.inward && d[L.id] < 0) { d[L.id] = d[u] + 1; q.push(L.id); } } } return d; }; // along the outward links (the clones): n x cap
 BrainSim.prototype.pairs = function () { var c = 0; for (var i = 0; i < this.input; i++) { var d = this.reach(i); for (var o = this.n - this.output; o < this.n; o++) if (d[o] >= 0) c++; } return c; }; // pairs input -> output with a path
+BrainSim.prototype.farthest = function () { var far = 0; for (var i = 0; i < this.input; i++) { var d = this.reach(i); for (var o = this.n - this.output; o < this.n; o++) if (d[o] > far) far = d[o]; } return far; }; // the farthest pair input -> output that has a path (the pairs without one do not count)
 BrainSim.prototype.hopsAll = function () { var worst = 0; for (var i = 0; i < this.input; i++) { var d = this.reach(i); for (var o = this.n - this.output; o < this.n; o++) { if (d[o] < 0) return -1; worst = Math.max(worst, d[o]); } } return worst; }; // the farthest pair input -> output (-1: a pair without path)
 BrainSim.prototype.ensurePaths = function () {
   var n = this.n, cap = this.cap, H = Math.max(2, Math.min(this.opt.pathHops || 3, this.steps)), self = this, kept = this.kept = this.kept || []; // kept: [sender, receiver] of the links of the paths already built, never given up
@@ -294,5 +296,5 @@ BrainSim.prototype.relink = function (events) {
 BrainSim.prototype.survives = function (d, isInput, inward) { var i = d.in - (inward ? 1 : 0), o = d.out - (inward ? 0 : 1), before = isInput ? d.out : d.in, after = isInput ? o : i; return i + o >= 1 && !(before >= 1 && after === 0); };
 // Caps of the library: min(floor(percentage * n), hook(n)) (links: clamped to [1, n - 1]; steps: at least 1)
 function linksCapOf(n, pct, hook) { if (n < 2) return 0; var h = hook === null || hook === undefined ? Math.floor(3 * Math.sqrt(n)) : hook; return Math.min(Math.max(Math.min(Math.floor(n * pct), h), 1), n - 1); }
-function stepsCapOf(n, pct, hook) { var h = hook === null || hook === undefined ? Math.floor(4 * Math.log2(n)) : hook; return Math.max(1, Math.min(Math.floor(n * pct), h)); }
+function stepsCapOf(n, pct, hook) { var h = hook === null || hook === undefined ? Math.floor(Math.log2(n)) : hook; return Math.max(1, Math.min(Math.floor(n * pct), h)); }
 if (typeof module !== 'undefined') module.exports = { LayerSim: LayerSim, BrainSim: BrainSim, rng: rng, ACT: ACT, linksCapOf: linksCapOf, stepsCapOf: stepsCapOf };

@@ -9,7 +9,7 @@
   <div class="group">
     <label>Task<select id="task"></select></label>
     <label>Engine<select id="engine" title="Where the brain network runs: in the page, or with the C++ library on the server of lab/server.sh (the gpu when asked)"><option value="js" selected>JavaScript (page)</option><option value="server">Server (C++ library)</option><option value="wasm" disabled>WebAssembly (to come)</option><option value="webgpu" disabled>WebGPU (to come)</option></select></label>
-    <label class="check" title="Only faster from a few hundred neurons (measured: 10 to 15 times at 500 - 2000 hidden neurons, slower under ~100); the training options (Adam, mini-batch...) run on the host anyway"><input type="checkbox" id="engineGpu"> server on the gpu (large networks)</label>
+    <label title="Where the network of the Server engine lives: Auto = the gpu from 600 neurons (under it the host is faster: a gpu execution costs about 40 us whatever the size), Host, or the GPU whatever the size. The training options (Adam, mini-batch...) run on the host, the forward pass and the outputs on the gpu.">Device<select id="engineDevice"><option value="auto">Auto</option><option value="host">Host (CPU)</option><option value="gpu">GPU</option></select></label>
     <button type="button" class="primary" data-act="regen" title="New random seeds for both networks (the brain one filtered by the max hops)">Regenerate</button>
     <button type="button" data-act="reset" title="Rebuild both networks with their current seeds">Reset</button>
     <button type="button" data-act="defaults" title="Every parameter back to its default value (the task too), then rebuild">Defaults</button>
@@ -19,8 +19,9 @@
   </div>
   <div class="sep"></div>
   <div class="group">
-    <label>Density (curves)<input type="number" id="density" value="17" min="2" max="60" title="Points of the curves: more points leave less room for bumps between them"></label>
-    <label>2D density<input type="number" id="density2d" value="9" min="2" max="40" title="Points per axis of the 2D grids (half spiral: 2 x density points): the samples grow with its square"></label>
+    <label>Density (curves)<input type="number" id="density" value="41" min="2" max="200" title="Points of the curves: more points leave less room for bumps between them"></label>
+    <label>2D density<input type="number" id="density2d" value="17" min="2" max="60" title="Points per axis of the 2D grids (half spiral: 2 x density points): the samples grow with its square"></label>
+    <label>3D density<input type="number" id="density3d" value="7" min="2" max="14" title="Points per axis of the 3D cubes: the samples grow with its cube (7: 343 points)"></label>
     <label>Noise on targets<input type="number" id="noise" value="0" min="0" max="0.5" step="0.05" title="Uniform noise added to the trained targets only (measured on the clean ones)"></label>
     <label>Test part<input type="number" id="testPct" value="0" min="0" max="0.9" step="0.05" title="Part of the samples kept out of the training, measured after (0 = none)"></label>
     <label>Data seed<input type="number" id="dataSeed" value="1" title="Seed of the noise and of the samples kept for the test"></label>
@@ -94,12 +95,14 @@
         <label>Links at the init<select id="b-linit"><option value="random">random minimum → cap  (library)</option><option value="max">as many as the cap</option></select></label>
         <label>Far links at the init<input type="number" id="b-long" value="0" min="0" title="Slots of the cap given to neurons drawn at random among the allowed ones (not the nearest)"></label>
         <label class="check"><input type="checkbox" id="b-path" checked> a path from every input to every output at the init</label>
+        <label class="check"><input type="checkbox" id="b-inpaths"> every input keeps a path to at least one output (Server engine)</label>
+        <label class="check"><input type="checkbox" id="b-movelast"> the last weak link of a neuron is moved, not kept (Server engine)</label>
         <label>Path: max hops<input type="number" id="b-pathhops" value="3" min="2"></label>
         <label>Direction of a link<select id="b-dir"><option value="random">random (library)</option><option value="forward">left → right only (leftToRight())</option></select></label>
       </fieldset>
       <fieldset><legend>Steps and signal</legend>
         <label>Steps % (STEPS_CAP_PERCENTAGE)<input type="number" id="b-spct" value="1" step="0.05" min="0.01" max="1"></label>
-        <label>Steps hook (empty: 4 log2 n)<input type="number" id="b-shook" value="" min="1"></label>
+        <label>Steps hook (empty: log2 n, at least the farthest path + 10 %)<input type="number" id="b-shook" value="" min="1"></label>
         <label>Signal threshold<input type="number" id="b-thr" value="0" step="0.01" min="0"></label>
       </fieldset>
       <fieldset><legend>Links changing with the weights</legend>

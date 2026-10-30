@@ -25,10 +25,12 @@ var LAB_SERVER = (function () {
 function RemoteBrain(snapshot, points, opt, sample) {
   var n = snapshot.n, cap = snapshot.cap, self = this, used = new Array(n).fill(0);
   this.remote = true; this.n = n; this.cap = cap; this.steps = snapshot.steps; this.input = snapshot.input; this.output = snapshot.output; this.opt = opt;
-  this.pos = snapshot.pos.map(function (p) { return { x: p[0], y: p[1] }; }); this.bias = snapshot.bias; this.snapshot = snapshot;
+  if (snapshot.pos) RemoteBrain.lastPos = snapshot.pos; // the positions come with the creation only (flat x, y, x, y...), the answers after it do not send them again
+  var flat = RemoteBrain.lastPos || []; this.pos = []; for (var q = 0; q < n; q++) this.pos.push({ x: flat[2 * q], y: flat[2 * q + 1] });
+  this.bias = snapshot.bias; this.snapshot = snapshot;
   this.links = []; for (var i = 0; i < n * cap; i++) this.links.push(null);
-  snapshot.links.forEach(function (l) { self.links[l[0] * cap + used[l[0]]++] = { id: l[1], w: l[2], inward: true }; }); // <receiver, sender, weight>, inward slots packed
-  this.outputs = {}; (points || []).forEach(function (p, k) { self.outputs[p.join(',')] = snapshot.outputs[k]; });
+  for (var l = 0; l + 2 < snapshot.links.length; l += 3) self.links[snapshot.links[l] * cap + used[snapshot.links[l]]++] = { id: snapshot.links[l + 1], w: snapshot.links[l + 2], inward: true }; // flat <receiver, sender, weight>, inward slots packed
+  var dim = snapshot.output || 1; this.outputs = {}; (points || []).forEach(function (p, k) { self.outputs[p.join(',')] = snapshot.outputs.slice(k * dim, (k + 1) * dim); }); // flat, point after point
   this.sampleKey = sample ? sample.join(',') : null; this.states = snapshot.states || [];
 }
 RemoteBrain.prototype.forward = function (x) { var key = x.join(','), out = this.outputs[key]; if (key === this.sampleKey && this.snapshot.states) this.states = this.snapshot.states; return out ? out.slice() : new Array(this.output || 1).fill(NaN); };

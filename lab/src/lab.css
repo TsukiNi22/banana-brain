@@ -64,3 +64,12 @@ main.lab.viz { border: 0; background: none; padding: 0; margin: 0; border-radius
 .lab-out .bar span:first-child { width: 4.5em; color: var(--muted); }
 .lab-out .bar i { display: block; height: 8px; border-radius: 2px; background: var(--accent); }
 .lab-out .bar.top span:first-child { color: var(--text); font-weight: 600; }
+/* the 2D maps: the viz svg rule asks for 560px, the maps stay small */
+.lab-fn svg[aria-label$="map"] { min-width: 0; }
+.lab-cubes { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.cube-box { margin: 0; }
+.cube-box figcaption { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+canvas.cube { display: block; width: 100%; max-width: 520px; aspect-ratio: 1 / 1; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); touch-action: none; cursor: grab; }
+canvas.cube:active { cursor: grabbing; }
+.cube-tools { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 13.5px; }
+.cube-tools input[type="range"] { width: 160px; vertical-align: middle; }

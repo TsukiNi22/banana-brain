@@ -1,10 +1,12 @@
 // Tasks of the lab: makeTask(name, {density (curves), density2d (2D grids and spirals), noise, test, seed}) -> {in, out (one array per sample), test: {in, out}, kind, dims, outputs}
 // kind: 'class' (every output on the right side of 0.5) | 'reg' (every output within 0.1); dims: 1 or 2 for the continuous tasks (drawn as a curve / a map)
 var LAB_TASKS = [
-  { group: 'Logic', names: ['AND', 'OR', 'NAND', 'XOR', 'COPY', 'NOT', 'MAJ3', 'PAR3', 'MUX3', 'CMP2', 'MAJ5', 'PAR4', 'PAR5'] },
-  { group: 'Several outputs', names: ['ADD2', 'DEC2'] },
-  { group: 'Curves (x -> y)', names: ['SIN', 'SIN4', 'X2', 'BELL', 'STEP'] },
-  { group: '2D (x, y)', names: ['CIRCLE', 'CHECKER', 'SPIRALS', 'SINCOS'] },
+  { group: 'Logic', names: ['AND', 'OR', 'NAND', 'XOR', 'COPY', 'NOT', 'MAJ3', 'PAR3', 'MUX3', 'CMP2', 'MAJ5', 'PAR4', 'PAR5', 'MAJ7', 'PAR6', 'CMP3'] },
+  { group: 'Several outputs', names: ['ADD2', 'DEC2', 'ADD3', 'MUL2', 'SEG7'] },
+  { group: 'Curves (x -> y)', names: ['SIN', 'SIN4', 'X2', 'BELL', 'STEP', 'ABS', 'SAW', 'SINC', 'SMOOTH', 'CHIRP', 'STAIRS'] },
+  { group: '2D shapes (x, y)', names: ['CIRCLE', 'CHECKER', 'SPIRALS', 'RING', 'MOONS', 'TRIANGLE', 'DIAMOND', 'CROSS', 'STRIPES', 'QUADS'] },
+  { group: '2D functions (x, y)', names: ['SINCOS', 'BUMP2D', 'RIPPLE', 'SADDLE'] },
+  { group: '3D (x, y, z)', names: ['SPHERE', 'SHELL', 'OCTANTS', 'CHECK3', 'PLANE3D', 'GAUSS3D', 'SINE3D'] },
   { group: 'Scenarios (presets, your own inputs)', names: ['DIGITS', 'WORDS', 'MEMORY', 'TICTACTOE'] }
 ];
 var LAB_TASK_INFO = {
@@ -16,6 +18,13 @@ var LAB_TASK_INFO = {
   DIGITS: 'the digit drawn on a 5 x 7 grid: 35 inputs, 10 outputs (noisy variants of each digit)', WORDS: 'the language of a word (English / French), 5 bits per letter, up to 6 letters: 30 inputs, 2 outputs',
   MEMORY: 'a bit arrives at each time step (5 steps): output 1 when the first and the last bits differ (the brain must remember; the layered network sees them all at once)',
   TICTACTOE: 'who wins on a 3 x 3 board (X plane, O plane: 18 inputs): X wins, O wins, nobody',
+  MAJ7: 'majority of 7 inputs (128 samples)', PAR6: 'parity of 6 inputs (64 samples)', CMP3: 'a > b, a and b on 3 bits (6 inputs, 64 samples)',
+  ADD3: 'full adder: a + b + carry in, 3 inputs, 2 outputs (the sum bit and the carry out)', MUL2: 'a x b, 2 bits each: 4 inputs, 4 outputs (the product in binary)', SEG7: 'a digit 0 - 9 on 4 bits -> the 7 segments of a display (7 outputs)',
+  ABS: '|2x - 1| (a V)', SAW: 'sawtooth, 3 teeth', SINC: 'sinc: sin(10 (x - 0.5)) / (10 (x - 0.5)), a peak with ripples', SMOOTH: 'smoothstep: 3x^2 - 2x^3', CHIRP: 'sin of a growing frequency (hard to learn on the right side)', STAIRS: 'a staircase of 4 steps',
+  RING: '1 between two circles (radius 0.18 and 0.36)', MOONS: 'two interleaved half-circles (the classic moons)', TRIANGLE: '1 inside a triangle', DIAMOND: '1 inside a diamond |x| + |y| < 0.3', CROSS: '1 on a plus sign', STRIPES: 'diagonal stripes', QUADS: 'XOR of the two halves: opposite quadrants',
+  BUMP2D: 'a 2D gaussian bump (regression)', RIPPLE: 'rings around the center fading out (regression)', SADDLE: '(x - 0.5)(y - 0.5): a saddle (regression)',
+  SPHERE: '1 inside a ball of radius 0.35 at the center of the cube (3 inputs, drawn in 3 slices)', SHELL: '1 between two spheres (radius 0.25 and 0.4)', OCTANTS: 'XOR of the three halves: parity of the octant', CHECK3: '3D checkerboard of 3 x 3 x 3 cells',
+  PLANE3D: '1 above the plane x + y + z = 1.5 (linearly separable)', GAUSS3D: 'a 3D gaussian bump (regression)', SINE3D: 'sin(2 pi x) cos(pi y) z (regression)',
   CIRCLE: '1 inside a disc of radius 0.3 at the center', CHECKER: 'checkerboard of 3 x 3 cells', SPIRALS: 'two interleaved spirals (the classic hard one)', SINCOS: '(sin(pi x) cos(pi y) + 1) / 2 (regression)'
 };
 // The 5 x 7 font of the digits (rows, '#' = on) and the words of the two languages (a - z, 6 letters at most)
@@ -50,8 +59,38 @@ function labWinner(board) { // board: 9 cells 0 / 1 (X) / 2 (O) -> 1, 2 or 0
 }
 function labBoard(board) { var v = []; for (var c = 0; c < 9; c++) v.push(board[c] === 1 ? 1 : 0); for (var o = 0; o < 9; o++) v.push(board[o] === 2 ? 1 : 0); return v; } // X plane then O plane
 function labBits(n) { var all = []; for (var i = 0; i < (1 << n); i++) { var v = []; for (var b = 0; b < n; b++) v.push((i >> b) & 1); all.push(v); } return all; }
+var LAB_CURVES = { SIN: function (x) { return (Math.sin(2 * Math.PI * x) + 1) / 2; }, SIN4: function (x) { return (Math.sin(4 * Math.PI * x) + 1) / 2; }, X2: function (x) { return x * x; },
+  BELL: function (x) { return Math.exp(-Math.pow((x - 0.5) / 0.15, 2)); }, STEP: function (x) { return x >= 0.5 ? 1 : 0; },
+  ABS: function (x) { return Math.abs(2 * x - 1); }, SAW: function (x) { return (x * 3) % 1; }, SINC: function (x) { var u = 10 * (x - 0.5); return Math.abs(u) < 1e-9 ? 1 : (Math.sin(u) / u + 0.22) / 1.22; },
+  SMOOTH: function (x) { return 3 * x * x - 2 * x * x * x; }, CHIRP: function (x) { return (Math.sin(2 * Math.PI * (x + 3 * x * x)) + 1) / 2; }, STAIRS: function (x) { return Math.min(3, Math.floor(x * 4)) / 3; } };
+var LAB_CLASS_CURVES = ['STEP', 'STAIRS']; // the other curves are regressions
+function labArcDistance(x, y, cx, cy, r, upper) { var px = x - cx, py = y - cy; if (upper ? py >= 0 : py <= 0) return Math.abs(Math.hypot(px, py) - r); return Math.min(Math.hypot(px - r, py), Math.hypot(px + r, py)); } // to a half circle
+var LAB_SHAPES = {
+  CIRCLE: function (x, y) { return (x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5) < 0.09 ? 1 : 0; },
+  CHECKER: function (x, y) { return (Math.min(2, Math.floor(x * 3)) + Math.min(2, Math.floor(y * 3))) % 2; },
+  RING: function (x, y) { var r = Math.hypot(x - 0.5, y - 0.5); return r > 0.18 && r < 0.36 ? 1 : 0; },
+  MOONS: function (x, y) { return labArcDistance(x, y, 0.38, 0.55, 0.25, true) < labArcDistance(x, y, 0.62, 0.45, 0.25, false) ? 1 : 0; },
+  TRIANGLE: function (x, y) { return y > 0.15 && y < 1.7 * (x - 0.15) + 0.15 && y < -1.7 * (x - 0.85) + 0.15 ? 1 : 0; },
+  DIAMOND: function (x, y) { return Math.abs(x - 0.5) + Math.abs(y - 0.5) < 0.3 ? 1 : 0; },
+  CROSS: function (x, y) { var dx = Math.abs(x - 0.5), dy = Math.abs(y - 0.5); return (dx < 0.1 || dy < 0.1) && Math.max(dx, dy) < 0.38 ? 1 : 0; },
+  STRIPES: function (x, y) { return Math.floor((x + y) * 3) % 2; },
+  QUADS: function (x, y) { return (x > 0.5) !== (y > 0.5) ? 1 : 0; },
+  SINCOS: function (x, y) { return (Math.sin(Math.PI * x) * Math.cos(Math.PI * y) + 1) / 2; },
+  BUMP2D: function (x, y) { return Math.exp(-((x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5)) / 0.05); },
+  RIPPLE: function (x, y) { var r = Math.hypot(x - 0.5, y - 0.5); return (Math.sin(14 * r) * Math.exp(-3 * r) * 1.6 + 1) / 2; },
+  SADDLE: function (x, y) { return (x - 0.5) * (y - 0.5) * 2 + 0.5; } };
+var LAB_REG2 = ['SINCOS', 'BUMP2D', 'RIPPLE', 'SADDLE'];
+var LAB_SOLIDS = {
+  SPHERE: function (x, y, z) { return Math.pow(x - 0.5, 2) + Math.pow(y - 0.5, 2) + Math.pow(z - 0.5, 2) < 0.1225 ? 1 : 0; },
+  SHELL: function (x, y, z) { var r = Math.sqrt(Math.pow(x - 0.5, 2) + Math.pow(y - 0.5, 2) + Math.pow(z - 0.5, 2)); return r > 0.25 && r < 0.4 ? 1 : 0; },
+  OCTANTS: function (x, y, z) { return ((x > 0.5 ? 1 : 0) + (y > 0.5 ? 1 : 0) + (z > 0.5 ? 1 : 0)) % 2; },
+  CHECK3: function (x, y, z) { return (Math.min(2, Math.floor(x * 3)) + Math.min(2, Math.floor(y * 3)) + Math.min(2, Math.floor(z * 3))) % 2; },
+  PLANE3D: function (x, y, z) { return x + y + z > 1.5 ? 1 : 0; },
+  GAUSS3D: function (x, y, z) { return Math.exp(-(Math.pow(x - 0.5, 2) + Math.pow(y - 0.5, 2) + Math.pow(z - 0.5, 2)) / 0.06); },
+  SINE3D: function (x, y, z) { return (Math.sin(2 * Math.PI * x) * Math.cos(Math.PI * y) * z) / 2 + 0.5; } };
+var LAB_REG3 = ['GAUSS3D', 'SINE3D'];
 function makeTask(name, opt) {
-  opt = opt || {}; var density = Math.max(2, Math.round(opt.density || 9)), density2 = Math.max(2, Math.round(opt.density2d || opt.density || 9)), r = rng((opt.seed || 1) + 77), xs = [], ys = [], kind = 'class', dims = 0;
+  opt = opt || {}; var density = Math.max(2, Math.round(opt.density || 9)), density2 = Math.max(2, Math.round(opt.density2d || opt.density || 9)), density3 = Math.max(2, Math.round(opt.density3d || 7)), r = rng((opt.seed || 1) + 77), xs = [], ys = [], kind = 'class', dims = 0;
   var sum = function (v) { return v.reduce(function (a, b) { return a + b; }, 0); };
   var logic = {
     AND: [2, function (v) { return [v[0] & v[1]]; }], OR: [2, function (v) { return [v[0] | v[1]]; }], NAND: [2, function (v) { return [1 - (v[0] & v[1])]; }],
@@ -60,10 +99,16 @@ function makeTask(name, opt) {
     CMP2: [4, function (v) { return [(v[0] + 2 * v[1]) > (v[2] + 2 * v[3]) ? 1 : 0]; }], MAJ5: [5, function (v) { return [sum(v) >= 3 ? 1 : 0]; }],
     PAR4: [4, function (v) { return [sum(v) % 2]; }], PAR5: [5, function (v) { return [sum(v) % 2]; }],
     ADD2: [4, function (v) { var s = v[0] + 2 * v[1] + v[2] + 2 * v[3]; return [s & 1, (s >> 1) & 1, (s >> 2) & 1]; }],
-    DEC2: [2, function (v) { var k = v[0] + 2 * v[1], o = [0, 0, 0, 0]; o[k] = 1; return o; }]
+    DEC2: [2, function (v) { var k = v[0] + 2 * v[1], o = [0, 0, 0, 0]; o[k] = 1; return o; }],
+    MAJ7: [7, function (v) { return [sum(v) >= 4 ? 1 : 0]; }], PAR6: [6, function (v) { return [sum(v) % 2]; }],
+    CMP3: [6, function (v) { return [(v[0] + 2 * v[1] + 4 * v[2]) > (v[3] + 2 * v[4] + 4 * v[5]) ? 1 : 0]; }],
+    ADD3: [3, function (v) { var s = sum(v); return [s & 1, (s >> 1) & 1]; }],
+    MUL2: [4, function (v) { var p = (v[0] + 2 * v[1]) * (v[2] + 2 * v[3]); return [p & 1, (p >> 1) & 1, (p >> 2) & 1, (p >> 3) & 1]; }]
   };
+  var segments = [[1, 1, 1, 1, 1, 1, 0], [0, 1, 1, 0, 0, 0, 0], [1, 1, 0, 1, 1, 0, 1], [1, 1, 1, 1, 0, 0, 1], [0, 1, 1, 0, 0, 1, 1], [1, 0, 1, 1, 0, 1, 1], [1, 0, 1, 1, 1, 1, 1], [1, 1, 1, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 0, 1, 1]]; // a b c d e f g of the digits 0 - 9
   var seq = false, layerInputs = 0, labels = [], classes = null; // labels: a short name of each sample, classes: the name of each output
   if (logic[name]) labBits(logic[name][0]).forEach(function (v) { xs.push(v); ys.push(logic[name][1](v)); });
+  else if (name === 'SEG7') { for (var dg = 0; dg < 10; dg++) { xs.push([dg & 1, (dg >> 1) & 1, (dg >> 2) & 1, (dg >> 3) & 1]); ys.push(segments[dg].slice()); labels.push('digit ' + dg); } classes = ['a', 'b', 'c', 'd', 'e', 'f', 'g']; }
   else if (name === 'DIGITS') { // every digit, then noisy copies (1 to 3 pixels flipped)
     classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
     for (var d = 0; d < 10; d++) {
@@ -98,22 +143,21 @@ function makeTask(name, opt) {
     });
     classes = ['X wins', 'O wins', 'nobody'];
   }
-  else if (['SIN', 'SIN4', 'X2', 'BELL', 'STEP'].indexOf(name) >= 0) {
-    dims = 1; kind = name === 'STEP' ? 'class' : 'reg';
-    var f = { SIN: function (x) { return (Math.sin(2 * Math.PI * x) + 1) / 2; }, SIN4: function (x) { return (Math.sin(4 * Math.PI * x) + 1) / 2; }, X2: function (x) { return x * x; },
-      BELL: function (x) { return Math.exp(-Math.pow((x - 0.5) / 0.15, 2)); }, STEP: function (x) { return x >= 0.5 ? 1 : 0; } }[name];
-    for (var k = 0; k < density; k++) { var x = k / (density - 1); xs.push([x]); ys.push([f(x)]); }
+  else if (LAB_CURVES[name]) {
+    dims = 1; kind = LAB_CLASS_CURVES.indexOf(name) >= 0 ? 'class' : 'reg';
+    for (var k = 0; k < density; k++) { var x = k / (density - 1); xs.push([x]); ys.push([LAB_CURVES[name](x)]); }
   } else if (name === 'SPIRALS') {
     dims = 2;
     for (var c = 0; c < 2; c++) for (var p = 0; p < density2 * 2; p++) {
       var a = p / (density2 * 2) * 3 * Math.PI, rad = 0.05 + 0.4 * p / (density2 * 2), sx = c ? -1 : 1;
       xs.push([0.5 + sx * rad * Math.cos(a), 0.5 + sx * rad * Math.sin(a)]); ys.push([c]);
     }
+  } else if (LAB_SOLIDS[name]) { // the 3D cubes: a grid of density3 ^ 3 points
+    dims = 3; kind = LAB_REG3.indexOf(name) >= 0 ? 'reg' : 'class';
+    for (var a3 = 0; a3 < density3; a3++) for (var b3 = 0; b3 < density3; b3++) for (var c3 = 0; c3 < density3; c3++) { var p3 = [a3 / (density3 - 1), b3 / (density3 - 1), c3 / (density3 - 1)]; xs.push(p3); ys.push([LAB_SOLIDS[name](p3[0], p3[1], p3[2])]); }
   } else { // the 2D grids
-    dims = 2; kind = name === 'SINCOS' ? 'reg' : 'class';
-    var g = { CIRCLE: function (x, y) { return (x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5) < 0.09 ? 1 : 0; },
-      CHECKER: function (x, y) { return (Math.min(2, Math.floor(x * 3)) + Math.min(2, Math.floor(y * 3))) % 2; },
-      SINCOS: function (x, y) { return (Math.sin(Math.PI * x) * Math.cos(Math.PI * y) + 1) / 2; } }[name];
+    dims = 2; kind = LAB_REG2.indexOf(name) >= 0 ? 'reg' : 'class';
+    var g = LAB_SHAPES[name];
     for (var i = 0; i < density2; i++) for (var j = 0; j < density2; j++) { var gx = i / (density2 - 1), gy = j / (density2 - 1); xs.push([gx, gy]); ys.push([g(gx, gy)]); }
   }
   // the test set: a part of the samples never trained on (the same ones for a seed)

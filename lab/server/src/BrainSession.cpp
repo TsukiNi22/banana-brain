@@ -26,6 +26,8 @@ File Description:
 #include <limits>
 #include <cmath>
 
+static double rounded(const brain::FType value, const double scale = 1e4); // a number for the page (defined with the snapshot)
+
 lab::BrainSession::BrainSession(const nlohmann::json& options, lab::Task task)
 : _options{options}, _task{std::move(task)}
 {
@@ -36,20 +38,29 @@ lab::BrainSession::BrainSession(const nlohmann::json& options, lab::Task task)
     this->_seed = options.value("seed", 1);
     for (int tries = 0; tries < 500; ++tries) {
         this->_unsupported.clear();
-        this->_network = build_(options, this->_seed, this->_unsupported);
+        this->_network = build_(options, this->_seed, this->_unsupported, utils::system::MemoryMode::Ram); // the tries are on the host: only the network kept goes to the device
         const std::pair<brain::IType, brain::IType> path = hops(*this->_network);
         const brain::IType reach = every ? path.second : path.first;
 
         if (filter == 0 || (reach >= 1 && reach <= filter)) break;
         this->_seed = (this->_seed * 48271 + 11) % 2147483647;
     }
+    if (device_(options) != utils::system::MemoryMode::Ram) this->_network = build_(options, this->_seed, this->_unsupported, device_(options)); // the same seed: the same network, on the gpu
 }
 
-std::unique_ptr<brain::RawBrainNetwork> lab::BrainSession::build_(const nlohmann::json& options, const brain::IType seed, std::vector<std::string>& unsupported)
+utils::system::MemoryMode lab::BrainSession::device_(const nlohmann::json& options)
+{
+    const std::string device = options.value("device", options.value("gpu", false) ? "gpu" : "auto");
+
+    if (device == "host") return utils::system::MemoryMode::Ram;
+    if (device == "gpu") return utils::system::MemoryMode::Auto;
+    return options.value("neurons", 16) >= BRAIN_LAB_GPU_NEURONS ? utils::system::MemoryMode::Auto : utils::system::MemoryMode::Ram;
+}
+
+std::unique_ptr<brain::RawBrainNetwork> lab::BrainSession::build_(const nlohmann::json& options, const brain::IType seed, std::vector<std::string>& unsupported, const utils::system::MemoryMode mode)
 {
     const brain::UIType neurons = options.value("neurons", 16);
     const std::string activation = options.value("activation", "sigmoid");
-    const utils::system::MemoryMode mode = options.value("gpu", false) ? utils::system::MemoryMode::Auto : utils::system::MemoryMode::Ram;
     std::unique_ptr<brain::RawBrainNetwork> network = std::make_unique<brain::RawBrainNetwork>(neurons, std::pair<brain::FType, brain::FType>{options.value("width", 8.0f), options.value("height", 5.0f)}, mode);
 
     // the shape (every setter sets the links up again: the seed is given just before the last one, size())
@@ -65,26 +76,31 @@ std::unique_ptr<brain::RawBrainNetwork> lab::BrainSession::build_(const nlohmann
     }
     if (options.value("relink", "normal") == "off") network->weightLimits(0.0, std::numeric_limits<brain::FType>::max()); // never at a limit: the links never change
     else network->weightLimits(options.value("weightMin", 0.01f), options.value("weightMax", 5.0f));
-    network->invertedLinks(options.value("relink", "normal") == "inverted");
     network->threshold(options.value("threshold", 0.0f));
     network->internalActivationFunction(activation == "relu" ? brain::ActivationFunction::ReLU : (activation == "linear" ? brain::ActivationFunction::Linear : brain::ActivationFunction::Sigmoid));
     network->rand(-options.value("range", 3.0f), options.value("range", 3.0f));
-    if (options.value("direction", "random") == "forward") network->leftToRight(true);
-    if (options.value("orphans", false)) network->allowOrphans();
-    network->keepPaths(options.value("keepPaths", false));
-    network->lowNewLinks(options.value("newLink", "mean") == "low");
-    network->farLinks(options.value("farLinks", 0));
+    // the rules, all at once (the neurons and the links are set up again once), then the settings that set them up again only when they are used
+    std::uint32_t rules = 0;
+    if (options.value("direction", "random") == "forward") rules |= brain::LEFT_TO_RIGHT;
+    if (options.value("orphans", false)) rules |= brain::ORPHANS;
+    if (options.value("keepPaths", false)) rules |= brain::KEEP_PATHS;
+    if (options.value("moveLast", false)) rules |= brain::MOVE_LAST_LINK;
+    if (options.value("inputPaths", false)) rules |= brain::INPUT_PATHS;
+    if (options.value("newLink", "mean") == "low") rules |= brain::LOW_NEW_LINKS;
+    if (options.value("relink", "normal") == "inverted") rules |= brain::INVERTED_LINKS;
+    if (options.value("linkInit", "max") != "max") rules |= brain::RANDOM_LINKS;
+    if (options.value("clamp", false)) rules |= brain::CLAMP_WEIGHTS;
+    if (options.value("direct", false)) rules |= brain::DIRECT_OUTPUT;
+    if (options.value("batch", false)) rules |= brain::BATCH;
+    network->setRules(rules);
+    if (options.contains("minLinks")) network->minLinks(options.value("minLinks", 0));
+    if (options.value("farLinks", 0) != 0) network->farLinks(options.value("farLinks", 0));
     if (options.value("pathInit", false)) network->pathInit(std::max<brain::UIType>(2, options.value("pathHops", 3)));
-    network->minLinks(options.value("minLinks", 0));
-    network->randomLinks(options.value("linkInit", "max") != "max");
 
     // the training
     if (options.value("adam", false)) network->adam(options.value("adamRate", 0.03f));
     else network->momentum(options.value("momentum", 0.0f));
     network->stepLimit(options.value("stepLimit", 0.0f));
-    network->clampWeights(options.value("clamp", false));
-    network->directOutput(options.value("direct", false));
-    network->batch(options.value("batch", false));
 
     // the seed, then the neurons placed and linked
     brain::tools::rand(seed);
@@ -130,8 +146,8 @@ nlohmann::json lab::BrainSession::train(const nlohmann::json& request)
     for (brain::UIType r = 0; r < rounds; ++r) {
         if (r > 0 && budget > 0 && std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() >= budget) break;
         this->round_(train);
-        errors.push_back(error(*this->_network, this->_task.in, this->_task.clean, this->_task.sequence));
-        tests.push_back(this->_task.testIn.empty() ? std::numeric_limits<brain::FType>::quiet_NaN() : error(*this->_network, this->_task.testIn, this->_task.testOut, this->_task.sequence));
+        errors.push_back(rounded(error(*this->_network, this->_task.in, this->_task.clean, this->_task.sequence), 1e5));
+        tests.push_back(this->_task.testIn.empty() ? std::numeric_limits<brain::FType>::quiet_NaN() : rounded(error(*this->_network, this->_task.testIn, this->_task.testOut, this->_task.sequence), 1e5));
     }
     out["round"] = this->_round;
     out["errors"] = errors;
@@ -142,6 +158,12 @@ nlohmann::json lab::BrainSession::train(const nlohmann::json& request)
     return out;
 }
 
+// A number for the page: 4 decimals are enough to draw (and a float printed in full is 17 characters)
+static double rounded(const brain::FType value, const double scale)
+{
+    return std::isfinite(value) ? std::round(static_cast<double>(value) * scale) / scale : static_cast<double>(value);
+}
+
 nlohmann::json lab::BrainSession::snapshot(const nlohmann::json& request) const
 {
     const std::vector<brain::RawBrainNeuron> neurons = this->_network->rawNeurons();
@@ -150,7 +172,7 @@ nlohmann::json lab::BrainSession::snapshot(const nlohmann::json& request) const
     const std::pair<brain::IType, brain::IType> path = hops(*this->_network);
     nlohmann::json out;
 
-    // the drawing: positions, biases, inward links <receiver, sender, weight>
+    // the drawing: biases, the inward links <receiver, sender, weight> flat (the positions only when they are asked: they never change)
     out["n"] = neurons.size();
     out["cap"] = cap;
     out["steps"] = this->_network->steps();
@@ -161,24 +183,40 @@ nlohmann::json lab::BrainSession::snapshot(const nlohmann::json& request) const
     out["hopsAll"] = path.second;
     out["gpu"] = this->_network->onGpu() ? this->_network->gpuName() : "";
     out["unsupported"] = this->_unsupported;
-    out["pos"] = nlohmann::json::array();
     out["bias"] = nlohmann::json::array();
-    for (const brain::RawBrainNeuron& neuron: neurons) {
-        out["pos"].push_back({neuron.pos.x, neuron.pos.y});
-        out["bias"].push_back(neuron.bias);
+    for (const brain::RawBrainNeuron& neuron: neurons) out["bias"].push_back(rounded(neuron.bias));
+    if (request.value("positions", false)) {
+        out["pos"] = nlohmann::json::array();
+        for (const brain::RawBrainNeuron& neuron: neurons) {
+            out["pos"].push_back(rounded(neuron.pos.x, 1e3));
+            out["pos"].push_back(rounded(neuron.pos.y, 1e3));
+        }
     }
     out["links"] = nlohmann::json::array();
     for (brain::UIType owner = 0; owner < neurons.size() && cap > 0; ++owner) {
         for (brain::UIType slot = 0; slot < cap; ++slot) {
             const brain::RawBrainLink& link = links[owner * cap + slot];
-            if (link.inward) out["links"].push_back({owner, link.id, link.weight});
+
+            if (!link.inward) continue;
+            out["links"].push_back(owner);
+            out["links"].push_back(link.id);
+            out["links"].push_back(rounded(link.weight));
         }
     }
 
-    // the outputs on the points of the page (samples, curve, map), the states of the sample shown at each step
+    // the outputs on the points of the page (samples, curve, map) flat, point after point: the points together (a brain network on the host computes them side by side), the states of the sample shown at each step
     out["outputs"] = nlohmann::json::array();
-    for (const brain::Dataset& point: this->_points)
-        out["outputs"].push_back(run(*this->_network, point, this->_pointsSequence));
+    if (this->_pointsSequence) {
+        for (const brain::Dataset& point: this->_points)
+            for (const brain::FType value: run(*this->_network, point, true)) out["outputs"].push_back(rounded(value));
+    } else {
+        brain::Dataset batch;
+
+        batch.reserve(this->_points.size());
+        for (const brain::Dataset& point: this->_points) batch.push_back(point.front());
+        for (const brain::Values& values: this->_network->applyAll(batch))
+            for (const brain::FType value: values) out["outputs"].push_back(rounded(value));
+    }
     if (request.contains("sample") && request["sample"].is_array() && !request["sample"].empty()) {
         brain::RawBrainNetwork& network = *this->_network;
         bool sequence = false;
@@ -187,7 +225,13 @@ nlohmann::json lab::BrainSession::snapshot(const nlohmann::json& request) const
         if (sequence) network.sequence(sample.front());
         else network.inputs(sample.front().front());
         (void)network.apply();
-        out["states"] = network.states();
+        out["states"] = nlohmann::json::array();
+        for (const brain::Values& state: network.states()) {
+            nlohmann::json row = nlohmann::json::array();
+
+            for (const brain::FType value: state) row.push_back(rounded(value, 1e3));
+            out["states"].push_back(std::move(row));
+        }
     }
     return out;
 }

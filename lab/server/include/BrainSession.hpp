@@ -32,6 +32,8 @@ File Description:
     #include <string>                               // std::string
     #include <vector>                               // std::vector
 
+    #define BRAIN_LAB_GPU_NEURONS 600 // "auto" device: the gpu from this many neurons (under it the host is faster: a gpu execution costs about 40 us whatever the size)
+
 namespace lab { // namespace start
 //----------------------------------------------------------------//
 /* STRUCT */
@@ -63,7 +65,8 @@ class BrainSession {
         std::vector<std::string> _unsupported; // options of the page the library has not (the page shows them)
 
         // ---------- Pre-Function -------- //
-        static std::unique_ptr<brain::RawBrainNetwork> build_(const nlohmann::json& options, const brain::IType seed, std::vector<std::string>& unsupported); // a network from the options and the seed
+        static std::unique_ptr<brain::RawBrainNetwork> build_(const nlohmann::json& options, const brain::IType seed, std::vector<std::string>& unsupported, const utils::system::MemoryMode mode); // a network from the options, the seed and the memory (ram or the gpu)
+        static utils::system::MemoryMode device_(const nlohmann::json& options); // the memory the options ask: "host", "gpu", or "auto" (the gpu from BRAIN_LAB_GPU_NEURONS neurons: under it the host is faster)
         void round_(const nlohmann::json& train); // one round: a score per sample, the mini-batch applied once, revive at the end
 
     public:

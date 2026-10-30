@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function best(v) { var k = 0; for (var i = 1; i < v.length; i++) if (v[i] > v[k]) k = i; return k; }
   function outText(t, v) { return t.classes && v.length > 1 ? t.classes[best(v)] + ' ' + f2(v[best(v)]) : vec(v); } // a class: its name and its output
   function sampleText(t, i) { var x = t.all.in[i]; return (t.all.label ? t.all.label[i] : '(' + x.map(f2).join(', ') + ')') + ' → ' + outText(t, t.all.out[i]); }
-  function taskOpt() { return { density: num('density', 17), density2d: num('density2d', 9), noise: num('noise', 0), test: num('testPct', 0), seed: Math.round(num('dataSeed', 1)) }; }
+  function taskOpt() { return { density: num('density', 41), density2d: num('density2d', 17), density3d: num('density3d', 7), noise: num('noise', 0), test: num('testPct', 0), seed: Math.round(num('dataSeed', 1)) }; }
   function hidden() { return Array.prototype.map.call(document.querySelectorAll('#l-list input'), function (el) { return Math.max(1, parseInt(el.value, 10) || 1); }); } // neurons of each hidden layer
   function layerField(value) {
     var label = document.createElement('label'), input = document.createElement('input');
@@ -35,16 +35,18 @@ document.addEventListener('DOMContentLoaded', function () {
     var o = brainOpt(seed), tr = brainTrain();
     return { seed: seed, neurons: o.neurons, input: o.input, output: o.output, width: o.width, height: o.height, linksPct: num('b-lpct', 1), linksHook: optNum('b-lhook'), stepsPct: num('b-spct', 1), stepsHook: optNum('b-shook'),
       weightMin: o.min, weightMax: o.max, range: o.range, threshold: o.threshold, activation: o.activation, weightInit: o.weightInit, biasInit: o.biasInit, direction: o.direction, relink: o.relink,
-      keepPaths: o.protectPath, orphans: o.orphans, newLink: o.newLink, farLinks: o.longLinks, pathInit: o.pathInit, pathHops: o.pathHops, momentum: o.momentum, adam: o.adam, adamRate: o.adamRate,
-      stepLimit: o.stepClip, clamp: o.clamp, direct: o.direct, batch: tr.batch, linkInit: o.linkInit, minLinks: o.minLinks, filter: Math.round(num('b-filter', 0)), allInputs: $('b-allin').checked, gpu: $('engineGpu').checked };
+      keepPaths: o.protectPath, inputPaths: $('b-inpaths').checked, moveLast: $('b-movelast').checked, orphans: o.orphans, newLink: o.newLink, farLinks: o.longLinks, pathInit: o.pathInit, pathHops: o.pathHops, momentum: o.momentum, adam: o.adam, adamRate: o.adamRate,
+      stepLimit: o.stepClip, clamp: o.clamp, direct: o.direct, batch: tr.batch, linkInit: o.linkInit, minLinks: o.minLinks, filter: Math.round(num('b-filter', 0)), allInputs: $('b-allin').checked, device: $('engineDevice').value };
   }
   function serverTask(t) { return { in: t.in, out: t.out, clean: t.clean, testIn: t.test.in, testOut: t.test.out, kind: t.kind }; }
   // The points the page reads on the brain of the server: every sample, then the curve (101 points) or the map (30 x 30)
+  var CURVE = 200, MAP = 40, CUBE = 12; // points of the drawings: a curve (CURVE + 1), a map (MAP x MAP), a cube (CUBE^3 points seen in the 3D viewer)
   function points(t) {
     var p = t.all.in.slice();
     if (state.custom) p.push(state.custom); // the input of the user (the panel)
-    if (t.dims === 1) for (var k = 0; k <= 100; k++) p.push([k / 100]);
-    if (t.dims === 2) for (var a = 0; a < 30; a++) for (var c = 0; c < 30; c++) p.push([(a + 0.5) / 30, (c + 0.5) / 30]);
+    if (t.dims === 1) for (var k = 0; k <= CURVE; k++) p.push([k / CURVE]);
+    if (t.dims === 2) for (var a = 0; a < MAP; a++) for (var c = 0; c < MAP; c++) p.push([(a + 0.5) / MAP, (c + 0.5) / MAP]);
+    if (t.dims === 3) for (var a3 = 0; a3 < CUBE; a3++) for (var b3 = 0; b3 < CUBE; b3++) for (var c3 = 0; c3 < CUBE; c3++) p.push([(a3 + 0.5) / CUBE, (b3 + 0.5) / CUBE, (c3 + 0.5) / CUBE]);
     return p;
   }
   // The server engine stays chosen when it stops answering: it is asked again every 2 s, the network is built again once it is back
@@ -67,15 +69,16 @@ document.addEventListener('DOMContentLoaded', function () {
     state.brain = new RemoteBrain(data.snapshot || data, pts, brainOpt(1), sample);
     var snap = data.snapshot || data;
     if (snap.seed !== undefined) $('b-seed').value = snap.seed;
-    $('msg').textContent = 'Server engine' + (snap.gpu ? ' on ' + snap.gpu : ' (host)') + (snap.unsupported && snap.unsupported.length ? ' — ignored by the library: ' + snap.unsupported.join(', ') : '');
+    $('msg').textContent = 'Server engine' + (snap.gpu ? ' on ' + snap.gpu + ($('b-adam').checked || $('b-batch').checked || num('b-mom', 0) > 0 ? ' (Adam, mini-batch and momentum train on the host: untick them to train on the gpu, about 9 times faster at 700 neurons)' : '') : ' (host)') + (snap.unsupported && snap.unsupported.length ? ' — ignored by the library: ' + snap.unsupported.join(', ') : '');
   }
   function brainHops(b) { return $('b-allin').checked ? b.hopsAll() : b.hops(); }
   function record() { var t = state.task; state.lh.push(labError(state.layer, t.in, t.clean)); state.bh.push(labError(state.brain, t.in, t.clean)); state.lth.push(labError(state.layer, t.test.in, t.test.out)); state.bth.push(labError(state.brain, t.test.in, t.test.out)); }
   function build() {
     state.task = makeTask($('task').value, taskOpt());
     var t = state.task;
+    state.cubeMin = t.kind === 'reg' ? 0.2 : 0.5; if ($('cubeMin')) { $('cubeMin').value = state.cubeMin; $('cubeMinOut').textContent = state.cubeMin; } // a classification shows what is called 1, a regression what is above 0.2
     $('taskInfo').textContent = t.name + ': ' + LAB_TASK_INFO[t.name] + ' — ' + (t.seq ? '1 input per time step (' + t.all.in[0].length + ' steps; the layered network gets ' + t.layerInputs + ' inputs)' : t.inputs + ' input(s)') + ', ' + t.outputs + ' output(s), ' + t.in.length + ' trained sample(s)' + (t.test.in.length ? ', ' + t.test.in.length + ' for the test' : '') + (t.kind === 'reg' ? ', regression' : '');
-    if (num('b-wmin', 0) >= num('b-wmax', 1)) $('msg').textContent = 'weightMin should be under weightMax: the library refuses it.'; else $('msg').textContent = '';
+    if (state.engine !== 'server' && ($('b-inpaths').checked || $('b-movelast').checked)) $('msg').textContent = 'The rules "every input keeps a path" and "move the last weak link" only run on the Server engine (the page engine ignores them).'; else if (num('b-wmin', 0) >= num('b-wmax', 1)) $('msg').textContent = 'weightMin should be under weightMax: the library refuses it.'; else $('msg').textContent = '';
     padBuild();
     state.layer = new LayerSim([t.layerInputs].concat(hidden(), [t.outputs]), Math.round(num('l-seed', 3)), { activation: $('l-act').value, range: num('l-range', 1), weightInit: $('l-wi').checked, biasInit: $('l-bi').checked });
     state.brain = new BrainSim(brainOpt(Math.round(num('b-seed', 1)))); // the server one replaces it when it answers
@@ -198,32 +201,97 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     $(log ? 'chartLog' : 'chart').innerHTML = s;
   }
+  // ---------- the 3D viewer of the cubes: both networks in the same turning view (canvas, no library) ----------
+  var cam = { yaw: 0.8, pitch: 0.5, zoom: 1 }, cubeData = { layer: [], brain: [] };
+  function cubeValues(net) { var v = []; for (var a = 0; a < CUBE; a++) for (var b = 0; b < CUBE; b++) for (var c = 0; c < CUBE; c++) v.push(net.forward([(a + 0.5) / CUBE, (b + 0.5) / CUBE, (c + 0.5) / CUBE])[0]); return v; }
+  function cubeBuild() { // the canvases and the tools, once (the view stays where the user left it while the networks train)
+    var min = state.cubeMin === undefined ? 0.5 : state.cubeMin;
+    $('fn').className = 'lab-fn lab-cubes';
+    $('fn').innerHTML = '<figure class="cube-box"><figcaption>Layered</figcaption><canvas class="cube" data-net="layer" aria-label="Layered network in 3D"></canvas></figure><figure class="cube-box"><figcaption>Brain</figcaption><canvas class="cube" data-net="brain" aria-label="Brain network in 3D"></canvas></figure>'
+      + '<div class="cube-tools"><label>show the outputs above <input type="range" id="cubeMin" min="0" max="0.95" step="0.05" value="' + min + '"> <output id="cubeMinOut">' + min + '</output></label><label class="check"><input type="checkbox" id="cubeSpin"> turn by itself</label><button type="button" id="cubeReset">Reset the view</button></div>';
+  }
+  function cubeRender() {
+    var t = state.task, cs = getComputedStyle(document.documentElement), ink = cs.getPropertyValue('--text').trim() || '#000', line = cs.getPropertyValue('--line').trim() || '#888', accent = cs.getPropertyValue('--accent').trim() || '#2f5bd3', ok = cs.getPropertyValue('--ok').trim() || '#1f7a4a', warn = cs.getPropertyValue('--warn').trim() || '#a8540a';
+    var min = parseFloat($('cubeMin') ? $('cubeMin').value : 0.5), reg = t.kind === 'reg';
+    Array.prototype.forEach.call(document.querySelectorAll('canvas.cube'), function (cv) {
+      var dpr = window.devicePixelRatio || 1, size = Math.max(200, Math.min(520, cv.clientWidth || 360));
+      if (cv.width !== Math.round(size * dpr)) { cv.width = Math.round(size * dpr); cv.height = Math.round(size * dpr); }
+      var g = cv.getContext('2d'), S = cv.width, values = cubeData[cv.getAttribute('data-net')], cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+      var project = function (x, y, z) { // the cube centered on 0, turned by yaw (around the vertical) then pitch, then a perspective
+        var X = x - 0.5, Y = y - 0.5, Z = z - 0.5, x1 = X * cy + Z * sy, z1 = -X * sy + Z * cy, y1 = Y * cp - z1 * sp, z2 = Y * sp + z1 * cp, d = 2.6 / (2.6 + z2);
+        return { x: S / 2 + x1 * d * S * 0.46 * cam.zoom, y: S / 2 - y1 * d * S * 0.46 * cam.zoom, d: d, z: z2 };
+      };
+      g.clearRect(0, 0, S, S);
+      var items = [], cell = S * 0.46 * cam.zoom / CUBE * 1.05, k = 0;
+      for (var a = 0; a < CUBE; a++) for (var b = 0; b < CUBE; b++) for (var c = 0; c < CUBE; c++, k++) {
+        var v = values[k]; if (!isFinite(v)) continue; v = Math.max(0, Math.min(1, v));
+        if (reg ? v < min : v < min) continue; // a classification shows the cells the network calls 1, a regression the cells above the level
+        var p = project((a + 0.5) / CUBE, (b + 0.5) / CUBE, (c + 0.5) / CUBE); p.v = v; p.kind = 0; items.push(p);
+      }
+      t.all.in.forEach(function (q, i) { var p = project(q[0], q[1], q[2]); p.kind = 1; p.i = i; items.push(p); });
+      items.sort(function (u, w) { return w.z - u.z; }); // far first
+      var edges = [[0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 1], [1, 1, 1, 0, 1, 1], [1, 1, 1, 1, 0, 1], [1, 1, 1, 1, 1, 0], [1, 0, 0, 1, 1, 0], [1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0], [0, 1, 0, 0, 1, 1], [0, 0, 1, 1, 0, 1], [0, 0, 1, 0, 1, 1]];
+      g.lineWidth = Math.max(1, dpr); g.strokeStyle = line; g.globalAlpha = 0.6;
+      edges.forEach(function (e) { var u = project(e[0], e[1], e[2]), w = project(e[3], e[4], e[5]); g.beginPath(); g.moveTo(u.x, u.y); g.lineTo(w.x, w.y); g.stroke(); });
+      g.globalAlpha = 1; g.fillStyle = ink; g.font = Math.round(11 * dpr) + 'px sans-serif';
+      [['x', 1.08, 0, 0], ['y', 0, 1.08, 0], ['z', 0, 0, 1.08]].forEach(function (l) { var p = project(l[1], l[2], l[3]); g.fillText(l[0], p.x, p.y); });
+      items.forEach(function (p) {
+        if (p.kind === 0) { g.globalAlpha = reg ? 0.15 + 0.7 * p.v : 0.55; g.fillStyle = accent; var r = cell * p.d * (reg ? 0.35 + 0.45 * p.v : 0.6); g.fillRect(p.x - r, p.y - r, 2 * r, 2 * r); }
+        else { var out = t.all.out[p.i][0] >= 0.5; g.globalAlpha = out ? 1 : 0.28; g.fillStyle = out ? ok : warn; g.strokeStyle = ink; g.lineWidth = dpr; g.beginPath(); g.arc(p.x, p.y, (out ? 3.6 : 2) * (t.isTest[p.i] ? 1.3 : 1) * dpr * p.d, 0, 2 * Math.PI); if (!t.isTest[p.i]) g.fill(); g.stroke(); } // the samples at 1 stand out, the ones at 0 (most of a shape) stay light
+      });
+      g.globalAlpha = 1;
+    });
+  }
+  function drawCube() {
+    if (!document.querySelector('canvas.cube')) cubeBuild();
+    cubeData.layer = cubeValues(state.layer); cubeData.brain = cubeValues(state.brain);
+    cubeRender();
+  }
+  var spinning = false;
+  function cubeSpin() { if (!spinning) return; cam.yaw += 0.01; cubeRender(); requestAnimationFrame(cubeSpin); }
+  $('fn').addEventListener('pointerdown', function (e) {
+    var cv = e.target.closest ? e.target.closest('canvas.cube') : null; if (!cv) return;
+    var last = { x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* a pointer that is already gone */ }
+    var move = function (m) { cam.yaw += (m.clientX - last.x) * 0.01; cam.pitch = Math.max(-1.45, Math.min(1.45, cam.pitch + (m.clientY - last.y) * 0.01)); last = { x: m.clientX, y: m.clientY }; cubeRender(); };
+    var up = function () { cv.removeEventListener('pointermove', move); cv.removeEventListener('pointerup', up); cv.removeEventListener('pointercancel', up); };
+    cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  });
+  $('fn').addEventListener('wheel', function (e) { if (!(e.target.closest && e.target.closest('canvas.cube'))) return; e.preventDefault(); cam.zoom = Math.max(0.5, Math.min(3, cam.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))); cubeRender(); }, { passive: false });
+  $('fn').addEventListener('dblclick', function (e) { if (e.target.closest && e.target.closest('canvas.cube')) { cam.yaw = 0.8; cam.pitch = 0.5; cam.zoom = 1; cubeRender(); } });
+  $('fn').addEventListener('input', function (e) { if (e.target.id === 'cubeMin') { state.cubeMin = parseFloat(e.target.value); $('cubeMinOut').textContent = e.target.value; cubeRender(); } });
+  $('fn').addEventListener('change', function (e) { if (e.target.id === 'cubeSpin') { spinning = e.target.checked; cubeSpin(); } });
+  $('fn').addEventListener('click', function (e) { if (e.target.id === 'cubeReset') { cam.yaw = 0.8; cam.pitch = 0.5; cam.zoom = 1; cubeRender(); } });
+
   // 1D: the samples and both predicted curves; 2D: a map of the first output of each network with the samples on it
   function drawFunction() {
     var t = state.task, card = $('fnCard');
     card.style.display = t.dims ? '' : 'none'; if (!t.dims) return;
-    $('fn-info').textContent = t.dims === 1 ? 'the predicted curve of each network on [0, 1]' : 'first output of each network on the square [0, 1]² (dark = 1)';
+    $('fn-info').textContent = t.dims === 1 ? 'the predicted curve of each network on [0, 1]' : (t.dims === 3 ? 'the output of each network in the cube [0, 1]³: drag to turn, wheel to zoom, double click to reset; the dots are the samples (green = 1, orange = 0, ring = test)' : 'first output of each network on the square [0, 1]² (dark = 1)');
     var dots = function (X, Y) { return t.all.in.map(function (p, i) { return t.isTest[i] ? '<circle class="dot-test" cx="' + X(p).toFixed(1) + '" cy="' + Y(p, i).toFixed(1) + '" r="3.5"/>' : '<circle class="dot" cx="' + X(p).toFixed(1) + '" cy="' + Y(p, i).toFixed(1) + '" r="3"/>'; }).join(''); };
     if (t.dims === 1) {
       var W = 760, H = 260, l = 40, rr = 15, tp = 10, b = 26, xs = function (v) { return l + (W - l - rr) * v; }, ys = function (v) { return tp + (H - tp - b) * (1 - Math.max(-0.1, Math.min(1.1, v)) / 1.0); }, s = '';
       for (var g = 0; g <= 4; g++) s += '<line class="grid" x1="' + l + '" x2="' + (W - rr) + '" y1="' + ys(g / 4) + '" y2="' + ys(g / 4) + '"/><text x="' + (l - 6) + '" y="' + (ys(g / 4) + 4) + '" text-anchor="end">' + (g / 4).toFixed(2) + '</text>';
-      [[state.layer, 'c-layer'], [state.brain, 'c-brain']].forEach(function (p) { var pts = []; for (var k = 0; k <= 100; k++) { var v = k / 100; pts.push(xs(v).toFixed(1) + ',' + ys(p[0].forward([v])[0]).toFixed(1)); } s += '<polyline class="' + p[1] + '" points="' + pts.join(' ') + '"/>'; });
+      [[state.layer, 'c-layer'], [state.brain, 'c-brain']].forEach(function (p) { var pts = []; for (var k = 0; k <= CURVE; k++) { var v = k / CURVE; pts.push(xs(v).toFixed(1) + ',' + ys(p[0].forward([v])[0]).toFixed(1)); } s += '<polyline class="' + p[1] + '" points="' + pts.join(' ') + '"/>'; });
       s += dots(function (p) { return xs(p[0]); }, function (p, i) { return ys(t.all.out[i][0]); });
       $('fn').innerHTML = '<svg viewBox="0 0 760 260" role="img" aria-label="Predicted curves">' + s + '</svg>';
       return;
     }
-    var cells = 30, html = '';
-    [[state.layer, 'Layered'], [state.brain, 'Brain']].forEach(function (p) {
-      var S = 300, m = 24, sz = S / cells, s = '<text class="map-title" x="' + m + '" y="16">' + p[1] + '</text>';
+    if (t.dims === 3) { drawCube(); return; }
+    // a map of the first output of a network on the square [0, 1]^2 with the samples on it
+    var map = function (net, title, cells, size) {
+      var S = size, m = 24, sz = S / cells, s = '<text class="map-title" x="' + m + '" y="16">' + title + '</text>';
       for (var a = 0; a < cells; a++) for (var c = 0; c < cells; c++) {
-        var v = Math.max(0, Math.min(1, p[0].forward([(a + 0.5) / cells, (c + 0.5) / cells])[0]));
+        var v = Math.max(0, Math.min(1, net.forward([(a + 0.5) / cells, (c + 0.5) / cells])[0]));
         s += '<rect x="' + (m + a * sz).toFixed(1) + '" y="' + (m + (cells - 1 - c) * sz).toFixed(1) + '" width="' + (sz + 0.3).toFixed(2) + '" height="' + (sz + 0.3).toFixed(2) + '" style="fill:var(--accent)" fill-opacity="' + v.toFixed(2) + '"/>';
       }
-      s += dots(function (q) { return m + q[0] * S; }, function (q) { return m + (1 - q[1]) * S; });
-      s += t.all.in.map(function (q, i) { return '<circle cx="' + (m + q[0] * S).toFixed(1) + '" cy="' + (m + (1 - q[1]) * S).toFixed(1) + '" r="1.6" style="fill:' + (t.all.out[i][0] >= 0.5 ? 'var(--ok)' : 'var(--warn)') + '"/>'; }).join('');
-      html += '<svg viewBox="0 0 ' + (S + 2 * m) + ' ' + (S + 2 * m) + '" role="img" aria-label="' + p[1] + ' prediction map">' + s + '</svg>';
-    });
-    $('fn').innerHTML = html;
+      t.all.in.forEach(function (q, i) {
+        var cx = (m + q[0] * S).toFixed(1), cy = (m + (1 - q[1]) * S).toFixed(1);
+        s += (t.isTest[i] ? '<circle class="dot-test" cx="' + cx + '" cy="' + cy + '" r="3.5"/>' : '<circle class="dot" cx="' + cx + '" cy="' + cy + '" r="3"/>') + '<circle cx="' + cx + '" cy="' + cy + '" r="1.6" style="fill:' + (t.all.out[i][0] >= 0.5 ? 'var(--ok)' : 'var(--warn)') + '"/>';
+      });
+      return '<svg viewBox="0 0 ' + (S + 2 * m) + ' ' + (S + 2 * m) + '" role="img" aria-label="' + title + ' prediction map">' + s + '</svg>';
+    };
+    $('fn').className = 'lab-fn';
+    $('fn').innerHTML = map(state.layer, 'Layered', MAP, 300) + map(state.brain, 'Brain', MAP, 300);
   }
   function drawOutputs() {
     var t = state.task, shown = parseInt($('sample').value, 10) || 0, s = '<thead><tr><th>Sample</th><th>Expected</th><th>Layered</th><th>Brain</th></tr></thead><tbody>', max = 64;
@@ -363,12 +431,12 @@ document.addEventListener('DOMContentLoaded', function () {
     LAB_SERVER.info(1500).then(function (info) { $('msg').textContent = 'Server engine' + (info.gpu ? ' (gpu: ' + info.gpu + ')' : ''); build(); }).catch(function (e) { e.network = true; engineLost(e); });
   }
   $('engine').addEventListener('change', function () { setEngine($('engine').value); });
-  $('engineGpu').addEventListener('change', function () { if (state.engine === 'server') build(); });
+  $('engineDevice').addEventListener('change', function () { if (state.engine === 'server') build(); });
   // The values written in the page are the defaults: the browser must not restore the ones of an older visit
   var fields = document.querySelectorAll('.lab input, .lab select'), defaults = new Map();
   Array.prototype.forEach.call(fields, function (el) {
     el.setAttribute('autocomplete', 'off');
-    if (el.id === 'sample' || el.id === 'engine' || el.id === 'engineGpu' || el.closest('#l-list')) return; // filled by the page (the samples, the hidden layers) or the choice of the engine
+    if (el.id === 'sample' || el.id === 'engine' || el.id === 'engineDevice' || el.closest('#l-list')) return; // filled by the page (the samples, the hidden layers) or the choice of the engine
     var selected = el.tagName === 'SELECT' ? (Array.prototype.find.call(el.options, function (o) { return o.defaultSelected; }) || el.options[0]) : null;
     defaults.set(el, el.type === 'checkbox' ? el.defaultChecked : (el.tagName === 'SELECT' ? (selected ? selected.value : '') : el.defaultValue));
   });
@@ -391,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function () {
   restoreDefaults(); // also undoes what the browser restored by itself
   $('l-add').addEventListener('click', function () { var last = hidden(); layerField(last.length ? last[last.length - 1] : 4); build(); });
   $('l-del').addEventListener('click', function () { var list = $('l-list'); if (list.lastElementChild) list.removeChild(list.lastElementChild); build(); }); // no hidden layer: the inputs go straight to the output
-  ['density', 'density2d', 'noise', 'testPct', 'dataSeed'].forEach(function (id) { $(id).addEventListener('change', build); });
+  ['density', 'density2d', 'density3d', 'noise', 'testPct', 'dataSeed'].forEach(function (id) { $(id).addEventListener('change', build); });
   $('task').addEventListener('change', function () { // a scenario comes with its settings; leaving one gives the defaults back
     if (LAB_PRESETS[$('task').value] || state.preset) restoreDefaults(true);
     build();
