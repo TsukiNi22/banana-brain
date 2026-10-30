@@ -104,4 +104,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTML documentation (`docs/`: technical page + interactive project graph, EN / FR, published on GitHub Pages)
 - `setup.sh` (package repository + GPG key + installation), README, CHANGELOG, license CC BY-NC-SA 4.0
 
+[v1.0.0]: https://github.com/TsukiNi22/banana-brain/releases/tag/v1.0.0
 [v0.0.0]: https://github.com/TsukiNi22/banana-brain/releases/tag/v0.0.0
