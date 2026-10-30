@@ -307,7 +307,7 @@ _hot void brain::LayerNetwork::learn_(const brain::Values& errors)
                 for (brain::UIType j = 0; j < neuron.count; ++j)
                     row[j] -= slope * previous[j];
             }
-            neuron.bias -= slope;
+            if (!this->_batch) neuron.bias -= slope; // in a mini-batch the bias only changes at applyBatch()
         }
         std::swap(delta, below);
     }

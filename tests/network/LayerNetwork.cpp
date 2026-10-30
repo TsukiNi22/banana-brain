@@ -19,6 +19,7 @@ File Description:
 
 #define _Exception
 #include "brain/network/Network.hpp"
+#include "brain/tools/random.hpp"
 #include "brain/tools/bytes.hpp"
 #include <gtest/gtest.h>
 #include <functional>
@@ -439,4 +440,37 @@ TEST(LayerNetwork, BackpropagationMatchesTheNumericalGradient) {
 
     EXPECT_NE(network.serialize(), start);
     EXPECT_LT(lossAfter, lossBefore);
+}
+
+TEST(LayerNetwork, MiniBatchOfTheSameSampleIsOneOnlineUpdate) {
+    // on the host memory (a gpu machine would hide a difference): the mean of two equal gradients is the gradient of one sample, the weights AND the biases change once, at applyBatch()
+    brain::LayerNetwork online(brain::Layers{4, 1}, utils::system::MemoryMode::Ram);
+    brain::LayerNetwork grouped(brain::Layers{4, 1}, utils::system::MemoryMode::Ram);
+    const brain::Values sample = {0.2f, 0.7f};
+
+    for (brain::LayerNetwork* network: {&online, &grouped}) {
+        network->rand(-1.0f, 1.0f);
+        network->internalActivationFunction(brain::ActivationFunction::Sigmoid);
+        brain::tools::rand(6);
+        network->size(2, 1);
+        network->weightInit();
+        network->biasInit();
+    }
+    EXPECT_FALSE(grouped.batch());
+    grouped.batch(true);
+    EXPECT_TRUE(grouped.batch());
+    for (brain::UIType epoch = 0; epoch < 5; ++epoch) {
+        online.inputs(sample);
+        online.backpropagation(brain::Values{0.5f * (online.apply()[0] - 0.9f)});
+        for (brain::UIType k = 0; k < 2; ++k) {
+            grouped.inputs(sample);
+            grouped.backpropagation(brain::Values{0.5f * (grouped.apply()[0] - 0.9f)});
+        }
+        EXPECT_EQ(grouped.pending(), 2u);
+        grouped.applyBatch();
+        EXPECT_EQ(grouped.pending(), 0u);
+        EXPECT_NEAR(grouped.apply(sample)[0], online.apply(sample)[0], 1e-6f) << "epoch " << epoch;
+    }
+    grouped.applyBatch(); // nothing pending: nothing done
+    EXPECT_NEAR(grouped.apply(sample)[0], online.apply(sample)[0], 1e-6f);
 }
