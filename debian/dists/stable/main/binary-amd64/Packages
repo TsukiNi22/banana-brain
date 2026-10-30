@@ -8,9 +8,9 @@ Breaks: libbrain-pre
 Replaces: libbrain-pre (<= 1.0.0)
 Filename: pool/main/libbrain-1.0.0-Linux.deb
 Size: 628
-MD5sum: 91f5268e39090a2646941651de8616d7
-SHA1: a108b572122abcb5f69239bd88bf9dfb8a4826d8
-SHA256: bf76bcc0c6e22880cdfc431e00d1bde48a352fddd4918ee42de43c96e701a8a2
+MD5sum: c3ac3dba0ffc9e418eaf540b192edcf9
+SHA1: fe3936071d3ac9e337dd80a36433ced86144ec83
+SHA256: 81c2d54d2c7f4e08736146f74dcdc54f4e79abe3861dd7bab12ae448a13517b1
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -20,15 +20,15 @@ Package: libbrain-as
 Version: 1.0.0-1
 Maintainer: TsukiNi22
 Installed-Size: 21034
-Depends: libbrain-dev (>= 1.0.0), libbrain-dev-as (>= 1.0.0), libutils-as (>= 4.1.0)
+Depends: libbrain-dev (>= 1.0.0), libbrain-dev-as (>= 1.0.0), libutils-as (>= 4.3.0) | libutils-as-pre (>= 4.3.0)
 Conflicts: libbrain-as-pre
 Breaks: libbrain-as-pre
 Replaces: libbrain-as-pre (<= 1.0.0)
 Filename: pool/main/libbrain-as-1.0.0-Linux-lib.deb
-Size: 3638812
-MD5sum: b333a92c87fc38be22e684004d6191cf
-SHA1: 90c67aa690b2acede0caa14bb5507a427683e1ed
-SHA256: 4d0750f57a2fd7924a9003c35ffc61798927ba097a49f48ea873119cdf114c38
+Size: 3638822
+MD5sum: f0d33d8910ec5d14fba9aa5af0923a49
+SHA1: 4959e3a484f37df70aa23f95e262424be78101ff
+SHA256: 0795e0a9592ee6f23803fd5e28af2aec57dcdc1375aa4a29645dd8f4665fd7c6
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -38,16 +38,16 @@ Package: libbrain-db
 Version: 1.0.0-1
 Maintainer: TsukiNi22
 Installed-Size: 17117
-Depends: libbrain-dev (>= 1.0.0), libbrain-dev-db (>= 1.0.0), libutils-db (>= 4.1.0)
+Depends: libbrain-dev (>= 1.0.0), libbrain-dev-db (>= 1.0.0), libutils-db (>= 4.3.0) | libutils-db-pre (>= 4.3.0)
 Suggests: gdb
 Conflicts: libbrain-db-pre
 Breaks: libbrain-db-pre
 Replaces: libbrain-db-pre (<= 1.0.0)
 Filename: pool/main/libbrain-db-1.0.0-Linux-lib.deb
-Size: 2963100
-MD5sum: 3035286b41e4fe1301bc73cdaca6f8e4
-SHA1: 16a8224b573c08927c6b4445c3bc132ccba2e8b8
-SHA256: 360a170bb7ba637319abcd8e7d0d02c9135cba31e3692209907dc47e17e855bb
+Size: 2963116
+MD5sum: ed4ed6ca1604d2903f6ca32237468220
+SHA1: cee64804a0ad331be6eda0dbee02c3eca1bb5f45
+SHA256: 97dac9d10a9810441c8d19898d1480ab914aaa658cc3229bd81588f9230270b4
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -57,15 +57,15 @@ Package: libbrain-dev
 Version: 1.0.0-1
 Maintainer: TsukiNi22
 Installed-Size: 213
-Depends: libutils-dev (>= 4.1.0)
+Depends: libutils-dev (>= 4.3.0) | libutils-dev-pre (>= 4.3.0)
 Conflicts: libbrain-dev-pre
 Breaks: libbrain-dev-pre
 Replaces: libbrain-dev-pre (<= 1.0.0)
 Filename: pool/main/libbrain-dev-1.0.0-Linux-headers.deb
-Size: 37214
-MD5sum: a2f6f94b48cbf002ab6a7a778a8ce940
-SHA1: a52dcf25ddb90cc70bb2da5d5b976267a0cb95b8
-SHA256: b53dd52ee894112c7c947f37f30877f7158dec5cce826352895c23ebdde5e7c8
+Size: 37212
+MD5sum: 7b66c2886f1ac4b5cebcfbf85e511eab
+SHA1: f3915d6c51a497fb8a7f729d040326068ef89b1d
+SHA256: a6ced06e98c555a6b4ce5cdb734a9d73bdbec0a6dac045b0a61494af6d2e2c14
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -75,15 +75,15 @@ Package: libbrain-dev-as
 Version: 1.0.0-1
 Maintainer: TsukiNi22
 Installed-Size: 17
-Depends: libutils-as (>= 4.1.0)
+Depends: libutils-as (>= 4.3.0) | libutils-as-pre (>= 4.3.0)
 Conflicts: libbrain-dev-as-pre
 Breaks: libbrain-dev-as-pre
 Replaces: libbrain-dev-as-pre (<= 1.0.0)
 Filename: pool/main/libbrain-dev-1.0.0-Linux-headers-as.deb
-Size: 1168
-MD5sum: 9e49ac5feb76736f8044bce6266ba221
-SHA1: 2ee7429368c69ee4aa7edd10aaa4ec6ec156a9cb
-SHA256: d92d4563d84c3c1d2c60ad2a4ecd539d37ca5ad6e5635ac998662ec34214b753
+Size: 1176
+MD5sum: ce75f297ba2b7cc87dd14bbeb8bac49c
+SHA1: 0ff9b5a3864a4ba444497ec80e1f305fd824a66a
+SHA256: a77d4c95c3630a658242f8bd6cb028b5fb9f5238cb9aab0eb6ceb0ef20f03cc8
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -93,15 +93,15 @@ Package: libbrain-dev-db
 Version: 1.0.0-1
 Maintainer: TsukiNi22
 Installed-Size: 17
-Depends: libutils-db (>= 4.1.0)
+Depends: libutils-db (>= 4.3.0) | libutils-db-pre (>= 4.3.0)
 Conflicts: libbrain-dev-db-pre
 Breaks: libbrain-dev-db-pre
 Replaces: libbrain-dev-db-pre (<= 1.0.0)
 Filename: pool/main/libbrain-dev-1.0.0-Linux-headers-db.deb
-Size: 1172
-MD5sum: bba2b8beb69fb635768bb8672b700dd3
-SHA1: 83ff2fe0b7a260b67e089b94bb17742a552706ad
-SHA256: 6be470d8e97cf68ee89eb3080262327e7dda71a375645f51253bb41534d12ba7
+Size: 1182
+MD5sum: 8aeb7a8f930e95f51548d9590d6368a3
+SHA1: 2f74fbc89a2d661db9790917cb9be12af691c6d3
+SHA256: e1f95e7eeb65fe095a11cb49e24d1cd97c972729bdab277477bd7f1f11754016
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -111,15 +111,15 @@ Package: libbrain-dev-op
 Version: 1.0.0-1
 Maintainer: TsukiNi22
 Installed-Size: 18
-Depends: libutils-op (>= 4.1.0)
+Depends: libutils-op (>= 4.3.0) | libutils-op-pre (>= 4.3.0)
 Conflicts: libbrain-dev-op-pre
 Breaks: libbrain-dev-op-pre
 Replaces: libbrain-dev-op-pre (<= 1.0.0)
 Filename: pool/main/libbrain-dev-1.0.0-Linux-headers-op.deb
-Size: 1276
-MD5sum: e387cca93bb75c7955ad9241e920b16f
-SHA1: d90c67dadd1aa9f74f2bccb88208c310fb730c24
-SHA256: 2c9f7f609f01f27fd5468e45385bb3371e4b6a63b2596dff223f301c3298e21a
+Size: 1280
+MD5sum: 9f2f0ba8a2dec74c542b72e203ae8799
+SHA1: c7e3b30bdd3dc2f436e0c0379e8edb8ee42664ce
+SHA256: 4b1fe1294f6e9048d98696a6f90a338f657309ded1eb354051decdf744dfd6d0
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -129,15 +129,15 @@ Package: libbrain-op
 Version: 1.0.0-1
 Maintainer: TsukiNi22
 Installed-Size: 1618
-Depends: libbrain-dev (>= 1.0.0), libbrain-dev-op (>= 1.0.0), libutils-op (>= 4.1.0)
+Depends: libbrain-dev (>= 1.0.0), libbrain-dev-op (>= 1.0.0), libutils-op (>= 4.3.0) | libutils-op-pre (>= 4.3.0)
 Conflicts: libbrain-op-pre
 Breaks: libbrain-op-pre
 Replaces: libbrain-op-pre (<= 1.0.0)
 Filename: pool/main/libbrain-op-1.0.0-Linux-lib.deb
-Size: 355634
-MD5sum: 9f916286cc9709454405d89205a21044
-SHA1: 326236ad532550054c15d62aa0821864de7c8f9a
-SHA256: b1f0f922f112567c827d840373ec473b34adbc30600e46a081eeff20ac3e5c96
+Size: 355642
+MD5sum: 89ac9962d67935e091af3e8b314e125a
+SHA1: 41734ed411bd40eb9d64d24d059d0defd8e53a1d
+SHA256: fc69b7a102cda9d851112d927b1ae9c6824e1b352de9ac39270fa418efe6b6d6
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -154,9 +154,9 @@ Breaks: mingw64-libbrain-pre
 Replaces: mingw64-libbrain-pre (<= 1.0.0)
 Filename: pool/main/mingw64-libbrain-1.0.0-win64.deb
 Size: 670
-MD5sum: eb7d366c505cadf623159c2539f7a4a0
-SHA1: 202ce892e6258c8ee1ded78a0235237d9d520f21
-SHA256: 4c961b20b769a35bef6e8edfc06b002d363e22e9b92627fe562a58a33d292204
+MD5sum: 7065dc62852897145626634351960614
+SHA1: 948c4414fa3059b25398e528e943d4754252c981
+SHA256: 5ed0c01833978b6c306ee952bbdfc07e73b2dca32f901c294168c18b54d56475
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -167,15 +167,15 @@ Version: 1.0.0-1
 Architecture: all
 Maintainer: TsukiNi22
 Installed-Size: 35509
-Depends: mingw64-libbrain-dev (>= 1.0.0), mingw64-libbrain-dev-db (>= 1.0.0), mingw64-libutils-db (>= 4.1.0)
+Depends: mingw64-libbrain-dev (>= 1.0.0), mingw64-libbrain-dev-db (>= 1.0.0), mingw64-libutils-db (>= 4.3.0) | mingw64-libutils-db-pre (>= 4.3.0)
 Conflicts: mingw64-libbrain-db-pre
 Breaks: mingw64-libbrain-db-pre
 Replaces: mingw64-libbrain-db-pre (<= 1.0.0)
 Filename: pool/main/mingw64-libbrain-db-1.0.0-win64-lib.deb
-Size: 4887202
-MD5sum: f23b76f0ea8b5f57b30841f07fb58270
-SHA1: 976e505c84be8b1633ac1315fffe387ef557e562
-SHA256: f91ba93fef0ae33421b48845589df959ed0a074dbce97f02af745b11b9b975e5
+Size: 4887212
+MD5sum: a5f00f61e8b9dde5d15de9b47aa7ec30
+SHA1: 29a4f1a3194c202cc39c8a1f2e7f4dda4c8a6042
+SHA256: a65a0755a9f549d1ad8351d955d66867060e3706b2482be5abea4ccbada5fb8d
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -186,15 +186,15 @@ Version: 1.0.0-1
 Architecture: all
 Maintainer: TsukiNi22
 Installed-Size: 217
-Depends: mingw64-libutils-dev (>= 4.1.0)
+Depends: mingw64-libutils-dev (>= 4.3.0) | mingw64-libutils-dev-pre (>= 4.3.0)
 Conflicts: mingw64-libbrain-dev-pre
 Breaks: mingw64-libbrain-dev-pre
 Replaces: mingw64-libbrain-dev-pre (<= 1.0.0)
 Filename: pool/main/mingw64-libbrain-dev-1.0.0-win64-headers.deb
-Size: 37282
-MD5sum: 4abd2d52bd6993a21df1b2059bd3fba7
-SHA1: 56264c8d0aa0e7fee347b0142df8b9edf0b9af29
-SHA256: d7e91a525bf53076274e9fea0e01e16f71b5a442a02d8599201493f26b9de9ba
+Size: 37284
+MD5sum: 7071f56d44281591c5b6a941280370f3
+SHA1: 4b8a749a8e49fc54ccfd0100fcc5898fe9c08094
+SHA256: 5b57aa7869d49fb04103b038a499a521e21d27b7b9004aa88aca538f6e96c7d4
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -205,15 +205,15 @@ Version: 1.0.0-1
 Architecture: all
 Maintainer: TsukiNi22
 Installed-Size: 21
-Depends: mingw64-libutils-db (>= 4.1.0)
+Depends: mingw64-libutils-db (>= 4.3.0) | mingw64-libutils-db-pre (>= 4.3.0)
 Conflicts: mingw64-libbrain-dev-db-pre
 Breaks: mingw64-libbrain-dev-db-pre
 Replaces: mingw64-libbrain-dev-db-pre (<= 1.0.0)
 Filename: pool/main/mingw64-libbrain-dev-1.0.0-win64-headers-db.deb
-Size: 1218
-MD5sum: 55df6d1e9a2d6dd50119f70ce05cc75d
-SHA1: fc4963632b503b0d6cd9b8f78bbce692e243ace1
-SHA256: 0699f55d8c8f99c95ac3078466326fbc398e64ed173f55f3bdae6a60d1c80eb0
+Size: 1230
+MD5sum: 8e52a62837a392ddd44f6a4e78581ac8
+SHA1: c9155011f5e5001c79bbb6cf451dfb3360b861ad
+SHA256: 774bc579a13b5334b9eb73a29cbcb632c0e072220ae8b6b6c7fcc45057d0e8bd
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -224,15 +224,15 @@ Version: 1.0.0-1
 Architecture: all
 Maintainer: TsukiNi22
 Installed-Size: 22
-Depends: mingw64-libutils-op (>= 4.1.0)
+Depends: mingw64-libutils-op (>= 4.3.0) | mingw64-libutils-op-pre (>= 4.3.0)
 Conflicts: mingw64-libbrain-dev-op-pre
 Breaks: mingw64-libbrain-dev-op-pre
 Replaces: mingw64-libbrain-dev-op-pre (<= 1.0.0)
 Filename: pool/main/mingw64-libbrain-dev-1.0.0-win64-headers-op.deb
-Size: 1324
-MD5sum: 445980201b20adec8ff81df61a4a4749
-SHA1: ca36c05e6c943117c969b6fb9b232aa2829dbebf
-SHA256: 90280359a4bff9ccfd0cb7471d7d84085ac3a9a5d799baad8b8af6afbf0be6d3
+Size: 1336
+MD5sum: db218f127ac6a49b5210b4ecebbb8168
+SHA1: 48d65c0df0e807984cf0f3b4304c4679e02db000
+SHA256: 71e43d2c2e536454eaa8656c9b6d58c6f69126e66c241c0aa1c81c3711c83868
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -243,15 +243,15 @@ Version: 1.0.0-1
 Architecture: all
 Maintainer: TsukiNi22
 Installed-Size: 1530
-Depends: mingw64-libbrain-dev (>= 1.0.0), mingw64-libbrain-dev-op (>= 1.0.0), mingw64-libutils-op (>= 4.1.0)
+Depends: mingw64-libbrain-dev (>= 1.0.0), mingw64-libbrain-dev-op (>= 1.0.0), mingw64-libutils-op (>= 4.3.0) | mingw64-libutils-op-pre (>= 4.3.0)
 Conflicts: mingw64-libbrain-op-pre
 Breaks: mingw64-libbrain-op-pre
 Replaces: mingw64-libbrain-op-pre (<= 1.0.0)
 Filename: pool/main/mingw64-libbrain-op-1.0.0-win64-lib.deb
-Size: 390894
-MD5sum: a697fd58a452e693f9d0c44625f2df41
-SHA1: 094f03e14165aff1c6249114fc7fb85e6160fc81
-SHA256: ef565f040887bb2c4afdfc518ab90ef9a5b9eccbcd96a3c35dfd4f547273a6f3
+Size: 390898
+MD5sum: 769a5c1723bcc6ea022e74c5ef270b3f
+SHA1: 14b48b90f8780781b82dfbcec2087531c691bbac
+SHA256: 35ce7da049f71cb2c6058d310dcc70d06afea03b0c5800ad0d70d68e66f8140b
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
