@@ -39,3 +39,7 @@ _CPack_Packages/
 /build
 /build-windows
 ## End of project outputs
+
+## Local notes and the lab
+/.info
+/lab/
