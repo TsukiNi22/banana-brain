@@ -90,11 +90,8 @@ class NeuralNetwork: public utils::type::Freezable {
         void learningRate(const brain::FType learning_rate, const brain::UIType learning_rate_decay = 0, const std::pair<bool, brain::FType>& coef = {true, 1.0}); // decay 0 = none, otherwise the learning rate is multiplied by the coef every n steps, <smooth, coef>: smooth decay or by step
         void resetLearningRate(void);
 
-        /* training (auto): the backpropagation hook receives the outputs and the expected ones (can be empty: ignore them) */
-        template<bool mean = false>
-        void train(const brain::UIType round, const brain::Dataset& inputs, const brain::Dataset& expected_outputs); // n rounds, one coef per sample
-        template<bool mean = false>
-        void train(const brain::FType loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs); // until the mean loss is under this rate (checked after each round), one coef per sample
+        /* training (auto): the one entry of every training, the options are optional (one epoch, one sample at a time) */
+        brain::TrainResult train(const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const brain::TrainOptions& options = {}); // epochs over the samples, in mini-batches of options.batchSize, in another order each epoch with options.shuffle, until the epochs are done or a stop rule says stop (options.stop, options.onEpoch)
 
         /* training (manual) */
         brain::FType loss(const brain::FType output, const brain::FType expected) const; // compute the loss of one output
@@ -110,6 +107,7 @@ class NeuralNetwork: public utils::type::Freezable {
 
         /* usage */
         brain::Values exec(const brain::Values& inputs) const; // doesn't touch the content at all (the only call allowed when frozen)
+        brain::Dataset execAll(const brain::Dataset& inputs) const; // the same for several samples (a brain network computes them together: faster than one exec() per sample), the outputs of each one
 
         /* init (the weights and the bias of the network) */
         void weightInit(const brain::FType fallback = 0.01); // weights at 1.0 by default (not init -> dead network), fallback used on a result that falls on 0

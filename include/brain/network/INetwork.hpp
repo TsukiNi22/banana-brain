@@ -48,8 +48,12 @@ class INetwork {
         virtual void inputs(const brain::Values& inputs) = 0; // training: load the inputs into the network
         virtual brain::Values apply(void) = 0; // training: execute the network with the loaded inputs (keeps what the backpropagation needs)
         virtual brain::Values apply(const brain::Values& inputs) const = 0; // execution: nothing stored in the network, can be called from several threads at once
+        virtual brain::Dataset applyAll(const brain::Dataset& inputs) const = 0; // execution of several samples: the outputs of each one, as apply() gives them (a brain network computes them together, which is faster than one call per sample)
         virtual void backpropagation(const brain::FType coef) = 0; // layered network: the error of the output (positive = too high, the output goes down), brain network: a score (positive = good, the links that made the output are strengthened, negative = weakened), the learning rate is already in it
         virtual void backpropagation(const brain::Values& coefs) = 0; // same as above with a special coef for each output
+        virtual void batch(const bool enable) = 0; // true: backpropagation() only adds its gradient to the pending one, applyBatch() applies their mean (the pending gradients are dropped when it changes)
+        virtual bool batch(void) const = 0; // the mini-batch mode
+        virtual void applyBatch(void) = 0; // mini-batch: apply the mean of the gradients given since the last call (nothing pending: nothing done)
 
         /* setup */
         virtual void weightInit(const brain::FType fallback = 0.01) = 0; // weights at 1.0 by default (not init -> dead network), fallback used on a result that falls on 0

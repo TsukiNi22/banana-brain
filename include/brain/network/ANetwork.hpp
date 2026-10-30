@@ -26,15 +26,16 @@ File Description:
     /* type */
     #define _Attribute
     #define _System
-    #include <utils/utils.hpp>      // _hot, _cold, _nodiscard, utils::system::HybridMemory, utils::system::IGpu, utils::system::MemoryMode
-    #include "../NetworkDefine.hpp" // brain::ActivationFunction
-    #include "../NetworkType.hpp"   // brain::FType, brain::Values, brain::Bytes, brain::RandFn, brain::ActivationFn
-    #include "INetwork.hpp"         // brain::INetwork
-    #include <utility>              // std::pair
-    #include <cstdint>              // std::uint8_t
-    #include <cstddef>              // std::size_t
-    #include <memory>               // std::shared_ptr
-    #include <string>               // std::string
+    #include <utils/utils.hpp>         // _hot, _cold, _nodiscard, utils::system::HybridMemory, utils::system::IGpu, utils::system::MemoryMode
+    #include "../tools/activation.hpp" // brain::tools::SigmoidActivation...
+    #include "../NetworkDefine.hpp"    // brain::ActivationFunction
+    #include "../NetworkType.hpp"      // brain::FType, brain::Values, brain::Bytes, brain::RandFn, brain::ActivationFn
+    #include "INetwork.hpp"            // brain::INetwork
+    #include <utility>                 // std::pair
+    #include <cstdint>                 // std::uint8_t
+    #include <cstddef>                 // std::size_t
+    #include <memory>                  // std::shared_ptr
+    #include <string>                  // std::string
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
@@ -74,6 +75,7 @@ class ANetwork: public brain::INetwork {
         /* execution */
         void inputs(const brain::Values& inputs) override;
         brain::Values apply(const brain::Values& inputs) const final;
+        brain::Dataset applyAll(const brain::Dataset& inputs) const override; // one apply() per sample (a child that computes them together overrides it)
 
         /* setter (size) */
         void size(const brain::UIType input, const brain::UIType output) final; // the sizes are restored when resized_() refuses them

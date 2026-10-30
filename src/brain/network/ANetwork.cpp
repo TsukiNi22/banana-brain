@@ -109,6 +109,15 @@ _hot brain::Values brain::ANetwork::apply(const brain::Values& inputs) const
     return this->compute_(inputs);
 }
 
+_hot brain::Dataset brain::ANetwork::applyAll(const brain::Dataset& inputs) const
+{
+    brain::Dataset outputs;
+
+    outputs.reserve(inputs.size());
+    for (const brain::Values& sample: inputs) outputs.push_back(this->apply(sample));
+    return outputs;
+}
+
 _cold void brain::ANetwork::rand(const brain::FType min, const brain::FType max)
 {
     // check inputs

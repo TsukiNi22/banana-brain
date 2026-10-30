@@ -88,6 +88,29 @@ File Description:
             if (fabs(value) < threshold) value = 0;
             next[i] = value;
         }
+        // All the time steps in one launch of ONE block (a small network, one thread per neuron: a cap under 32): the same values as the kernel of one step, a barrier of the block between two steps (buffer: every step kept, or two states used in turn)
+        extern "C" __global__ void steps_all(const char* neurons, const ul nstride, const ul boff, const char* links, const ul lstride, const ul idoff, const ul woff, const long long ioff, const ul cap, ft* buffer, const ul n, const ul input, const int mode, const ft threshold, const ul steps, const int keep)
+        {
+            for (ul step = 0; step < steps; ++step) {
+                const ft* state = buffer + (keep ? step : step % 2) * n;
+                ft* next = buffer + (keep ? step + 1 : (step + 1) % 2) * n;
+
+                for (ul i = threadIdx.x; i < n; i += blockDim.x) {
+                    if (i < input) {next[i] = state[i]; continue;}
+                    ft sum = *(const ft*)(neurons + i * nstride + boff);
+
+                    for (ul slot = 0; slot < cap; ++slot) {
+                        const char* link = links + (i * cap + slot) * lstride;
+                        if (ioff >= 0 && !*(const unsigned char*)(link + ioff)) continue;
+                        sum += *(const ft*)(link + woff) * state[*(const ul*)(link + idoff)];
+                    }
+                    ft value = activate(sum, mode);
+                    if (fabs(value) < threshold) value = 0;
+                    next[i] = value;
+                }
+                __syncthreads(); // the whole step is written before the next one reads it
+            }
+        }
         // One warp per neuron (a large cap): the lanes read consecutive slots (grouped reads), then the sum is reduced in the warp
         extern "C" __global__ void step_warp(const char* neurons, const ul nstride, const ul boff, const char* links, const ul lstride, const ul idoff, const ul woff, const long long ioff, const ul cap, const ft* state, ft* next, const ul n, const ul input, const int mode, const ft threshold)
         {
@@ -281,6 +304,7 @@ File Description:
         CUfunction backStep = nullptr;
         CUfunction backUpdate = nullptr;
         CUfunction stepWarp = nullptr;
+        CUfunction stepsAll = nullptr; // every time step in one launch of one block (a small network)
         CUfunction backStepWarp = nullptr;
     CUfunction backFlags = nullptr;
     CUfunction reduceCopy = nullptr;
@@ -459,6 +483,7 @@ File Description:
                 check(api.function(&built->backStep, loaded, "back_step"), "cuModuleGetFunction");
                 check(api.function(&built->backUpdate, loaded, "back_update"), "cuModuleGetFunction");
                 check(api.function(&built->stepWarp, loaded, "step_warp"), "cuModuleGetFunction");
+                check(api.function(&built->stepsAll, loaded, "steps_all"), "cuModuleGetFunction");
                 check(api.function(&built->backStepWarp, loaded, "back_step_warp"), "cuModuleGetFunction");
             check(api.function(&built->backFlags, loaded, "back_flags"), "cuModuleGetFunction");
             check(api.function(&built->reduceCopy, loaded, "reduce_copy"), "cuModuleGetFunction");
@@ -603,7 +628,19 @@ File Description:
             check(driver.store(buffer, first.data(), neuron * sizeof(brain::FType)), "cuMemcpyHtoD");
             brain::UIType last = 0;
             const bool warp = cap >= 32; // a warp per neuron: grouped reads of its slots (a small cap keeps one thread per neuron)
-            for (brain::UIType step = 0; step < steps; ++step) {
+
+            // a small network with one thread per neuron: every step in one launch of one block with a barrier between two steps (no launch per step; with a warp per neuron, a bigger network or more blocks it was slower than the launches)
+            const bool single = !warp && neuron <= BRAIN_GPU_SINGLE_KERNEL_NEURONS && functions->stepsAll != nullptr;
+            if (single) {
+                CUdeviceptr bufferPtr = buffer;
+                brain::UIType stepCount = steps;
+                int keepFlag = keep ? 1 : 0;
+                void* arguments[] = {&neuronsPtr, &neuronStride, &biasOffset, &linksPtr, &linkStride, &idOffset, &weightOffset, &inwardOffset, &capacity, &bufferPtr, &neuronCount, &inputCount, &activationMode, &limit, &stepCount, &keepFlag};
+
+                check(driver.launch(functions->stepsAll, 1, 1, 1, BLOCK, 1, 1, 0, nullptr, arguments, nullptr), "cuLaunchKernel");
+                last = keep ? steps : steps % 2;
+            }
+            for (brain::UIType step = 0; !single && step < steps; ++step) {
                 const brain::UIType from = keep ? step : step % 2;
                 const brain::UIType to = keep ? step + 1 : (step + 1) % 2;
                 CUdeviceptr fromPtr = buffer + from * neuron * sizeof(brain::FType);

@@ -257,8 +257,8 @@ _hot void brain::LayerNetwork::learn_(const brain::Values& errors)
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "nothing to learn from, call apply() first");
     }
 
-    // the memories stored on the gpu are changed there (an external activation function can only run on the host)
-    if (this->_neurons.isOnGpu() && !this->_activationFunction.second && brain::tools::gpu::layersBack(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), this->_layers, this->_activationFunction.first, this->_inputs, this->_sums, this->_outputs, errors)) return;
+    // the memories stored on the gpu are changed there (an external activation function can only run on the host, a mini-batch only reads them)
+    if (!this->_batch && this->_neurons.isOnGpu() && !this->_activationFunction.second && brain::tools::gpu::layersBack(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), this->_layers, this->_activationFunction.first, this->_inputs, this->_sums, this->_outputs, errors)) return;
 
     // the memories of the host are changed in place, a gpu memory is fetched then stored back
     std::vector<brain::LayerNeuron> fetchedNeurons;
@@ -270,6 +270,11 @@ _hot void brain::LayerNetwork::learn_(const brain::Values& errors)
     }
     brain::LayerNeuron* neurons = host ? this->_neurons.data() : fetchedNeurons.data();
     brain::FType* weights = host ? this->_weights.data() : fetchedWeights.data();
+    if (this->_batch && (this->_pendingWeights.size() != this->_weights.size() || this->_pendingBias.size() != this->_neurons.size())) { // the network was set up again since batch(true)
+        this->_pendingWeights.assign(this->_weights.size(), 0.0f);
+        this->_pendingBias.assign(this->_neurons.size(), 0.0f);
+        this->_pendingCount = 0;
+    }
     brain::Values delta = errors; // error of the outputs of the layer, from the last one to the first one
     brain::Values below; // error given to the previous layer (swapped with delta: no new buffer per layer)
     brain::UIType first = this->_neurons.size();
@@ -285,7 +290,15 @@ _hot void brain::LayerNetwork::learn_(const brain::Values& errors)
             const brain::FType slope = delta[k] * this->derivative_(this->_sums[l][k], this->_outputs[l][k]);
             brain::FType* row = weights + neuron.incoming;
 
-            if (l > 0) {
+            if (this->_batch) { // the weights stay as they are: the gradient is added to the pending one
+                brain::FType* pending = this->_pendingWeights.data() + neuron.incoming;
+
+                for (brain::UIType j = 0; j < neuron.count; ++j) {
+                    if (l > 0) below[j] += slope * row[j];
+                    pending[j] += slope * previous[j];
+                }
+                this->_pendingBias[first + k] += slope;
+            } else if (l > 0) {
                 for (brain::UIType j = 0; j < neuron.count; ++j) {
                     below[j] += slope * row[j]; // with the weight before the update
                     row[j] -= slope * previous[j];
@@ -298,9 +311,36 @@ _hot void brain::LayerNetwork::learn_(const brain::Values& errors)
         }
         std::swap(delta, below);
     }
+    if (this->_batch) {++this->_pendingCount; return;} // nothing changed
     if (host) return;
     this->_neurons.store(fetchedNeurons);
     this->_weights.store(fetchedWeights);
+}
+
+_cold void brain::LayerNetwork::batch(const bool enable)
+{
+    this->_batch = enable;
+    this->_pendingWeights.assign(enable ? this->_weights.size() : 0, 0.0f);
+    this->_pendingBias.assign(enable ? this->_neurons.size() : 0, 0.0f);
+    this->_pendingCount = 0;
+}
+
+_hot void brain::LayerNetwork::applyBatch(void)
+{
+    std::vector<brain::LayerNeuron> neurons;
+    std::vector<brain::FType> weights;
+
+    // nothing pending: nothing done
+    if (this->_pendingCount == 0) return;
+    neurons = this->_neurons.toVector();
+    weights = this->_weights.toVector();
+    for (brain::UIType k = 0; k < weights.size() && k < this->_pendingWeights.size(); ++k) weights[k] -= this->_pendingWeights[k] / static_cast<brain::FType>(this->_pendingCount);
+    for (brain::UIType k = 0; k < neurons.size() && k < this->_pendingBias.size(); ++k) neurons[k].bias -= this->_pendingBias[k] / static_cast<brain::FType>(this->_pendingCount);
+    this->_weights.store(weights);
+    this->_neurons.store(neurons);
+    std::fill(this->_pendingWeights.begin(), this->_pendingWeights.end(), 0.0f);
+    std::fill(this->_pendingBias.begin(), this->_pendingBias.end(), 0.0f);
+    this->_pendingCount = 0;
 }
 
 _cold void brain::LayerNetwork::weightInit(const brain::FType fallback)

@@ -28,6 +28,7 @@ File Description:
     #define _CustomType
     #define _System
     #include <utils/utils.hpp>   // _hot, _nodiscard, utils::type::OVector2
+    #include "NetworkDefine.hpp" // brain::StopCondition, brain::StopReason
     #include <type_traits>       // std::is_floating_point_v, std::is_integral_v, std::is_signed_v, std::is_unsigned_v, std::is_trivially_copyable_v
     #include <functional>        // std::function
     #include <cstdint>           // std::int64_t
@@ -101,6 +102,43 @@ struct RawBrainNeuron {
     RawBrainNeuron() = default;
     RawBrainNeuron(const RawBrainNeuron& other) = default;
     RawBrainNeuron& operator=(const RawBrainNeuron& other) = default;
+};
+
+// What the stop function of a training sees after each epoch
+struct TrainState {
+    brain::UIType epoch = 0; // epochs done (this one included)
+    brain::UIType updates = 0; // updates of the weights since the start of the training
+    brain::FType loss = 0.0; // mean loss of the epoch on the training set
+    brain::FType validationLoss = 0.0; // mean loss on the validation set (0 without one)
+    brain::FType bestValidation = 0.0; // the best validation loss seen
+    brain::UIType sinceBest = 0; // epochs since the best validation loss
+    double seconds = 0.0; // time since the start of the training
+};
+
+struct TrainOptions;
+using StopFn = std::function<bool(const brain::TrainOptions& options, const brain::TrainState& state)>; // external stop rule: true = go on, false = stop
+
+// The settings of NeuralNetwork::train, every one has its default (the whole struct can be left out: one epoch, one sample at a time, as before)
+struct TrainOptions {
+    brain::UIType epochs = 1; // at most this many passes over the samples (0 = no limit: another rule has to stop it)
+    brain::UIType batchSize = 1; // samples per update of the weights: 1 = after each one, n = mini-batch of n (their mean gradient), 0 = the whole set
+    bool shuffle = false; // the samples in another order at each epoch
+    brain::IType seed = 0; // seed of the shuffle (0 = random)
+    bool mean = false; // one coefficient for the backpropagation (the mean of the outputs) instead of one per output
+    brain::FType targetLoss = -1.0; // StopCondition::TargetLoss: stop when the mean loss is at most this
+    brain::UIType patience = 0; // StopCondition::Patience: stop after this many epochs without a better validation loss
+    brain::Dataset validationIn; // the validation set, measured after each epoch (without update)
+    brain::Dataset validationOut; // its expected outputs
+    brain::StopCondition stop = brain::StopCondition::Epochs; // the built-in rule
+    brain::StopFn onEpoch = nullptr; // the rule of the user, after each epoch: it wins over `stop` (epochs stays the limit)
+};
+
+// What a training did
+struct TrainResult {
+    brain::UIType epochs = 0; // epochs done
+    brain::UIType updates = 0; // updates of the weights
+    brain::FType loss = 0.0; // mean loss of the last epoch
+    brain::StopReason reason = brain::StopReason::Epochs; // why it stopped
 };
 
 // Everything stored in a utils::system::HybridMemory is copied as bytes

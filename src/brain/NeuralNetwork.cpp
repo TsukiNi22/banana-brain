@@ -24,13 +24,18 @@ File Description:
 #include "brain/network/Network.hpp"
 #include "brain/NeuralNetwork.hpp"
 #include "brain/NetworkDefine.hpp"
+#include "brain/tools/random.hpp"
 #include "brain/tools/loss.hpp"
 #include <filesystem>
 #include <algorithm>
+#include <algorithm>
 #include <iterator>
 #include <iostream>
+#include <numeric>
 #include <fstream>
 #include <utility>
+#include <random>
+#include <chrono>
 #include <cctype>
 #include <string>
 #include <memory>
@@ -255,12 +260,6 @@ _cold void brain::NeuralNetwork::resetLearningRate(void)
     this->_steps = 0;
 }
 
-/* train (explicit instantiations, the templates are defined in this file, force the compiler to generate each version) */
-template void brain::NeuralNetwork::train<false>(const brain::UIType, const brain::Dataset&, const brain::Dataset&);
-template void brain::NeuralNetwork::train<true>(const brain::UIType, const brain::Dataset&, const brain::Dataset&);
-template void brain::NeuralNetwork::train<false>(const brain::FType, const brain::Dataset&, const brain::Dataset&);
-template void brain::NeuralNetwork::train<true>(const brain::FType, const brain::Dataset&, const brain::Dataset&);
-
 // The signed error of each output times the learning rate: (output - expected) to descend for a layered network, (expected - output) as a score for a brain one (mean: one coefficient, their mean)
 template<bool mean>
 _hot void brain::NeuralNetwork::learn_(const brain::Values& outputs, const brain::Values& expected)
@@ -280,10 +279,12 @@ _hot void brain::NeuralNetwork::learn_(const brain::Values& outputs, const brain
     this->decay_();
 }
 
-template<bool mean>
-_hot void brain::NeuralNetwork::train(const brain::UIType round, const brain::Dataset& inputs, const brain::Dataset& expected_outputs)
+_hot brain::TrainResult brain::NeuralNetwork::train(const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const brain::TrainOptions& options)
 {
-    std::size_t size = inputs.size();
+    const std::size_t size = inputs.size();
+    const bool validation = !options.validationIn.empty();
+    brain::TrainResult result;
+    brain::TrainState state;
 
     // check inputs
     this->requireUnfrozen();
@@ -293,41 +294,90 @@ _hot void brain::NeuralNetwork::train(const brain::UIType round, const brain::Da
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no loss function set (lossFunction / internalLossFunction)");
     }
     this->checkDataset_(inputs, expected_outputs);
+    if (validation) this->checkDataset_(options.validationIn, options.validationOut);
+    else if (!options.validationOut.empty()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "validation outputs without validation inputs");
+    }
+    if (options.stop == brain::StopCondition::TargetLoss && !(options.targetLoss >= 0)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the target loss should be above or equal to 0");
+    } else if (options.stop == brain::StopCondition::Patience && (!validation || options.patience == 0)) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the patience rule needs a validation set and a patience above 0");
+    } else if (options.epochs == 0 && !options.onEpoch && options.stop == brain::StopCondition::Epochs) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no epoch limit and no stop rule: it would never stop");
+    }
 
-    // execution
-    for (std::size_t n = 0; n < round; ++n) {
-        for (std::size_t i = 0; i < size; ++i) {
-            this->inputs(inputs[i]);
-            this->learn_<mean>(this->apply(), expected_outputs[i]);
+    // setup: the mini-batch mode of the network for the training (put back at the end), the order of the samples
+    const brain::UIType batchSize = options.batchSize == 0 ? size : std::min<brain::UIType>(options.batchSize, size);
+    const bool grouped = batchSize != 1;
+    const bool before = this->_network->batch();
+    std::vector<std::size_t> order(size);
+    std::mt19937_64 engine(options.seed != 0 ? static_cast<std::uint64_t>(options.seed) : static_cast<std::uint64_t>(brain::tools::rand_unsigned_integer()));
+    const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
+    std::iota(order.begin(), order.end(), 0);
+    this->_network->batch(grouped);
+    try {
+        for (brain::UIType epoch = 0; options.epochs == 0 || epoch < options.epochs; ++epoch) {
+            brain::FType total = 0.0;
+            brain::UIType inBatch = 0;
+            bool go = true;
+
+            // one pass over the samples: the weights change after each one, or after each group of batchSize (their mean gradient)
+            if (options.shuffle) std::shuffle(order.begin(), order.end(), engine);
+            for (const std::size_t i: order) {
+                this->inputs(inputs[i]);
+                const brain::Values outputs = this->apply();
+
+                total += this->loss(outputs, expected_outputs[i]).second;
+                if (options.mean) this->learn_<true>(outputs, expected_outputs[i]);
+                else this->learn_<false>(outputs, expected_outputs[i]);
+                if (!grouped) {++state.updates; continue;}
+                if (++inBatch == batchSize) {
+                    this->_network->applyBatch();
+                    ++state.updates;
+                    inBatch = 0;
+                }
+            }
+            if (inBatch > 0) {this->_network->applyBatch(); ++state.updates;} // the last group, smaller
+
+            // the state after the epoch: the loss, the validation (nothing updated by it)
+            state.epoch = epoch + 1;
+            state.loss = total / static_cast<brain::FType>(size);
+            if (validation) {
+                brain::FType validationLoss = 0.0;
+
+                for (std::size_t i = 0; i < options.validationIn.size(); ++i)
+                    validationLoss += this->loss(this->_network->apply(options.validationIn[i]), options.validationOut[i]).second;
+                state.validationLoss = validationLoss / static_cast<brain::FType>(options.validationIn.size());
+                if (epoch == 0 || state.validationLoss < state.bestValidation) {
+                    state.bestValidation = state.validationLoss;
+                    state.sinceBest = 0;
+                } else {
+                    ++state.sinceBest;
+                }
+            }
+            state.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+            result = {state.epoch, state.updates, state.loss, brain::StopReason::Epochs};
+
+            // the stop rule: the one of the user when it is given, else the built-in one
+            if (options.onEpoch) {
+                go = options.onEpoch(options, state);
+                if (!go) result.reason = brain::StopReason::Callback;
+            } else if (options.stop == brain::StopCondition::TargetLoss && state.loss <= options.targetLoss) {
+                go = false;
+                result.reason = brain::StopReason::TargetLoss;
+            } else if (options.stop == brain::StopCondition::Patience && state.sinceBest >= options.patience) {
+                go = false;
+                result.reason = brain::StopReason::Patience;
+            }
+            if (!go) break;
         }
+    } catch (...) {
+        this->_network->batch(before);
+        throw;
     }
-}
-
-template<bool mean>
-_hot void brain::NeuralNetwork::train(const brain::FType loss, const brain::Dataset& inputs, const brain::Dataset& expected_outputs)
-{
-    std::size_t size = inputs.size();
-    std::pair<brain::Values, brain::FType> actual_loss = {};
-
-    // check inputs
-    this->requireUnfrozen();
-    if (!this->_network) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
-    } else if (!this->_lossFunction.second && this->_lossFunction.first == brain::LossFunction::None) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "no loss function set (lossFunction / internalLossFunction)");
-    }
-    this->checkDataset_(inputs, expected_outputs);
-    if (!(loss >= 0)) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the loss trigger should be above or equal to 0 (abs is used)");
-    }
-
-    // execution (the stop check uses the loss without the learning rate)
-    for (std::size_t i = 0; std::abs(actual_loss.second) > loss || i == 0; ++i) {
-        this->inputs(inputs[i % size]);
-        brain::Values values = this->apply();
-        actual_loss = this->loss(values, expected_outputs[i % size]);
-        this->learn_<mean>(values, expected_outputs[i % size]);
-    }
+    this->_network->batch(before);
+    return result;
 }
 
 _hot brain::FType brain::NeuralNetwork::loss(const brain::FType output, const brain::FType expected) const
@@ -522,6 +572,14 @@ _hot brain::Values brain::NeuralNetwork::exec(const brain::Values& inputs) const
         throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
     }
     return this->_network->apply(inputs);
+}
+
+_hot brain::Dataset brain::NeuralNetwork::execAll(const brain::Dataset& inputs) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->applyAll(inputs);
 }
 
 // Warn (and continue) when the extension of the file is not a known one

@@ -24,11 +24,6 @@ File Description:
 #include <algorithm>
 #include <cmath>
 
-_hot brain::FType brain::tools::sigmoid(const brain::FType value)
-{
-    return static_cast<brain::FType>(1.0) / (static_cast<brain::FType>(1.0) + std::exp(-value));
-}
-
 /*
 _hot brain::Values brain::tools::softmax(const brain::Values& values)
 {
@@ -50,13 +45,3 @@ _hot brain::Values brain::tools::softmax(const brain::Values& values)
     return result;
 }
 */
-
-_hot brain::FType brain::tools::linear(const brain::FType value)
-{
-    return value;
-}
-
-_hot brain::FType brain::tools::relu(const brain::FType value)
-{
-    return value > 0 ? value : static_cast<brain::FType>(0.0);
-}

@@ -52,6 +52,7 @@ set(SRC
     tools/Neuron.cpp
     tools/Bytes.cpp
     tools/Compute.cpp
+    tools/Sum.cpp
 )
 add_executable(${TARGET} ${SRC} ${SRC_PROJECT})
 

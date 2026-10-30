@@ -28,9 +28,11 @@ File Description:
 #include "brain/tools/neuron.hpp"
 #include "brain/tools/random.hpp"
 #include "brain/tools/bytes.hpp"
+#include "brain/tools/sum.hpp"
 #include <functional>
 #include <algorithm>
 #include <iostream>
+#include <cstring>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -48,6 +50,8 @@ brain::RawBrainNetwork::RawBrainNetwork(const brain::UIType neuron, const std::p
     this->init_();
 }
 
+_cold static std::vector<brain::IType> reach(const std::vector<brain::RawBrainLink>& links, const brain::UIType cap, const brain::UIType neuron, const brain::UIType from); // defined with the helpers of the links below
+
 _cold void brain::RawBrainNetwork::init_(void)
 {
     std::vector<brain::RawBrainNeuron> neurons(this->_neuron);
@@ -59,6 +63,7 @@ _cold void brain::RawBrainNetwork::init_(void)
 
     // check inputs (the memories are allocated in bytes, a count that overflows is refused here)
     this->_cap = this->linksCap_();
+    this->_stepsFloor = 0;
     this->_steps = this->stepsCap_();
     if (__builtin_mul_overflow(this->_neuron, this->_cap, &total)) _unlikely {
         throw utils::exception::ErrorException(utils::exception::InternalCode::OutOfMemory, "the links of the neurons overflow the size");
@@ -124,7 +129,20 @@ _cold void brain::RawBrainNetwork::init_(void)
             links[other * this->_cap + used[other]++] = {owner, 1.0, !receive};
         }
     }
-    if (this->_pathHops > 0 && this->_cap > 0) this->ensurePaths_(neurons, links);
+    if ((this->_pathHops > 0 || this->_inputPaths) && this->_cap > 0) this->ensurePaths_(neurons, links, this->_pathHops > 0); // every input to every output, or (the rule only) every input to one output
+    // the time steps are never under the farthest path from an input to an output (+ the margin): the signal has to arrive whatever the cap says
+    if (this->_cap > 0) {
+        brain::UIType farthest = 0;
+
+        for (brain::UIType from = 0; from < input; ++from) {
+            const std::vector<brain::IType> distance = reach(links, this->_cap, neurons.size(), from);
+
+            for (brain::UIType to = neurons.size() - output; to < neurons.size(); ++to)
+                if (distance[to] > 0) farthest = std::max(farthest, static_cast<brain::UIType>(distance[to]));
+        }
+        this->_stepsFloor = static_cast<brain::UIType>(std::ceil(static_cast<double>(farthest) * BRAIN_STEPS_PATH_MARGIN));
+        this->_steps = this->stepsCap_();
+    }
     this->_velocity.clear();
     this->_moments.clear();
     this->_adamSteps = 0;
@@ -152,7 +170,7 @@ _cold brain::UIType brain::RawBrainNetwork::stepsCap_(void) const
     brain::UIType steps = static_cast<brain::UIType>(std::floor(static_cast<double>(this->_neuron) * static_cast<double>(this->_stepsLimit.first)));
 
     if (this->_stepsLimit.second) steps = std::min(steps, this->_stepsLimit.second(this->_neuron));
-    return std::max<brain::UIType>(steps, 1);
+    return std::max<brain::UIType>({steps, this->_stepsFloor, 1});
 }
 
 _cold brain::UIType brain::RawBrainNetwork::linksCap_(void) const
@@ -263,6 +281,8 @@ _cold brain::Bytes brain::RawBrainNetwork::serialize(void) const
     brain::tools::put<std::uint8_t>(out, this->_invertedLinks ? 1 : 0);
     brain::tools::put<std::uint8_t>(out, this->_randomLinks ? 1 : 0);
     brain::tools::put<std::uint64_t>(out, this->_minLinks);
+    brain::tools::put<std::uint8_t>(out, this->_inputPaths ? 1 : 0);
+    brain::tools::put<std::uint8_t>(out, this->_moveLastLink ? 1 : 0);
     brain::tools::put<std::uint64_t>(out, neurons.size());
     for (const brain::RawBrainNeuron& neuron: neurons) {
         brain::tools::put<brain::FType>(out, neuron.pos.x);
@@ -336,6 +356,8 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
     const std::uint8_t invertedLinks = brain::tools::get<std::uint8_t>(data, offset);
     const std::uint8_t randomLinks = brain::tools::get<std::uint8_t>(data, offset);
     const brain::UIType minLinks = brain::tools::get<std::uint64_t>(data, offset);
+    const std::uint8_t inputPaths = brain::tools::get<std::uint8_t>(data, offset);
+    const std::uint8_t moveLastLink = brain::tools::get<std::uint8_t>(data, offset);
     brain::UIType count = brain::tools::get<std::uint64_t>(data, offset);
 
     // the space and the limits
@@ -355,8 +377,8 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "invalid path, momentum, step limit, clamp, new links, mini-batch, direct output, paths or Adam mode");
     }
 
-    if (!std::isfinite(rateDecay) || rateDecay < 0 || invertedLinks > 1 || randomLinks > 1 || minLinks > cap) _unlikely {
-        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "invalid rate decay, links mode or minimum of links");
+    if (!std::isfinite(rateDecay) || rateDecay < 0 || invertedLinks > 1 || randomLinks > 1 || minLinks > cap || inputPaths > 1 || moveLastLink > 1) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "invalid rate decay, links rules or minimum of links");
     }
 
     // the neurons (none: not allocated yet)
@@ -418,6 +440,7 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
     this->_stepsLimit = {stepsPercentage, &brain::RawBrainNetwork::defaultSteps_};
     this->_customSteps = stepsCustom == BRAIN_ACTIVATION_CUSTOM;
     this->_steps = steps;
+    this->_stepsFloor = 0; // the saved steps already hold it
     this->_threshold = threshold;
     this->_weightLimits = {weightMin, weightMax};
     this->_orphans = orphans == 1;
@@ -437,6 +460,8 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
     this->_invertedLinks = invertedLinks == 1;
     this->_randomLinks = randomLinks == 1;
     this->_minLinks = minLinks;
+    this->_inputPaths = inputPaths == 1;
+    this->_moveLastLink = moveLastLink == 1;
     this->_updates = 0;
     this->_moments.clear();
     this->_adamSteps = 0;
@@ -454,6 +479,57 @@ _cold void brain::RawBrainNetwork::deserialize(const brain::Bytes& data)
     this->_rawLinks.allocate(links.size());
     this->_rawLinks.store(links);
     this->sync_();
+}
+
+template<typename Activation>
+_hot void brain::RawBrainNetwork::forward_(const Activation& activation, const brain::RawBrainNeuron* neurons, const brain::RawBrainLink* links)
+{
+    const brain::UIType input = this->_ioSize.first;
+    const brain::FType threshold = this->_threshold;
+    const bool settles = this->_sequence.empty() && !this->_activationFunction.second; // the same inputs at every step and a function that depends on its value only: a step equal to the one before (to the threshold) gives the same ones for ever
+    const brain::UIType threads = this->_sequence.empty() ? this->threadsFor_() : 1;
+
+    // the neurons [from, to) of the step that goes from the states[step] to the states[step + 1]: the sums, then the activations of the whole range, which the compiler vectorizes
+    const std::function<void(const brain::UIType, const brain::UIType, const brain::UIType)> rows = [&](const brain::UIType step, const brain::UIType from, const brain::UIType to) {
+        brain::Values& next = this->_states[step + 1];
+        const brain::Values& state = this->_states[step];
+        brain::Values& sums = this->_sums[step + 1];
+
+        for (brain::UIType i = from; i < to; ++i)
+            sums[i] = neurons[i].bias + (links != nullptr ? brain::tools::listSum(links, this->_inSlot.data(), this->_inStart[i], this->_inStart[i + 1], state.data()) : 0.0f);
+        for (brain::UIType i = from; i < to; ++i) next[i] = activation(sums[i]);
+        if (threshold > 0) {
+            for (brain::UIType i = from; i < to; ++i)
+                if (std::abs(next[i]) < threshold) next[i] = 0.0; // too weak to matter
+        }
+    };
+    const std::function<void(const brain::UIType)> inputsOf = [&](const brain::UIType step) { // the inputs of the step: the same ones, or the next step of the sequence then 0
+        for (brain::UIType i = 0; i < input; ++i)
+            this->_states[step + 1][i] = this->_sequence.empty() ? this->_inputs[i] : (step + 1 < this->_sequence.size() ? this->_sequence[step + 1][i] : 0.0f);
+    };
+    const std::function<bool(const brain::UIType)> end = [&](const brain::UIType step) { // the end of a step: nothing moved means the next steps are copies
+        if (!(settles && step > 0 && brain::tools::settled(this->_states[step + 1].data(), this->_states[step].data(), this->_neuron, threshold))) return false;
+        for (brain::UIType later = step + 1; later < this->_steps; ++later) {
+            this->_states[later + 1] = this->_states[step + 1];
+            this->_sums[later + 1] = this->_sums[step + 1];
+        }
+        return true;
+    };
+
+    if (threads > 1) {
+        const brain::UIType part = (((this->_neuron - input + threads - 1) / threads) + BRAIN_THREADS_CHUNK - 1) / BRAIN_THREADS_CHUNK * BRAIN_THREADS_CHUNK; // the neurons after the inputs, shared between the threads in whole chunks
+
+        brain::tools::stepThreads(threads, this->_steps, [&](const brain::UIType thread, const brain::UIType step) {
+            if (thread == 0) inputsOf(step);
+            rows(step, std::min(this->_neuron, input + thread * part), std::min(this->_neuron, input + (thread + 1) * part));
+        }, end);
+        return;
+    }
+    for (brain::UIType step = 0; step < this->_steps; ++step) {
+        inputsOf(step);
+        rows(step, input, this->_neuron);
+        if (end(step)) break;
+    }
 }
 
 _hot brain::Values brain::RawBrainNetwork::apply(void)
@@ -486,29 +562,18 @@ _hot brain::Values brain::RawBrainNetwork::apply(void)
     if (links == nullptr && !this->_rawLinks.empty()) {fetchedLinks = this->_rawLinks.toVector(); links = fetchedLinks.data();}
 
     // same time steps as the reduced network, but on the raw links (only the inward ones read, packed in the order of the slots), every step and its sums kept for the backpropagation
-    this->_states.assign(1, brain::Values(this->_neuron, 0.0));
-    this->_sums.assign(this->_steps + 1, brain::Values(this->_neuron, 0.0));
-    std::copy(this->_inputs.begin(), this->_inputs.end(), this->_states[0].begin());
-    for (brain::UIType step = 0; step < this->_steps; ++step) {
-        brain::Values next(this->_neuron, 0.0);
-        const brain::Values& state = this->_states.back();
-        brain::Values& sums = this->_sums[step + 1];
-
-        for (brain::UIType i = 0; i < this->_neuron; ++i) {
-            brain::FType sum = neurons[i].bias;
-
-            if (i < input) {
-                next[i] = this->_sequence.empty() ? this->_inputs[i] : (step + 1 < this->_sequence.size() ? this->_sequence[step + 1][i] : 0.0f); // a sequence: its next step, then 0
-                continue;
-            }
-            for (brain::UIType k = this->_inStart[i]; links != nullptr && k < this->_inStart[i + 1]; ++k)
-                sum += links[this->_inSlot[k]].weight * state[links[this->_inSlot[k]].id];
-            sums[i] = sum;
-            next[i] = this->activate_(sum);
-            if (std::abs(next[i]) < this->_threshold) next[i] = 0.0; // too weak to matter
-        }
-        this->_states.push_back(std::move(next));
+    // the buffers of the last call are reused when their shape is the same (every value is written again: no allocation per sample)
+    if (this->_states.size() != this->_steps + 1 || this->_states[0].size() != this->_neuron || this->_sums.size() != this->_steps + 1 || this->_sums[0].size() != this->_neuron) {
+        this->_states.assign(this->_steps + 1, brain::Values(this->_neuron, 0.0));
+        this->_sums.assign(this->_steps + 1, brain::Values(this->_neuron, 0.0));
     }
+    std::fill(this->_states[0].begin(), this->_states[0].end(), 0.0f);
+    std::copy(this->_inputs.begin(), this->_inputs.end(), this->_states[0].begin());
+    // the activation function is chosen once for the whole execution (a type: it is inlined in the loop over the neurons)
+    if (this->_activationFunction.second) this->forward_(brain::tools::ExternalActivation{this->_activationFunction.second}, neurons, links);
+    else if (this->_activationFunction.first == brain::ActivationFunction::Sigmoid) this->forward_(brain::tools::SigmoidActivation{}, neurons, links);
+    else if (this->_activationFunction.first == brain::ActivationFunction::ReLU) this->forward_(brain::tools::ReluActivation{}, neurons, links);
+    else this->forward_(brain::tools::LinearActivation{}, neurons, links); // linear, none: the value
     this->watch_();
     return brain::Values(this->_states.back().end() - static_cast<std::ptrdiff_t>(this->_ioSize.second), this->_states.back().end());
 }
@@ -625,6 +690,21 @@ _cold static brain::UIType pairs(const std::vector<brain::RawBrainLink>& links, 
     return count;
 }
 
+// Number of inputs that reach at least one output
+_cold static brain::UIType connected(const std::vector<brain::RawBrainLink>& links, const brain::UIType cap, const brain::UIType neuron, const std::pair<brain::UIType, brain::UIType>& io)
+{
+    brain::UIType count = 0;
+
+    for (brain::UIType from = 0; from < io.first; ++from) {
+        const std::vector<brain::IType> distance = reach(links, cap, neuron, from);
+        bool found = false;
+
+        for (brain::UIType to = neuron - io.second; to < neuron && !found; ++to) found = distance[to] >= 0;
+        count += found ? 1 : 0;
+    }
+    return count;
+}
+
 _hot void brain::RawBrainNetwork::learn_(const brain::Values& rewards)
 {
     // the states of the last apply() are what the gradient is made of
@@ -665,7 +745,8 @@ _hot void brain::RawBrainNetwork::learn_(const brain::Values& rewards)
                 if (known) sum = this->_sums[step][i];
                 else for (brain::UIType k = this->_inStart[i]; k < this->_inStart[i + 1]; ++k) sum += links[this->_inSlot[k]].weight * before[links[this->_inSlot[k]].id];
                 const bool direct = this->_directOutput && step == this->_steps && i >= this->_neuron - output; // the score as it is on the sum of an output
-                const brain::FType slope = direct ? grad[i] : grad[i] * this->derivative_(sum, this->activate_(sum));
+                const brain::FType stored = known ? this->_states[step][i] : 0.0f; // the activation of this sum, as apply() stored it (0: cancelled by the threshold, or not known: computed again)
+                const brain::FType slope = direct ? grad[i] : grad[i] * this->derivative_(sum, stored != 0 ? stored : this->activate_(sum));
 
                 biasGrad[i] += slope;
                 for (brain::UIType k = this->_inStart[i]; k < this->_inStart[i + 1]; ++k) {
@@ -924,21 +1005,77 @@ _cold bool brain::RawBrainNetwork::relink_(const std::vector<brain::RawBrainNeur
                 const std::pair<brain::UIType, brain::UIType> ownerDegree = degree(links, this->_cap, owner);
                 const std::pair<brain::UIType, brain::UIType> otherDegree = degree(links, this->_cap, link.id);
 
-                if (this->_minLinks > 0 && (ownerDegree.first + ownerDegree.second <= this->_minLinks || otherDegree.first + otherDegree.second <= this->_minLinks)) continue; // the forced minimum of links
-                if (this->_orphans || (survives(degree(links, this->_cap, owner), owner < input, link.inward) && survives(degree(links, this->_cap, link.id), link.id < input, !link.inward))) {
+                // a neuron keeps its link when it is its last one (unless the orphans are allowed) or when it would go under the forced minimum
+                const bool ownerKeeps = (this->_minLinks > 0 && ownerDegree.first + ownerDegree.second <= this->_minLinks) || (!this->_orphans && !survives(ownerDegree, owner < input, link.inward));
+                const bool otherKeeps = (this->_minLinks > 0 && otherDegree.first + otherDegree.second <= this->_minLinks) || (!this->_orphans && !survives(otherDegree, link.id < input, !link.inward));
+
+                if (!ownerKeeps && !otherKeeps) {
                     const brain::UIType other = cloneSlot(links, this->_cap, owner, link);
                     const brain::RawBrainLink clone = links[link.id * this->_cap + other];
                     const brain::UIType joined = this->_keepPaths ? pairs(links, this->_cap, count, this->_ioSize) : 0;
+                    const brain::UIType inputs = this->_inputPaths ? connected(links, this->_cap, count, this->_ioSize) : 0;
 
                     links[link.id * this->_cap + other] = brain::RawBrainLink{};
                     links[owner * this->_cap + slot] = brain::RawBrainLink{};
-                    if (this->_keepPaths && pairs(links, this->_cap, count, this->_ioSize) < joined) { // the last path of an input to an output: put back
+                    if ((this->_keepPaths && pairs(links, this->_cap, count, this->_ioSize) < joined) || (this->_inputPaths && connected(links, this->_cap, count, this->_ioSize) < inputs)) { // the last path of an input to an output: put back
                         links[link.id * this->_cap + other] = clone;
                         links[owner * this->_cap + slot] = link;
                         continue;
                     }
                     changed = true;
+                    continue;
                 }
+                if (!this->_moveLastLink || ownerKeeps == otherKeeps) continue; // moved only for the neuron that would lose its last link, when the other one can lose it
+
+                // the last link of a neuron under weightMin: a new link to the nearest free neuron (like a link that grows), the weak one removed
+                const brain::UIType from = ownerKeeps ? owner : link.id; // the neuron that moves its link
+                const brain::UIType partner = ownerKeeps ? link.id : owner;
+                const brain::UIType fromSlot = ownerKeeps ? slot : cloneSlot(links, this->_cap, owner, link);
+                const brain::UIType partnerSlot = ownerKeeps ? cloneSlot(links, this->_cap, owner, link) : slot;
+                const brain::RawBrainLink fromLink = links[from * this->_cap + fromSlot];
+                const brain::RawBrainLink partnerLink = links[partner * this->_cap + partnerSlot];
+                const brain::UIType joined = this->_keepPaths ? pairs(links, this->_cap, count, this->_ioSize) : 0;
+                const brain::UIType inputs = this->_inputPaths ? connected(links, this->_cap, count, this->_ioSize) : 0;
+                brain::UIType movedSlot = this->_cap;
+                brain::UIType movedOther = this->_cap;
+                brain::UIType movedTo = count;
+
+                links[from * this->_cap + fromSlot] = brain::RawBrainLink{};
+                links[partner * this->_cap + partnerSlot] = brain::RawBrainLink{};
+                (void)this->nearest_(from, neurons, [&](const brain::UIType target) {
+                    const bool canReceive = from >= input && target < count - output; // from <- target
+                    const bool canSend = from < count - output && target >= input; // from -> target
+                    brain::UIType found = 0;
+                    brain::UIType targetSlot;
+
+                    while (found < this->_cap && !(occupied(links[from * this->_cap + found]) && links[from * this->_cap + found].id == target)) ++found;
+                    targetSlot = freeSlot(links, this->_cap, target);
+                    if (target == partner || found < this->_cap || targetSlot == this->_cap || (!canReceive && !canSend) || (this->_leftToRight && !canReceive)) return false;
+                    const bool receive = this->_leftToRight || (canReceive && (!canSend || brain::tools::rand_floating() < 0.5f));
+                    const brain::FType low = min + (max - min) * static_cast<brain::FType>(0.05);
+                    const brain::FType high = min + (max - min) * static_cast<brain::FType>(0.95);
+                    const brain::FType start = this->random_(static_cast<brain::FType>(0.01)); // only the sign: the size is the rule of the new links
+                    const brain::FType value = (start < 0 ? -1 : 1) * (this->_lowNewLinks ? low : std::clamp(((min + max) / 2) * (static_cast<brain::FType>(0.5) + static_cast<brain::FType>(0.5) * brain::tools::rand_floating()), low, high));
+
+                    movedSlot = freeSlot(links, this->_cap, from);
+                    movedOther = targetSlot;
+                    movedTo = target;
+                    links[from * this->_cap + movedSlot] = {target, value, receive};
+                    links[target * this->_cap + targetSlot] = {from, value, !receive};
+                    return true;
+                });
+                if (movedTo == count || (this->_keepPaths && pairs(links, this->_cap, count, this->_ioSize) < joined) || (this->_inputPaths && connected(links, this->_cap, count, this->_ioSize) < inputs)) { // no neuron to move to, or a path cut: the weak link stays
+                    if (movedTo != count) {
+                        links[from * this->_cap + movedSlot] = brain::RawBrainLink{};
+                        links[movedTo * this->_cap + movedOther] = brain::RawBrainLink{};
+                    }
+                    links[from * this->_cap + fromSlot] = fromLink;
+                    links[partner * this->_cap + partnerSlot] = partnerLink;
+                    this->_clones.clear(); // the slots changed back: rebuilt by the next sync_
+                    continue;
+                }
+                this->_clones.clear(); // a link moved: the clones are rebuilt by the next sync_
+                changed = true;
                 continue;
             }
 
@@ -988,12 +1125,12 @@ _cold bool brain::RawBrainNetwork::relink_(const std::vector<brain::RawBrainNeur
     return changed;
 }
 
-_cold void brain::RawBrainNetwork::ensurePaths_(const std::vector<brain::RawBrainNeuron>& neurons, std::vector<brain::RawBrainLink>& links) const
+_cold void brain::RawBrainNetwork::ensurePaths_(const std::vector<brain::RawBrainNeuron>& neurons, std::vector<brain::RawBrainLink>& links, const bool every) const
 {
     const brain::UIType count = neurons.size();
     const brain::UIType input = this->_ioSize.first;
     const brain::UIType output = this->_ioSize.second;
-    const brain::UIType hops = std::max<brain::UIType>(2, std::min(this->_pathHops, this->_steps));
+    const brain::UIType hops = std::max<brain::UIType>(2, std::min(every ? this->_pathHops : this->_steps, this->_steps)); // the rule alone: as many links as the time steps allow
     const brain::FType none = std::numeric_limits<brain::FType>::max(); // no path: a finite mark (the Optimized build has -ffast-math, where a comparison with the infinity is folded away)
     std::vector<std::pair<brain::UIType, brain::UIType>> kept; // <sender, receiver> of the links of the paths already built: never given up
 
@@ -1022,8 +1159,19 @@ _cold void brain::RawBrainNetwork::ensurePaths_(const std::vector<brain::RawBrai
         bool added = false;
 
         for (brain::UIType from = 0; from < input; ++from) {
-            for (brain::UIType to = count - output; to < count; ++to) {
+            std::vector<brain::UIType> targets; // the outputs to reach: all of them, or (the rule alone) the nearest one first, until one is reached
+
+            for (brain::UIType to = count - output; to < count; ++to) targets.push_back(to);
+            if (!every) std::sort(targets.begin(), targets.end(), [&](const brain::UIType a, const brain::UIType b) {return (neurons[from] | neurons[a]) < (neurons[from] | neurons[b]);});
+            for (const brain::UIType to: targets) {
                 const std::vector<brain::IType> distance = reach(links, this->_cap, count, from);
+
+                if (!every) { // one output reached is enough
+                    bool done = false;
+
+                    for (brain::UIType o = count - output; o < count && !done; ++o) done = distance[o] >= 0 && static_cast<brain::UIType>(distance[o]) <= this->_steps;
+                    if (done) break;
+                }
                 std::vector<brain::Values> cost(hops + 1, brain::Values(count, none)); // smallest sum of squared distances to a neuron in k links (an existing inward link costs 0)
                 std::vector<std::vector<brain::UIType>> previous(hops + 1, std::vector<brain::UIType>(count, count));
                 brain::UIType best = 0;
@@ -1131,6 +1279,36 @@ _cold void brain::RawBrainNetwork::rateDecay(const brain::FType decay)
         throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "the rate decay should be a finite number >= 0 (0 = none)");
     }
     this->_rateDecay = decay;
+}
+
+_cold void brain::RawBrainNetwork::inputPaths(const bool enable)
+{
+    if (enable == this->_inputPaths) return;
+    this->_inputPaths = enable;
+    this->init_(); // the links change: the neurons and the links are set up again
+}
+
+_cold void brain::RawBrainNetwork::setRules(const std::uint32_t rules)
+{
+    const std::uint32_t before = this->getRules();
+    const std::uint32_t init = brain::LEFT_TO_RIGHT | brain::RANDOM_LINKS | brain::INPUT_PATHS; // the rules the init depends on
+
+    // check inputs
+    if ((rules & ~brain::rules::ALL) != 0) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::InternalCode::InvalidArgument, "unknown rules");
+    }
+    this->_orphans = (rules & brain::ORPHANS) != 0;
+    this->_leftToRight = (rules & brain::LEFT_TO_RIGHT) != 0;
+    this->_clampWeights = (rules & brain::CLAMP_WEIGHTS) != 0;
+    this->_lowNewLinks = (rules & brain::LOW_NEW_LINKS) != 0;
+    this->_directOutput = (rules & brain::DIRECT_OUTPUT) != 0;
+    this->_keepPaths = (rules & brain::KEEP_PATHS) != 0;
+    this->_randomLinks = (rules & brain::RANDOM_LINKS) != 0;
+    this->_invertedLinks = (rules & brain::INVERTED_LINKS) != 0;
+    this->_inputPaths = (rules & brain::INPUT_PATHS) != 0;
+    this->_moveLastLink = (rules & brain::MOVE_LAST_LINK) != 0;
+    if (((rules ^ before) & brain::BATCH) != 0) this->batch((rules & brain::BATCH) != 0); // the pending gradients are dropped when it changes
+    if (((rules ^ before) & init) != 0) this->init_(); // the links change: the neurons and the links are set up again, once
 }
 
 _cold void brain::RawBrainNetwork::randomLinks(const bool enable)

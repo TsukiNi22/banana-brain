@@ -161,7 +161,7 @@ TEST(NeuralNetwork, TrainingUsesTheStatefulForward) {
     network.internalLossFunction(brain::LossFunction::MSE);
     network.inputs({1.0, 1.0});
     EXPECT_EQ(network.apply(), (brain::Values{4.0}));
-    EXPECT_NO_THROW(network.train(brain::UIType(1), inputs, expected));
+    EXPECT_NO_THROW(network.train(inputs, expected, brain::TrainOptions{}));
 }
 
 TEST(NeuralNetwork, FrozenOnlyExecutes) {
@@ -195,16 +195,16 @@ TEST(NeuralNetwork, TrainChecksItsParameters) {
     brain::NeuralNetwork network;
     const brain::Dataset data = {{1.0, 2.0}};
 
-    EXPECT_TRUE(throwsCode([&] {network.train(brain::UIType(1), data, data);}, utils::exception::ExternalCode::NoNetwork));
+    EXPECT_TRUE(throwsCode([&] {network.train(data, data, brain::TrainOptions{});}, utils::exception::ExternalCode::NoNetwork));
     network.init<brain::NetworkType::Layered>(2, 3);
-    EXPECT_TRUE(throwsInternal([&] {network.train(brain::UIType(1), data, data);}, utils::exception::InternalCode::InvalidArgument)); // no loss function
+    EXPECT_TRUE(throwsInternal([&] {network.train(data, data, brain::TrainOptions{});}, utils::exception::InternalCode::InvalidArgument)); // no loss function
     network.internalLossFunction(brain::LossFunction::MSE);
-    EXPECT_TRUE(throwsInternal([&] {network.train(brain::UIType(1), {}, {});}, utils::exception::InternalCode::InvalidArgument)); // empty
-    EXPECT_TRUE(throwsInternal([&] {network.train(brain::UIType(1), data, {{1.0}, {2.0}});}, utils::exception::InternalCode::InvalidArgument)); // not the same number of samples
+    EXPECT_TRUE(throwsInternal([&] {network.train({}, {}, brain::TrainOptions{});}, utils::exception::InternalCode::InvalidArgument)); // empty
+    EXPECT_TRUE(throwsInternal([&] {network.train(data, {{1.0}, {2.0}});}, utils::exception::InternalCode::InvalidArgument)); // not the same number of samples
     network.size(2, 1);
-    EXPECT_TRUE(throwsCode([&] {network.train(brain::UIType(1), {{1.0, 2.0, 3.0}}, {{1.0}});}, utils::exception::ExternalCode::InvalidInputSize));
-    EXPECT_TRUE(throwsCode([&] {network.train(brain::UIType(1), data, {{1.0, 2.0}});}, utils::exception::ExternalCode::InvalidOutputSize));
-    EXPECT_TRUE(throwsInternal([&] {network.train(brain::FType(-1.0), {{1.0, 2.0}}, {{1.0}});}, utils::exception::InternalCode::InvalidArgument)); // negative loss trigger
+    EXPECT_TRUE(throwsCode([&] {network.train({{1.0, 2.0, 3.0}}, {{1.0}});}, utils::exception::ExternalCode::InvalidInputSize));
+    EXPECT_TRUE(throwsCode([&] {network.train(data, {{1.0, 2.0}}, brain::TrainOptions{});}, utils::exception::ExternalCode::InvalidOutputSize));
+    EXPECT_TRUE(throwsInternal([&] {network.train({{1.0, 2.0}}, {{1.0}}, {.targetLoss = -1.0, .stop = brain::StopCondition::TargetLoss});}, utils::exception::InternalCode::InvalidArgument)); // negative loss trigger
 }
 
 TEST(NeuralNetwork, LossOfOneOutput) {
@@ -350,7 +350,7 @@ TEST(NeuralNetwork, TrainMovesTheOutputTowardsTheTarget) {
         for (brain::NeuralNetwork* network: {&layered, &brainy}) {
             const brain::FType before = std::abs(network->exec(inputs[0])[0] - target);
 
-            network->train(brain::UIType(50), inputs, expected);
+            network->train(inputs, expected, brain::TrainOptions{.epochs = 50});
             EXPECT_LT(std::abs(network->exec(inputs[0])[0] - target), before);
         }
     }
@@ -368,7 +368,7 @@ TEST(NeuralNetwork, TrainWithTheMeanSendsOneCoefficient) {
     network.weightInit();
     network.internalLossFunction(brain::LossFunction::MSE);
     const brain::Values before = network.exec(inputs[0]);
-    network.train<true>(brain::UIType(1), inputs, expected);
+    network.train(inputs, expected, {.mean = true});
     const brain::Values after = network.exec(inputs[0]);
 
     // one coefficient for both outputs: they move the same way
@@ -431,9 +431,168 @@ TEST(NeuralNetwork, TrainSendsTheScoreTimesTheRates) {
         network.scoreFunction([&](const brain::FType, const brain::FType) {return 1.0f;});
         const brain::FType before = network.exec({0.3, 0.7})[0];
 
-        network.train(brain::UIType(1), brain::Dataset{{0.3, 0.7}}, brain::Dataset{{0.0}});
+        network.train(brain::Dataset{{0.3, 0.7}}, brain::Dataset{{0.0}});
         moved[k] = std::abs(network.exec({0.3, 0.7})[0] - before);
     }
     EXPECT_GT(moved[0], 0.0f);
     EXPECT_GT(moved[1], 1.5f * moved[0]); // the output is not linear in the weights: more than that, not exactly twice
+}
+
+TEST(NeuralNetwork, ExecAllGivesTheOutputsOfEverySample) {
+    brain::NeuralNetwork layered;
+    brain::NeuralNetwork brainy;
+    const brain::Dataset samples = {{0.1f, 0.9f}, {0.4f, 0.2f}, {0.8f, 0.8f}};
+
+    EXPECT_TRUE(throwsCode([&] {(void)layered.execAll(samples);}, utils::exception::ExternalCode::NoNetwork));
+    brain::tools::rand(3);
+    layered.init<brain::NetworkType::Layered>(brain::Layers{2, 4, 1});
+    layered.size(2, 1);
+    layered.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+    layered.weightInit();
+    brainy.init<brain::NetworkType::Brain>(14, {4.0, 4.0});
+    brainy.size(2, 1);
+    brainy.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+    brainy.weightInit();
+    for (brain::NeuralNetwork* network: {&layered, &brainy}) {
+        const brain::Dataset all = network->execAll(samples);
+
+        ASSERT_EQ(all.size(), 3u);
+        for (brain::UIType s = 0; s < 3; ++s) EXPECT_NEAR(all[s][0], network->exec(samples[s])[0], 1e-6f);
+    }
+}
+
+// ---------- the one entry of the training: epochs, mini-batch, shuffle, stop rules ----------
+
+static void setupTraining(brain::NeuralNetwork& network, const bool layered, const brain::IType seed)
+{
+    brain::tools::rand(seed);
+    if (layered) network.init<brain::NetworkType::Layered>(brain::Layers{2, 4, 1});
+    else network.init<brain::NetworkType::Brain>(14, {4.0, 4.0});
+    network.size(2, 1);
+    network.internalActivationFunction(brain::ActivationFunction::Sigmoid);
+    network.weightInit();
+    network.biasInit();
+    network.internalLossFunction(brain::LossFunction::MSE);
+    network.learningRate(0.5);
+}
+
+TEST(NeuralNetwork, TrainCountsEpochsAndUpdates) {
+    const brain::Dataset inputs = {{0.1f, 0.9f}, {0.8f, 0.2f}, {0.5f, 0.5f}, {0.3f, 0.7f}, {0.9f, 0.1f}};
+    const brain::Dataset expected = {{1.0f}, {0.0f}, {0.5f}, {0.8f}, {0.0f}};
+
+    for (const bool layered: {true, false}) {
+        brain::NeuralNetwork network;
+
+        setupTraining(network, layered, 3);
+        brain::TrainResult once = network.train(inputs, expected); // no options: one epoch, one update per sample
+        EXPECT_EQ(once.epochs, 1u);
+        EXPECT_EQ(once.updates, 5u);
+        EXPECT_EQ(once.reason, brain::StopReason::Epochs);
+        EXPECT_GT(once.loss, 0.0f);
+        brain::TrainResult many = network.train(inputs, expected, {.epochs = 7});
+        EXPECT_EQ(many.epochs, 7u);
+        EXPECT_EQ(many.updates, 35u);
+        EXPECT_LT(many.loss, once.loss) << "layered " << layered; // it learns
+        brain::TrainResult batches = network.train(inputs, expected, {.epochs = 2, .batchSize = 2}); // 2 + 2 + 1 samples
+        EXPECT_EQ(batches.updates, 6u);
+        EXPECT_EQ(network.train(inputs, expected, {.epochs = 2, .batchSize = 0}).updates, 2u); // the whole set
+        EXPECT_EQ(network.train(inputs, expected, {.epochs = 1, .batchSize = 99}).updates, 1u); // more than the set: the whole set
+    }
+}
+
+TEST(NeuralNetwork, TrainStopRules) {
+    const brain::Dataset inputs = {{0.1f, 0.9f}, {0.8f, 0.2f}};
+    const brain::Dataset expected = {{0.9f}, {0.1f}};
+    brain::NeuralNetwork network;
+
+    // the target loss: stops before the epochs are done
+    setupTraining(network, true, 4);
+    brain::TrainResult reached = network.train(inputs, expected, {.epochs = 5000, .targetLoss = 0.05f, .stop = brain::StopCondition::TargetLoss});
+    EXPECT_EQ(reached.reason, brain::StopReason::TargetLoss);
+    EXPECT_LT(reached.epochs, 5000u);
+    EXPECT_LE(reached.loss, 0.05f);
+
+    // the function of the user wins: true = go on, false = stop, it sees the state
+    brain::NeuralNetwork other;
+    brain::UIType seen = 0;
+    setupTraining(other, true, 4);
+    brain::TrainOptions options;
+    options.epochs = 100;
+    options.stop = brain::StopCondition::TargetLoss; // wins over this one
+    options.targetLoss = 1e9f;
+    options.onEpoch = [&](const brain::TrainOptions& given, const brain::TrainState& state) {
+        EXPECT_EQ(given.epochs, 100u);
+        EXPECT_EQ(state.epoch, ++seen);
+        EXPECT_EQ(state.updates, seen * 2);
+        return state.epoch < 3;
+    };
+    brain::TrainResult stopped = other.train(inputs, expected, options);
+    EXPECT_EQ(stopped.reason, brain::StopReason::Callback);
+    EXPECT_EQ(stopped.epochs, 3u);
+    EXPECT_EQ(seen, 3u);
+
+    // the patience: a validation loss that does not improve (a learning rate that changes nothing)
+    brain::NeuralNetwork still;
+    setupTraining(still, true, 4);
+    still.learningRate(1e-30f);
+    brain::TrainResult patient = still.train(inputs, expected, {.epochs = 50, .patience = 2, .validationIn = inputs, .validationOut = expected, .stop = brain::StopCondition::Patience});
+    EXPECT_EQ(patient.reason, brain::StopReason::Patience);
+    EXPECT_EQ(patient.epochs, 3u); // the best at the first epoch, then 2 epochs without better
+
+    // epochs 0 with a rule runs until the rule says stop
+    brain::NeuralNetwork unlimited;
+    setupTraining(unlimited, true, 4);
+    EXPECT_EQ(unlimited.train(inputs, expected, {.epochs = 0, .onEpoch = [](const brain::TrainOptions&, const brain::TrainState& state) {return state.epoch < 4;}}).epochs, 4u);
+}
+
+TEST(NeuralNetwork, TrainChecksItsOptions) {
+    const brain::Dataset data = {{0.1f, 0.9f}};
+    const brain::Dataset out = {{0.5f}};
+    brain::NeuralNetwork network;
+
+    setupTraining(network, true, 1);
+    EXPECT_TRUE(throwsInternal([&] {(void)network.train(data, out, {.epochs = 0});}, utils::exception::InternalCode::InvalidArgument)); // it would never stop
+    EXPECT_TRUE(throwsInternal([&] {(void)network.train(data, out, {.stop = brain::StopCondition::Patience});}, utils::exception::InternalCode::InvalidArgument)); // no validation set, no patience
+    EXPECT_TRUE(throwsInternal([&] {(void)network.train(data, out, {.validationOut = out});}, utils::exception::InternalCode::InvalidArgument)); // outputs without inputs
+    EXPECT_TRUE(throwsCode([&] {(void)network.train(data, out, {.validationIn = {{0.1f, 0.2f, 0.3f}}, .validationOut = out});}, utils::exception::ExternalCode::InvalidInputSize)); // the validation set is checked like the training one
+    EXPECT_FALSE(network.get().batch()); // the mini-batch mode of the network is put back after a training
+    (void)network.train(data, out, {.batchSize = 0});
+    EXPECT_FALSE(network.get().batch());
+}
+
+TEST(NeuralNetwork, MiniBatchIsTheMeanOfTheGradients) {
+    // the same sample twice in a mini-batch of 2: the mean gradient is the one of a single sample, one update (the online way would make 2)
+    const brain::Dataset once = {{0.2f, 0.7f}};
+    const brain::Dataset twice = {{0.2f, 0.7f}, {0.2f, 0.7f}};
+    const brain::Dataset expectedOnce = {{0.9f}};
+    const brain::Dataset expectedTwice = {{0.9f}, {0.9f}};
+
+    for (const bool layered: {true, false}) {
+        brain::NeuralNetwork single;
+        brain::NeuralNetwork grouped;
+
+        setupTraining(single, layered, 6);
+        setupTraining(grouped, layered, 6);
+        for (brain::UIType epoch = 0; epoch < 5; ++epoch) {
+            (void)single.train(once, expectedOnce);
+            (void)grouped.train(twice, expectedTwice, {.batchSize = 2});
+        }
+        EXPECT_NEAR(grouped.exec(once[0])[0], single.exec(once[0])[0], 1e-5f) << "layered " << layered;
+    }
+}
+
+TEST(NeuralNetwork, ShuffleFollowsItsSeed) {
+    const brain::Dataset inputs = {{0.1f, 0.9f}, {0.8f, 0.2f}, {0.5f, 0.5f}, {0.3f, 0.7f}, {0.9f, 0.1f}, {0.6f, 0.4f}};
+    const brain::Dataset expected = {{1.0f}, {0.0f}, {0.5f}, {0.8f}, {0.0f}, {0.4f}};
+    brain::FType outputs[3];
+
+    for (brain::UIType k = 0; k < 3; ++k) { // the same seed twice, then another one
+        brain::NeuralNetwork network;
+
+        setupTraining(network, true, 8);
+        (void)network.train(inputs, expected, {.epochs = 3, .shuffle = true, .seed = k == 2 ? 99 : 5});
+        outputs[k] = network.exec(inputs[0])[0];
+    }
+    EXPECT_EQ(outputs[0], outputs[1]); // reproducible
+    EXPECT_NE(outputs[0], outputs[2]); // another order, another result (online updates depend on the order)
 }
