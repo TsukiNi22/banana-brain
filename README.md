@@ -104,12 +104,12 @@ sudo cmake --build $BUILD_DIR --target install_release --parallel $(nproc)  # De
 > [!NOTE]
 > The usage of `sudo` in the script can be removed with the `--no-sudo` argument.
 
-Run the setup script directly, without cloning the repository. It registers the banana-brain package repository so the system package manager can install the packages, then installs `libbrain`:
+Run the setup script directly, without cloning the repository. It registers the banana-brain package repository and its GPG key for the system package manager (by default nothing is installed, `--install` also installs the package):
 1. Detect the distribution from `/etc/os-release` (`rpm`, `deb` or `pacman` based).
 2. `rpm`: add `/etc/yum.repos.d/brain.repo` and import the GPG key.
 3. `deb`: add the GPG key in `/etc/apt/keyrings/brain.gpg`, the source in `/etc/apt/sources.list.d/brain.list`, then `apt-get update`.
 4. `pacman`: trust the GPG key in the pacman keyring (`pacman-key --add` / `--lsign-key`), add the `[brain]` repository (`Server = https://tsukini22.github.io/banana-brain/arch/$arch`, `SigLevel = Required`) to `/etc/pacman.conf`, then `pacman -Sy`.
-5. Install the package `libbrain` (`--pre` for the unstable one, `--windows` for `mingw64-libbrain`), unless `--no-install`.
+5. With `--install` only: install the package `libbrain` (`--pre` for the unstable one, `--windows` for `mingw64-libbrain`, rpm / deb only); else print the install command of the system (`sudo dnf install libbrain`, `sudo apt install libbrain` or `sudo pacman -S libbrain`).
 
 ```bash
 wget -qO- https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s
@@ -124,9 +124,9 @@ curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.s
 | Argument | Effect |
 | -------- | ------ |
 | `--no-sudo` | Run without `sudo` (the script must already run as root) |
-| `--pre` | Install the pre-release/unstable package (`libbrain-pre`) |
-| `--windows` | Install the Windows packages (`mingw64-libbrain`, MinGW sysroot) instead of the Linux ones |
-| `--no-install` | Only setup the mirror & the GPG key, don't install the package |
+| `--install` | Also install the package (by default only the mirror & the GPG key are setup) |
+| `--pre` | Select the pre-release/unstable package (`libbrain-pre`) |
+| `--windows` | Select the Windows packages (`mingw64-libbrain`, MinGW sysroot) instead of the Linux ones |
 | `-h`, `--help` | Display the usage |
 
 ## Windows (cross compilation)
@@ -135,7 +135,7 @@ curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.s
 From the packages (after the `setup.sh` of [Quick Setup - 2](#quick-setup---2-limited)), installed in the MinGW sysroot:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s -- --windows   # mingw64-libbrain (--pre for the unstable one)
+curl -fsSL https://raw.githubusercontent.com/TsukiNi22/banana-brain/main/setup.sh | bash -s -- --install --windows   # mingw64-libbrain (--pre for the unstable one)
 sudo dnf install mingw64-libbrain-db        # Fedora: Debug variant (requires mingw64-libutils-db)
 ```
 
