@@ -23,7 +23,6 @@ jobs:
     outputs:
       build: ${{ steps.decide.outputs.build }}
       stable: ${{ steps.decide.outputs.stable }}
-      release: ${{ steps.decide.outputs.release }}
       ignore: ${{ steps.decide.outputs.ignore }}
 
     steps:
@@ -33,21 +32,19 @@ jobs:
           set -e
           MESSAGE_HAS_IGNORE='${{ contains(github.event.head_commit.message, '[ignore]') }}'
           MESSAGE_HAS_BUILD='${{ contains(github.event.head_commit.message, '[build]') }}'
-          MESSAGE_HAS_RELEASE='${{ contains(github.event.head_commit.message, '[release]') }}'
 
           # Determine branches
           if [[ "${{ github.ref_type }}" == "tag" ]]; then # On tag push
             if [[ "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              BUILD=true; STABLE=ON; RELEASE=true
+              BUILD=true; STABLE=ON
             elif [[ "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-.+$ ]]; then
-              BUILD=true; STABLE=OFF; RELEASE=false
+              BUILD=true; STABLE=OFF
             else
-              BUILD=false; STABLE=OFF; RELEASE=false
+              BUILD=false; STABLE=OFF
             fi
             IGNORE=false
           else # On normal push
             [[ "$MESSAGE_HAS_BUILD" == "true" ]] && BUILD=true || BUILD=false
-            [[ "$MESSAGE_HAS_RELEASE" == "true" ]] && RELEASE=true || RELEASE=false
             [[ "$MESSAGE_HAS_IGNORE" == "true" ]] && IGNORE=true || IGNORE=false
             STABLE=OFF
           fi
@@ -55,9 +52,8 @@ jobs:
           # Store result & display them
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
           echo "stable=$STABLE" >> "$GITHUB_OUTPUT"
-          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
           echo "ignore=$IGNORE" >> "$GITHUB_OUTPUT"
-          echo "Decision: build=$BUILD stable=$STABLE release=$RELEASE ignore=$IGNORE"
+          echo "Decision: build=$BUILD stable=$STABLE ignore=$IGNORE"
 
   notify-unit-tests:
     needs: dispatch
@@ -132,30 +128,3 @@ jobs:
           ref: ${{ github.ref_name }}
           wait_interval: 4
           propagate_failure: true
-
-  # Downstream notification (like libutils -> docker-image): after a package publication, or a commit containing
-  # [release]. docker-image must listen with 'on: repository_dispatch: types: [banana-brain-released]', the token
-  # (secret DOWNSTREAM_REPO_TOKEN) needs the 'repo' scope on it.
-  notify-downstream:
-    needs: [dispatch, notify-build-packages]
-    if: always() && needs.dispatch.outputs.ignore == 'false' && (needs.dispatch.outputs.build == 'true' || needs.dispatch.outputs.release == 'true') && (needs.notify-build-packages.result == 'success' || needs.notify-build-packages.result == 'skipped')
-
-    runs-on: ${{ vars.RUNNER }}
-    defaults:
-      run:
-        shell: bash
-
-    steps:
-      - name: Trigger docker-image (repository_dispatch)
-        run: |
-          set -euo pipefail
-          curl -sf -X POST \
-            -H "Authorization: Bearer ${{ secrets.DOWNSTREAM_REPO_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/TsukiNi22/docker-image/dispatches" \
-            -d '{
-              "event_type": "banana-brain-released",
-              "client_payload": {
-                "ref": "${{ github.ref_name }}"
-              }
-            }'
