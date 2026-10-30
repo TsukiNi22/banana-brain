@@ -91,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Time steps of a brain network: `stepsCap(percentage | fn)`, `resetStepsCap()` and the getters `stepsCap()` / `linksCap()` (`BRAIN_STEPS_CAP_*`: 25 % of the neurons, `4 log2(n)`), the signal `threshold()` (`BRAIN_SIGNAL_THRESHOLD`, a placeholder at 0) and the exception code `CustomStepsCapRequired`
 
 ### Removed
+- The workflow `Merge - libutils (CD)` (it did nothing) and the downstream notification of `docker-image` (the `notify-downstream` job, the `[release]` keyword of a commit and the secret `DOWNSTREAM_REPO_TOKEN`)
 - `NetworkType::Banana`, the hooks `BackpropagationFn` / `BackpropagationsFn`, `NeuralNetwork::seed` and the memory `load()` / `unload()` of the networks (the codes `NetworkNotLoaded`, `NetworkAlreadyLoaded`, `FrozenNetwork`, `DeadNetwork` and `InvalidPercentage` stay reserved, not thrown yet)
 
 ## v0.0.0 - 2026-10-17
