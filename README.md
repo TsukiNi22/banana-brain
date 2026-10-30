@@ -1,13 +1,13 @@
 # banana-brain
 
 > [!TIP]
-> Technical documentation, project graph and explanations of the [layered](https://tsukini22.github.io/banana-brain/docs/layer-network.html) and [brain](https://tsukini22.github.io/banana-brain/docs/brain-network.html) networks: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v0.0.0).
+> Technical documentation, project graph and explanations of the [layered](https://tsukini22.github.io/banana-brain/docs/layer-network.html) and [brain](https://tsukini22.github.io/banana-brain/docs/brain-network.html) networks: [tsukini22.github.io/banana-brain/docs](https://tsukini22.github.io/banana-brain/docs/) (v1.0.0).
 
 C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling several kinds of networks (layered, brain), their configuration, training and usage, plus the dataset, randomness and serialization tools.
 Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB/Arch (pacman) packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
 
 > [!NOTE]
-> The library is in progress (the tag `v0.0.0` was the architecture only). Written: the checks and errors of every function, the memories of the neurons (`utils::system::HybridMemory`, GPU when available), the default setup of the three networks, the serialization (`save` / `load`) and the tools. The forward pass and the backpropagation of the networks are written.
+> The library is complete in its first release (`v1.0.0`): the layered network and the brain network (execution, backpropagation, links that change with the weights, the rules as flags, sequences), the one training entry `NeuralNetwork::train` (epochs, mini-batch, shuffle, validation and stop rules), the execution on several samples and threads, the GPU (CUDA) for the execution and the plain gradient, the serialization (`save` / `load`) and the dataset tools.
 
 ### Table of Contents
  - [Dependencies](#dependencies)
@@ -155,7 +155,7 @@ cmake --build $BUILD_DIR --target package_release               # mingw64-libbra
 ## Usage
 
 ```cmake
-find_package(brain 0.0.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
+find_package(brain 1.0.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
 target_link_libraries(${TARGET} PRIVATE brain::brain)  # includes, utils::utils & library
 ```
 
@@ -278,7 +278,7 @@ ctest --test-dir $BUILD_DIR --output-on-failure --timeout 30   # or ./unit_tests
 > The tests use GoogleTest (`tests/`, one file per module) and run in the `Unit Tests - Libraries (CI)` workflow. The `Gpu.*` tests are skipped without a CUDA gpu (and under AddressSanitizer, where the driver can't be loaded).
 
 > [!TIP]
-> `lab/network-lab.html` (open it locally, not published) runs the layered and the brain networks side by side on the same task (logic gates up to PAR5, the adder and the decoder with several outputs, curves, 2D tasks up to the two spirals, with a density, a noise and a test part) with every parameter and mode to tweak (layers, caps, forced minimum of links, steps, threshold, weight limits, link modes, protections, activation, score). Rebuild it from `lab/src` with `lab/build.sh`. Its brain network runs in the page (JavaScript copy of the rules) or, with `lab/server.sh [port]` (builds the library and `lab/server`, then serves the page on `http://localhost:8765/`), with the C++ library itself and the gpu when asked: the Engine menu of the page, back on the JavaScript engine when the server does not answer.
+> The lab (a page that runs the layered and the brain networks side by side on logic, curve, 2D and 3D tasks, with a C++ server engine on this library) is a local tool: it is not part of the repository.
 
 > [!WARNING]
 > The `Optimized` mode builds with `-ffast-math`: the compiler removes the finite checks (`std::isfinite`), so a NaN coefficient, range or limit is not refused and 3 tests fail in this mode. Run the tests in `Debug` or `Asan`.
@@ -313,7 +313,7 @@ The pre-release of the packages (`<package_name>-pre`) is triggered by:
 > Only the 5 last versions of each `-pre` package are kept in the package repository, every release is kept.
 
 ### Release (stable)
-The release of the packages (channel `stable`) and the GitHub release are only triggered by a tag matching exactly `vx.x.x` (ex: `v0.0.0`), whose section must exist in the `CHANGELOG.md`.
+The release of the packages (channel `stable`) and the GitHub release are only triggered by a tag matching exactly `vx.x.x` (ex: `v1.0.0`), whose section must exist in the `CHANGELOG.md`.
 
 ### Downstream notification
 `Dispatch (CI/CD)` notifies the `docker-image` repository (`notify-downstream` job: `repository_dispatch`, event `banana-brain-released`, secret `DOWNSTREAM_REPO_TOKEN`) after the packages are published:
