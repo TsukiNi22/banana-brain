@@ -29,11 +29,26 @@ File Description:
     #include <utils/utils.hpp>      // _hot, _cold, _nodiscard, utils::system::HybridMemory, utils::system::IGpu
     #include "../NetworkDefine.hpp" // brain::ActivationFunction
     #include "../NetworkType.hpp"   // brain::FType, brain::UIType, brain::Values, brain::Layers
+    #include <cstddef>              // std::size_t
+    #include <memory>               // std::unique_ptr
     #include <vector>               // std::vector
 
 namespace brain::tools::gpu { // namespace start
 //----------------------------------------------------------------//
 /* PROTOTYPE */
+
+/* the memory kept on the device by the mini-batches of a layered network (the gradient and what the last forward pass computed), released with it */
+class Batch {
+    public:
+        struct State; // the device buffers (defined with the kernels)
+        std::unique_ptr<State> state;
+
+        Batch();
+        ~Batch();
+        std::size_t bytes(void) const; // bytes held on the device
+        Batch(const Batch& other) = delete;
+        Batch& operator=(const Batch& other) = delete;
+};
 
 /* availability */
 _cold _nodiscard bool available(const utils::system::IGpu* handler); // the memories are stored by a CUDA gpu and the driver and NVRTC are loaded (else the caller computes on the host)
@@ -45,6 +60,13 @@ _hot bool layersBack(const utils::system::IGpu* handler, const utils::system::Gp
 _hot bool stepsBack(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::ActivationFunction activation, const std::vector<brain::Values>& states, const brain::Values& rewards, const utils::system::GpuBuffer clones); // backpropagation of the scores of the outputs through the time steps of a raw brain network, the weights (the clones too: clones[slot] = the slot of the clone of an inward link) and the biases are changed on the device
 _hot bool triggered(const utils::system::IGpu* handler, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap, const brain::FType low, const brain::FType high, bool& any); // does a link of the raw memory have an absolute weight at or under low, or at or over high (any), without reading the links back
 _hot bool reduce(const utils::system::IGpu* handler, const utils::system::GpuBuffer rawNeurons, const utils::system::GpuBuffer rawLinks, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap); // rebuild the reduced memories (biases and inward links) from the raw ones, on the device
+
+/* layered network, several samples at once (false: nothing computed, the caller computes on the host; the weights must follow each other, layer after layer, as the network lays them out) */
+_hot bool layersAll(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, const brain::Dataset& inputs, brain::Dataset& outputs, const std::size_t budget); // the outputs of every sample, computed by groups that fit in budget bytes of the device
+_hot bool layersTrain(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, brain::tools::gpu::Batch& batch, const brain::Dataset& inputs, brain::Dataset& outputs, const std::size_t budget); // the same for a mini-batch, what the gradient needs is kept in the batch
+_hot bool layersGradient(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, brain::tools::gpu::Batch& batch, const brain::Dataset& errors); // the error of each output of each sample of the last layersTrain(): their gradients are added to the one of the batch (the weights do not change)
+_hot bool layersApply(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, brain::tools::gpu::Batch& batch, const brain::UIType weightCount, const brain::UIType neuronCount, const brain::FType divisor); // the weights and the biases go down the gradient of the batch divided by divisor, then the gradient is cleared
+_hot void layersClear(brain::tools::gpu::Batch& batch); // the gradient of the batch is dropped
 
 } // namespace end
 #endif /* COMPUTE_H */

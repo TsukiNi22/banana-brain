@@ -51,6 +51,8 @@ class ANetwork: public brain::INetwork {
         std::shared_ptr<utils::system::IGpu> _gpu = nullptr; // the gpu handler of the mode (shared by the networks of the program), given to every memory of the network (nullptr = ram)
         utils::system::MemoryMode _mode = utils::system::MemoryMode::Auto; // mode asked at the construction
         brain::Values _inputs; // last inputs given to the network (training)
+        brain::GpuProfile _profile = brain::GpuProfile::Fast; // what the network may take on the gpu
+        brain::Dataset _trainInputs; // the samples of the last applyTrain() of a network that does not compute them together
 
         // ---------- Pre-Function -------- //
         std::uint8_t serializeActivation_(void) const; // BRAIN_ACTIVATION_NONE | BRAIN_ACTIVATION_CUSTOM | the internal mode
@@ -73,9 +75,12 @@ class ANetwork: public brain::INetwork {
     public:
         // ---------- Pre-Function -------- //
         /* execution */
+        using brain::INetwork::apply; // the training one too (the one with the inputs is final here)
         void inputs(const brain::Values& inputs) override;
         brain::Values apply(const brain::Values& inputs) const final;
         brain::Dataset applyAll(const brain::Dataset& inputs) const override; // one apply() per sample (a child that computes them together overrides it)
+        brain::Dataset applyTrain(const brain::Dataset& inputs) override; // one apply() per sample (a child that computes them together overrides it with batchTraining())
+        void backpropagationAll(const brain::Dataset& coefs) override; // the samples are applied again one after the other, then backpropagation() each
 
         /* setter (size) */
         void size(const brain::UIType input, const brain::UIType output) final; // the sizes are restored when resized_() refuses them
@@ -98,6 +103,11 @@ class ANetwork: public brain::INetwork {
         /* setter (size) */
         _cold inline void input(const brain::UIType input) final   {this->size(input, this->_ioSize.second);};
         _cold inline void output(const brain::UIType output) final {this->size(this->_ioSize.first, output);};
+
+        /* gpu profile */
+        _cold inline void gpuProfile(const brain::GpuProfile profile) override    {this->_profile = profile;};
+        _cold _nodiscard inline brain::GpuProfile gpuProfile(void) const override {return this->_profile;};
+        _cold _nodiscard inline bool batchTraining(void) const override           {return false;}; // default: nothing computed together
 
         /* getter */
         _cold _nodiscard inline brain::UIType input(void) const final  {return this->_ioSize.first;};

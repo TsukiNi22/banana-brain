@@ -64,6 +64,15 @@ _cold void brain::LayerNetwork::layout_(void)
     this->_weights.allocate(weights);
     this->_weights.store(std::vector<brain::FType>(weights, 1.0)); // 1.0 by default: weightInit gives the random ones
     this->_layoutInput = this->_ioSize.first;
+    this->_contiguous = true;
+    this->resetDevice_();
+}
+
+_cold void brain::LayerNetwork::resetDevice_(void)
+{
+    this->_device.reset();
+    this->_devicePending = 0;
+    this->_deviceKept = false;
 }
 
 _cold brain::Bytes brain::LayerNetwork::serialize(void) const
@@ -130,6 +139,7 @@ _cold void brain::LayerNetwork::deserialize(const brain::Bytes& data)
     }
 
     // the neurons match the layers and the weights they read (none stored yet: nothing to check)
+    bool contiguous = true;
     if (!neurons.empty()) {
         brain::UIType previous = this->_ioSize.first; // the header is read: the number of inputs
         brain::UIType index = 0;
@@ -142,6 +152,7 @@ _cold void brain::LayerNetwork::deserialize(const brain::Bytes& data)
                 if (neurons[index].count != previous || neurons[index].incoming > weights.size() || neurons[index].count > weights.size() - neurons[index].incoming) _unlikely {
                     throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidNetworkFile, "the neuron " + std::to_string(index) + " does not match its layer or its weights");
                 }
+                if (neurons[index].incoming != (index == 0 ? 0 : neurons[index - 1].incoming + neurons[index - 1].count)) contiguous = false;
             }
             previous = layer;
         }
@@ -154,6 +165,8 @@ _cold void brain::LayerNetwork::deserialize(const brain::Bytes& data)
     this->_weights.allocate(weights.size());
     this->_weights.store(weights);
     this->_layoutInput = this->_ioSize.first;
+    this->_contiguous = contiguous;
+    this->resetDevice_();
 }
 
 _hot brain::Values brain::LayerNetwork::forward_(const brain::Values& inputs, std::vector<brain::Values>* sums, std::vector<brain::Values>* outputs) const
@@ -219,6 +232,61 @@ _hot brain::Values brain::LayerNetwork::apply(void)
         throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidInputSize, "no inputs loaded (call inputs() first)");
     }
     return this->forward_(this->_inputs, &this->_sums, &this->_outputs);
+}
+
+_hot brain::Dataset brain::LayerNetwork::applyAll(const brain::Dataset& inputs) const
+{
+    brain::Dataset outputs;
+
+    // the samples together on the gpu (a size that does not match is refused by the apply() of the host)
+    if (!inputs.empty() && this->_ioSize.first != 0 && !this->_neurons.empty() && this->gpuReady_()) {
+        const bool fits = std::all_of(inputs.begin(), inputs.end(), [this](const brain::Values& sample) {return sample.size() == this->_ioSize.first;});
+
+        if (fits && brain::tools::gpu::layersAll(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), this->_layers, this->_activationFunction.first, inputs, outputs, this->_profile == brain::GpuProfile::Fast ? BRAIN_GPU_FAST_EXEC_BYTES : BRAIN_GPU_LIGHT_EXEC_BYTES)) return outputs;
+    }
+    return this->ANetwork::applyAll(inputs);
+}
+
+_hot brain::Dataset brain::LayerNetwork::applyTrain(const brain::Dataset& inputs)
+{
+    brain::Dataset outputs;
+
+    // the samples of the mini-batch together on the gpu, the gradient of the device is where they are kept
+    this->_deviceKept = false;
+    if (!inputs.empty() && this->_ioSize.first != 0 && !this->_neurons.empty() && this->batchTraining()) {
+        const bool fits = std::all_of(inputs.begin(), inputs.end(), [this](const brain::Values& sample) {return sample.size() == this->_ioSize.first;});
+
+        if (!this->_device) this->_device = std::make_unique<brain::tools::gpu::Batch>();
+        if (fits && brain::tools::gpu::layersTrain(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), this->_layers, this->_activationFunction.first, *this->_device, inputs, outputs, BRAIN_GPU_FAST_TRAIN_BYTES)) {
+            this->_deviceKept = true;
+            return outputs;
+        }
+    }
+    return this->ANetwork::applyTrain(inputs);
+}
+
+_hot void brain::LayerNetwork::backpropagationAll(const brain::Dataset& coefs)
+{
+    // kept on the device: their gradient is made there
+    if (this->_deviceKept) {
+        this->_deviceKept = false;
+        for (const brain::Values& sample: coefs) {
+            if (sample.size() != this->_layers.back()) _unlikely {
+                throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(sample.size()) + ", the last layer has " + std::to_string(this->_layers.back()) + " neurons");
+            }
+            for (const brain::FType coef: sample) {
+                if (!std::isfinite(coef)) _unlikely {
+                    throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidCoefficient, "the coefficients should be finite numbers");
+                }
+            }
+        }
+        if (!brain::tools::gpu::layersGradient(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), this->_layers, this->_activationFunction.first, *this->_device, coefs)) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::InternalCode::GpuTransfer, "the gradient of the mini-batch failed on the device");
+        }
+        this->_devicePending += coefs.size();
+        return;
+    }
+    this->ANetwork::backpropagationAll(coefs);
 }
 
 _hot void brain::LayerNetwork::backpropagation(const brain::FType coef)
@@ -323,24 +391,40 @@ _cold void brain::LayerNetwork::batch(const bool enable)
     this->_pendingWeights.assign(enable ? this->_weights.size() : 0, 0.0f);
     this->_pendingBias.assign(enable ? this->_neurons.size() : 0, 0.0f);
     this->_pendingCount = 0;
+    if (this->_device) brain::tools::gpu::layersClear(*this->_device);
+    this->_devicePending = 0;
+    this->_deviceKept = false;
 }
 
 _hot void brain::LayerNetwork::applyBatch(void)
 {
     std::vector<brain::LayerNeuron> neurons;
     std::vector<brain::FType> weights;
+    const brain::UIType count = this->_pendingCount + this->_devicePending;
 
     // nothing pending: nothing done
-    if (this->_pendingCount == 0) return;
-    neurons = this->_neurons.toVector();
-    weights = this->_weights.toVector();
-    for (brain::UIType k = 0; k < weights.size() && k < this->_pendingWeights.size(); ++k) weights[k] -= this->_pendingWeights[k] / static_cast<brain::FType>(this->_pendingCount);
-    for (brain::UIType k = 0; k < neurons.size() && k < this->_pendingBias.size(); ++k) neurons[k].bias -= this->_pendingBias[k] / static_cast<brain::FType>(this->_pendingCount);
-    this->_weights.store(weights);
-    this->_neurons.store(neurons);
-    std::fill(this->_pendingWeights.begin(), this->_pendingWeights.end(), 0.0f);
-    std::fill(this->_pendingBias.begin(), this->_pendingBias.end(), 0.0f);
-    this->_pendingCount = 0;
+    if (count == 0) return;
+
+    // the gradients made on the device go down there (their weights never leave it)
+    if (this->_devicePending > 0) {
+        if (!this->_device || !brain::tools::gpu::layersApply(this->_gpu.get(), this->_neurons.native(), this->_weights.native(), *this->_device, this->_weights.size(), this->_neurons.size(), static_cast<brain::FType>(count))) _unlikely {
+            throw utils::exception::ErrorException(utils::exception::InternalCode::GpuTransfer, "the mini-batch could not be applied on the device");
+        }
+        this->_devicePending = 0;
+    }
+
+    // the ones of the host
+    if (this->_pendingCount > 0) {
+        neurons = this->_neurons.toVector();
+        weights = this->_weights.toVector();
+        for (brain::UIType k = 0; k < weights.size() && k < this->_pendingWeights.size(); ++k) weights[k] -= this->_pendingWeights[k] / static_cast<brain::FType>(count);
+        for (brain::UIType k = 0; k < neurons.size() && k < this->_pendingBias.size(); ++k) neurons[k].bias -= this->_pendingBias[k] / static_cast<brain::FType>(count);
+        this->_weights.store(weights);
+        this->_neurons.store(neurons);
+        std::fill(this->_pendingWeights.begin(), this->_pendingWeights.end(), 0.0f);
+        std::fill(this->_pendingBias.begin(), this->_pendingBias.end(), 0.0f);
+        this->_pendingCount = 0;
+    }
 }
 
 _cold void brain::LayerNetwork::weightInit(const brain::FType fallback)

@@ -118,6 +118,27 @@ _hot brain::Dataset brain::ANetwork::applyAll(const brain::Dataset& inputs) cons
     return outputs;
 }
 
+_hot brain::Dataset brain::ANetwork::applyTrain(const brain::Dataset& inputs)
+{
+    brain::Dataset outputs = this->applyAll(inputs);
+
+    this->_trainInputs = inputs;
+    return outputs;
+}
+
+_hot void brain::ANetwork::backpropagationAll(const brain::Dataset& coefs)
+{
+    // check inputs
+    if (coefs.size() != this->_trainInputs.size()) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::InvalidOutputSize, "given " + std::to_string(coefs.size()) + " samples, the last applyTrain() had " + std::to_string(this->_trainInputs.size()));
+    }
+    for (std::size_t i = 0; i < coefs.size(); ++i) {
+        this->inputs(this->_trainInputs[i]);
+        (void)this->apply();
+        this->backpropagation(coefs[i]);
+    }
+}
+
 _cold void brain::ANetwork::rand(const brain::FType min, const brain::FType max)
 {
     // check inputs

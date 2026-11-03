@@ -66,6 +66,120 @@ TEST(Gpu, LayersMatchTheHost) {
     }
 }
 
+// A pair of the same layered network: on the gpu and on the host, from the same weights
+struct Twins {
+    brain::LayerNetwork gpu;
+    brain::LayerNetwork ram;
+
+    Twins(const brain::Layers& layers, const brain::UIType inputs, const brain::ActivationFunction fn): gpu(layers, utils::system::MemoryMode::Cuda), ram(layers, utils::system::MemoryMode::Ram)
+    {
+        gpu.size(inputs, layers.back());
+        ram.size(inputs, layers.back());
+        gpu.rand(-0.5, 0.5);
+        gpu.weightInit();
+        gpu.biasInit();
+        gpu.internalActivationFunction(fn);
+        ram.deserialize(gpu.serialize());
+        ram.internalActivationFunction(fn);
+    }
+};
+
+static brain::Dataset samples(const brain::UIType count, const brain::UIType size, const brain::UIType seed)
+{
+    brain::Dataset out(count, brain::Values(size));
+
+    for (brain::UIType i = 0; i < count; ++i)
+        for (brain::UIType j = 0; j < size; ++j) out[i][j] = std::sin(static_cast<brain::FType>(seed + i * 31 + j * 7)); // varied, in [-1, 1]
+    return out;
+}
+
+TEST(Gpu, LayersAllMatchTheHost) {
+    REQUIRE_CUDA();
+    for (const brain::ActivationFunction fn: {brain::ActivationFunction::None, brain::ActivationFunction::Sigmoid, brain::ActivationFunction::Linear, brain::ActivationFunction::ReLU}) {
+        for (const brain::GpuProfile profile: {brain::GpuProfile::Fast, brain::GpuProfile::Light}) {
+            Twins twins({70, 33, 3}, 101, fn); // sizes that are not a multiple of the tiles
+            const brain::Dataset inputs = samples(131, 101, 3);
+
+            twins.gpu.gpuProfile(profile);
+            ASSERT_TRUE(twins.gpu.onGpu());
+            const brain::Dataset got = twins.gpu.applyAll(inputs);
+            const brain::Dataset expected = twins.ram.applyAll(inputs);
+
+            ASSERT_EQ(got.size(), expected.size());
+            for (std::size_t i = 0; i < got.size(); ++i) expectNear(got[i], expected[i]);
+        }
+    }
+}
+
+TEST(Gpu, LayersAllRefuseTheWrongSizes) {
+    REQUIRE_CUDA();
+    Twins twins({8, 3}, 5, brain::ActivationFunction::ReLU);
+
+    EXPECT_ANY_THROW((void)twins.gpu.applyAll(samples(4, 6, 1)));
+    EXPECT_TRUE(twins.gpu.applyAll({}).empty());
+}
+
+TEST(Gpu, MiniBatchTrainingMatchesTheHost) {
+    REQUIRE_CUDA();
+    for (const brain::ActivationFunction fn: {brain::ActivationFunction::None, brain::ActivationFunction::Sigmoid, brain::ActivationFunction::Linear, brain::ActivationFunction::ReLU}) {
+        Twins twins({20, 9, 3}, 37, fn);
+
+        twins.gpu.batch(true);
+        twins.ram.batch(true);
+        ASSERT_TRUE(twins.gpu.batchTraining());
+        for (brain::UIType round = 0; round < 3; ++round) {
+            const brain::Dataset inputs = samples(70 + round, 37, round);
+            const brain::Dataset expected = samples(70 + round, 3, round + 50);
+            const brain::Dataset outputs = twins.gpu.applyTrain(inputs);
+            brain::Dataset coefs = outputs;
+
+            ASSERT_EQ(outputs.size(), inputs.size());
+            for (std::size_t i = 0; i < inputs.size(); ++i) {
+                twins.ram.inputs(inputs[i]);
+                expectNear(outputs[i], twins.ram.apply());
+                for (std::size_t k = 0; k < 3; ++k) coefs[i][k] = 0.05f * (outputs[i][k] - expected[i][k]);
+                twins.ram.backpropagation(coefs[i]);
+            }
+            twins.gpu.backpropagationAll(coefs);
+            EXPECT_EQ(twins.gpu.pending(), inputs.size());
+            twins.gpu.applyBatch();
+            twins.ram.applyBatch();
+            EXPECT_EQ(twins.gpu.pending(), 0u);
+        }
+
+        // the same weights after three mini-batches (up to the float rounding of the sums)
+        twins.gpu.batch(false);
+        const brain::Dataset check = samples(9, 37, 77);
+
+        for (std::size_t i = 0; i < check.size(); ++i) expectNear(twins.gpu.apply(check[i]), twins.ram.apply(check[i]));
+        EXPECT_GT(twins.gpu.trainingMemory(), 0u);
+    }
+}
+
+TEST(Gpu, TheLightProfileTrainsOnTheHost) {
+    REQUIRE_CUDA();
+    Twins twins({12, 3}, 10, brain::ActivationFunction::Sigmoid);
+
+    twins.gpu.batch(true);
+    twins.gpu.gpuProfile(brain::GpuProfile::Light);
+    EXPECT_FALSE(twins.gpu.batchTraining());
+    const brain::Dataset inputs = samples(6, 10, 2);
+    const brain::Dataset outputs = twins.gpu.applyTrain(inputs);
+
+    twins.gpu.backpropagationAll(outputs);
+    EXPECT_EQ(twins.gpu.pending(), inputs.size());
+    twins.gpu.applyBatch();
+    EXPECT_EQ(twins.gpu.trainingMemory(), 0u); // nothing kept on the device
+}
+
+TEST(Gpu, BatchBackpropagationNeedsTheSamplesOfTheLastApplyTrain) {
+    brain::LayerNetwork ram({4, 3}, utils::system::MemoryMode::Ram);
+
+    ram.size(5, 3);
+    ram.batch(true);
+    EXPECT_ANY_THROW(ram.backpropagationAll(samples(2, 3, 1))); // nothing applied yet
+}
+
 TEST(Gpu, BrainStepsMatchTheHost) {
     REQUIRE_CUDA();
     brain::BrainNetwork gpu(20, 4, utils::system::MemoryMode::Cuda);

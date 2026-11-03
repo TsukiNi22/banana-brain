@@ -54,6 +54,9 @@ File Description:
     #define BRAIN_STEPS_PATH_MARGIN 1.1 // the time steps are never under this times the farthest path (in links) from an input to an output, whatever the cap (the signal has to arrive)
     #define BRAIN_THREADS_MIN_WORK 131072 // a time step is shared between threads only when it has at least this many slots of links (neurons * cap) for each of them: under it the barrier of each step costs more than it saves
     #define BRAIN_THREADS_CHUNK 64 // the neurons of a thread are whole chunks of this many (the loops over the neurons are vectorized: a range that does not start and end on the same lanes as the whole loop would round the last neurons differently, the results must not depend on the number of threads)
+    #define BRAIN_GPU_FAST_EXEC_BYTES (256ULL << 20) // GpuProfile::Fast: the device memory one group of samples of an execution may take (the samples are computed together, a bigger set is cut in groups)
+    #define BRAIN_GPU_LIGHT_EXEC_BYTES (8ULL << 20) // GpuProfile::Light: the same, smaller (the memory is kept by the thread that executes)
+    #define BRAIN_GPU_FAST_TRAIN_BYTES (1ULL << 30) // GpuProfile::Fast: the device memory a mini-batch may take (the gradient, the sums and the outputs of every sample), over it the host trains
     #define BRAIN_GPU_SINGLE_KERNEL_NEURONS 256 // on a gpu a network of at most this many neurons and a cap under 32 (one thread per neuron) computes all its time steps in one launch of one block, with a barrier between the steps; a bigger one, or one with a warp per neuron, launches a kernel per step on the whole device (measured: the one block is slower there)
     #define BRAIN_SIGNAL_THRESHOLD 0.0 // (default value, placeholder to give) a signal under it (absolute value) is cancelled in a brain network: 0 = nothing is cancelled
     #define BRAIN_WEIGHT_MIN 0.01 // (default value) a raw brain network removes a link (and its clone) when the absolute value of its weight falls to it (or under), unless it is the last link the neuron needs
@@ -84,6 +87,12 @@ enum class ActivationFunction {
     //Softmax,
     Linear,
     ReLU,
+};
+
+// What a network may take on the gpu to go faster
+enum class GpuProfile {
+    Fast, // the whole mini-batch is trained on the gpu: its gradient and the activations of the batch stay in the device (the weights again in the size of the network, more with the batch), big groups for the execution (up to 256 MiB)
+    Light, // the gradient is made by the host and the device only keeps the weights and a small buffer for the execution (up to 8 MiB): slower, the smallest use of the device
 };
 
 // Internal loss functions (more optimized than an external one)

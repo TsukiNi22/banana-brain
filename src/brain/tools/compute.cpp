@@ -264,6 +264,107 @@ File Description:
         *(ft*)(target + rwoff) = 0; // a free slot is all at 0
     }
     }
+
+    // ---- Layered networks, a whole mini-batch at once (matrices: the samples are the rows) ----
+    #define TILE 64
+    #define DEPTH 16
+    // C[m][n] = sum over p of A(m, p) * B(p, n), A(m, p) = A[m * sam + p * sap], B(p, n) = B[p * sbp + n * sbn]: tiles of 64 x 64 in the shared memory, 256 threads of 4 x 4 results each
+    // epilogue 0: forward (the bias of the neuron is added, the sum and the output of the activation are written), 1: the slope of the layer below (times the derivative of its activation), 2: added to C (the gradient)
+    extern "C" __global__ void gemm(const ft* A, const ul sam, const ul sap, const ft* B, const ul sbp, const ul sbn, ft* C, const ul ldc, const ul M, const ul N, const ul K, const int epilogue, const LayerNeuron* neurons, const ul first, ft* sums, const ft* sumsBelow, const ft* outputsBelow, const int mode)
+    {
+        __shared__ ft tileA[DEPTH][TILE + 1];
+        __shared__ ft tileB[DEPTH][TILE + 1];
+        const int thread = threadIdx.x;
+        const int tx = thread % 16;
+        const int ty = thread / 16;
+        const ul row0 = (ul)blockIdx.y * TILE;
+        const ul col0 = (ul)blockIdx.x * TILE;
+        ft acc[4][4];
+
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j) acc[i][j] = 0;
+        for (ul p0 = 0; p0 < K; p0 += DEPTH) {
+            for (int e = 0; e < 4; ++e) {
+                const int idx = thread + e * 256;
+                int a1 = sap == 1 ? idx / DEPTH : idx % TILE; // m of the element of A
+                int a2 = sap == 1 ? idx % DEPTH : idx / TILE; // p of the element of A
+                const ul gm = row0 + a1;
+                const ul gp = p0 + a2;
+                tileA[a2][a1] = (gm < M && gp < K) ? A[gm * sam + gp * sap] : (ft)0;
+                int b1 = sbp == 1 ? idx / DEPTH : idx % TILE; // n of the element of B
+                int b2 = sbp == 1 ? idx % DEPTH : idx / TILE; // p of the element of B
+                const ul gn = col0 + b1;
+                const ul gq = p0 + b2;
+                tileB[b2][b1] = (gn < N && gq < K) ? B[gq * sbp + gn * sbn] : (ft)0;
+            }
+            __syncthreads();
+            #pragma unroll
+            for (int p = 0; p < DEPTH; ++p) {
+                ft a[4];
+                ft b[4];
+
+                for (int i = 0; i < 4; ++i) a[i] = tileA[p][ty + i * 16];
+                for (int j = 0; j < 4; ++j) b[j] = tileB[p][tx + j * 16];
+                for (int i = 0; i < 4; ++i)
+                    for (int j = 0; j < 4; ++j) acc[i][j] += a[i] * b[j];
+            }
+            __syncthreads();
+        }
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                const ul m = row0 + ty + i * 16;
+                const ul n = col0 + tx + j * 16;
+                if (m >= M || n >= N) continue;
+                const ul at = m * ldc + n;
+
+                if (epilogue == 0) {
+                    const ft sum = acc[i][j] + neurons[first + n].bias;
+                    if (sums != 0) sums[at] = sum;
+                    C[at] = activate(sum, mode);
+                } else if (epilogue == 1) {
+                    C[at] = acc[i][j] * derive(sumsBelow[at], outputsBelow[at], mode);
+                } else {
+                    C[at] += acc[i][j];
+                }
+            }
+        }
+    }
+
+    // The slope of the last layer of every sample: error * derivative
+    extern "C" __global__ void slope_all(const ft* errors, const ft* sums, const ft* outputs, ft* slope, const ul count, const int mode)
+    {
+        const ul k = (ul)blockIdx.x * blockDim.x + threadIdx.x;
+        if (k >= count) return;
+        slope[k] = errors[k] * derive(sums[k], outputs[k], mode);
+    }
+
+    // The gradient of the biases of a layer: the sum of the slopes of the samples
+    extern "C" __global__ void bias_grad(const ft* slope, ft* gradient, const ul size, const ul samples)
+    {
+        const ul k = (ul)blockIdx.x * blockDim.x + threadIdx.x;
+        if (k >= size) return;
+        ft sum = 0;
+
+        for (ul b = 0; b < samples; ++b) sum += slope[b * size + k];
+        gradient[k] += sum;
+    }
+
+    // The weights go down the mean of the gradients (the gradient goes back to 0)
+    extern "C" __global__ void apply_weights(ft* weights, ft* gradient, const ul count, const ft inverse)
+    {
+        const ul i = (ul)blockIdx.x * blockDim.x + threadIdx.x;
+        if (i >= count) return;
+        weights[i] -= gradient[i] * inverse;
+        gradient[i] = 0;
+    }
+
+    extern "C" __global__ void apply_bias(LayerNeuron* neurons, ft* gradient, const ul count, const ft inverse)
+    {
+        const ul i = (ul)blockIdx.x * blockDim.x + threadIdx.x;
+        if (i >= count) return;
+        neurons[i].bias -= gradient[i] * inverse;
+        gradient[i] = 0;
+    }
     )CUDA";
 
     namespace {
@@ -308,6 +409,11 @@ File Description:
         CUfunction backStepWarp = nullptr;
     CUfunction backFlags = nullptr;
     CUfunction reduceCopy = nullptr;
+        CUfunction gemm = nullptr; // a mini-batch of a layered network: the products of the matrices
+        CUfunction slopeAll = nullptr;
+        CUfunction biasGrad = nullptr;
+        CUfunction applyWeights = nullptr;
+        CUfunction applyBias = nullptr;
     };
 
     constexpr unsigned int BLOCK = 256; // threads per block
@@ -487,6 +593,11 @@ File Description:
                 check(api.function(&built->backStepWarp, loaded, "back_step_warp"), "cuModuleGetFunction");
             check(api.function(&built->backFlags, loaded, "back_flags"), "cuModuleGetFunction");
             check(api.function(&built->reduceCopy, loaded, "reduce_copy"), "cuModuleGetFunction");
+                check(api.function(&built->gemm, loaded, "gemm"), "cuModuleGetFunction");
+                check(api.function(&built->slopeAll, loaded, "slope_all"), "cuModuleGetFunction");
+                check(api.function(&built->biasGrad, loaded, "bias_grad"), "cuModuleGetFunction");
+                check(api.function(&built->applyWeights, loaded, "apply_weights"), "cuModuleGetFunction");
+                check(api.function(&built->applyBias, loaded, "apply_bias"), "cuModuleGetFunction");
             } catch (const utils::exception::IException& e) {
                 (void)api.destroy(&program);
                 throw;
@@ -737,6 +848,398 @@ File Description:
         return true;
     }
 
+    namespace {
+
+    // Where the weights of a layer start in the weights, its inputs and neurons, and its first neuron
+    struct Shape {
+        brain::UIType weights = 0;
+        brain::UIType in = 0;
+        brain::UIType out = 0;
+        brain::UIType first = 0;
+    };
+
+    // The geometry of a layered network (the weights follow each other, layer after layer)
+    struct Plan {
+        std::vector<Shape> shapes;
+        brain::UIType input = 0; // inputs of the network
+        brain::UIType total = 0; // neurons
+        brain::UIType widest = 0; // neurons of the biggest layer
+        brain::UIType weights = 0; // weights
+    };
+
+    _cold Plan planOf(const brain::Layers& layers, const brain::UIType input)
+    {
+        Plan plan;
+        brain::UIType previous = input;
+
+        plan.input = input;
+        for (const brain::UIType layer: layers) {
+            plan.shapes.push_back({plan.weights, previous, layer, plan.total});
+            plan.weights += layer * previous;
+            plan.total += layer;
+            plan.widest = std::max(plan.widest, layer);
+            previous = layer;
+        }
+        return plan;
+    }
+
+    // One product of matrices (see the kernel gemm): C[m][n] = sum over p of A(m, p) * B(p, n)
+    struct Product {
+        CUdeviceptr a = 0;
+        brain::UIType sam = 0;
+        brain::UIType sap = 0;
+        CUdeviceptr b = 0;
+        brain::UIType sbp = 0;
+        brain::UIType sbn = 0;
+        CUdeviceptr c = 0;
+        brain::UIType ldc = 0;
+        brain::UIType m = 0;
+        brain::UIType n = 0;
+        brain::UIType k = 0;
+        int epilogue = 0; // 0: forward, 1: the slope of the layer below, 2: added to C
+        CUdeviceptr neurons = 0;
+        brain::UIType first = 0;
+        CUdeviceptr sums = 0;
+        CUdeviceptr sumsBelow = 0;
+        CUdeviceptr outputsBelow = 0;
+        int mode = 0;
+    };
+
+    _hot void multiply(const Api& api, const Module& functions, Product p)
+    {
+        void* arguments[] = {&p.a, &p.sam, &p.sap, &p.b, &p.sbp, &p.sbn, &p.c, &p.ldc, &p.m, &p.n, &p.k, &p.epilogue, &p.neurons, &p.first, &p.sums, &p.sumsBelow, &p.outputsBelow, &p.mode};
+        const unsigned int columns = static_cast<unsigned int>((p.n + 63) / 64);
+        const unsigned int rows = static_cast<unsigned int>((p.m + 63) / 64);
+
+        check(api.launch(functions.gemm, columns, rows, 1, 256, 1, 1, 0, nullptr, arguments, nullptr), "cuLaunchKernel");
+    }
+
+    // The forward pass of count samples (the matrix input, count rows): every layer is a product of matrices
+    // keep: the sums and the outputs of every layer stay in sums and outputs (count rows each, layer after layer), else two buffers are used in turn; returns the outputs of the last layer
+    _hot CUdeviceptr forwardPass(const Api& api, const Module& functions, const Plan& plan, const CUdeviceptr neurons, const CUdeviceptr weights, const int mode, const CUdeviceptr input, const brain::UIType count, const CUdeviceptr sums, const CUdeviceptr outputs, const CUdeviceptr turnA, const CUdeviceptr turnB)
+    {
+        const bool keep = sums != 0;
+        CUdeviceptr previous = input;
+        CUdeviceptr last = input;
+
+        for (std::size_t l = 0; l < plan.shapes.size(); ++l) {
+            const Shape& shape = plan.shapes[l];
+            Product product;
+            const CUdeviceptr target = keep ? outputs + count * shape.first * sizeof(brain::FType) : (l % 2 == 0 ? turnA : turnB);
+
+            product.a = previous;
+            product.sam = shape.in;
+            product.sap = 1;
+            product.b = weights + shape.weights * sizeof(brain::FType);
+            product.sbp = 1;
+            product.sbn = shape.in;
+            product.c = target;
+            product.ldc = shape.out;
+            product.m = count;
+            product.n = shape.out;
+            product.k = shape.in;
+            product.neurons = neurons;
+            product.first = shape.first;
+            product.sums = keep ? sums + count * shape.first * sizeof(brain::FType) : 0;
+            product.mode = mode;
+            multiply(api, functions, product);
+            previous = target;
+            last = target;
+        }
+        return last;
+    }
+
+    } // namespace
+
+    // The buffers of the device kept for the mini-batches of a network
+    struct brain::tools::gpu::Batch::State {
+        enum Slot {Input, Sums, Outputs, SlopeA, SlopeB, Errors, GradWeights, GradBias, SlotCount};
+
+        const Api* driver = nullptr;
+        CUcontext context = nullptr;
+        std::pair<CUdeviceptr, std::size_t> buffers[SlotCount] = {}; // <buffer, bytes>
+        brain::UIType count = 0; // samples of the last forward pass kept in the buffers
+        Plan plan; // the geometry of the network they were made for
+
+        // The buffer of a slot with at least bytes (an older one is released, not copied; zero: filled with 0)
+        _hot CUdeviceptr get(const Slot slot, const std::size_t bytes, const bool zero = false)
+        {
+            std::pair<CUdeviceptr, std::size_t>& entry = this->buffers[slot];
+
+            if (entry.first != 0 && entry.second >= bytes) return entry.first;
+            if (entry.first != 0) (void)this->driver->release(entry.first);
+            entry = {0, 0};
+            check(this->driver->allocate(&entry.first, std::max<std::size_t>(bytes, 1)), "cuMemAlloc");
+            entry.second = std::max<std::size_t>(bytes, 1);
+            if (zero) check(this->driver->zero(entry.first, 0, entry.second), "cuMemsetD8");
+            return entry.first;
+        };
+
+        State(const Api& api, const CUcontext owner): driver{&api}, context{owner} { /* Nothing */ };
+        ~State() noexcept
+        {
+            CUcontext previous = nullptr;
+
+            if (this->driver == nullptr || this->driver->push(this->context) != CUDA_SUCCESS) return; // the context is gone with its memory
+            for (const std::pair<CUdeviceptr, std::size_t>& entry: this->buffers)
+                if (entry.first != 0) (void)this->driver->release(entry.first);
+            (void)this->driver->pop(&previous);
+        };
+        State(const State& other) = delete;
+        State& operator=(const State& other) = delete;
+    };
+
+    brain::tools::gpu::Batch::Batch() = default;
+    brain::tools::gpu::Batch::~Batch() = default;
+
+    _cold std::size_t brain::tools::gpu::Batch::bytes(void) const
+    {
+        std::size_t total = 0;
+
+        if (this->state) for (const std::pair<CUdeviceptr, std::size_t>& entry: this->state->buffers) total += entry.first != 0 ? entry.second : 0;
+        return total;
+    }
+
+    _hot bool brain::tools::gpu::layersAll(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, const brain::Dataset& inputs, brain::Dataset& outputs, const std::size_t budget)
+    {
+        // nothing to compute on the gpu
+        if (!brain::tools::gpu::available(handler) || neurons == 0 || weights == 0 || layers.empty() || inputs.empty() || inputs.front().empty()) return false;
+        const Api& driver = *api();
+        const Plan plan = planOf(layers, inputs.front().size());
+
+        for (const brain::Values& sample: inputs)
+            if (sample.size() != plan.input) return false;
+        try {
+            const CUcontext context = contextOf(driver, neurons);
+            const Module* functions = compiled(driver, context);
+            if (functions == nullptr) return false;
+            const Bind bind(driver, context);
+            Scratch& pool = scratch(driver, context);
+            const brain::UIType perSample = (plan.input + 2 * plan.widest + layers.back()) * sizeof(brain::FType);
+            const brain::UIType group = std::clamp<brain::UIType>(budget / perSample, 1, std::min<brain::UIType>(inputs.size(), 65536));
+            brain::Values flat;
+            brain::Values result;
+
+            const_cast<utils::system::IGpu*>(handler)->join(); // the transfers of the memories are done
+            outputs.clear();
+            outputs.reserve(inputs.size());
+            for (brain::UIType begin = 0; begin < inputs.size(); begin += group) {
+                const brain::UIType count = std::min(group, inputs.size() - begin);
+                const CUdeviceptr input = pool.get(0, count * plan.input * sizeof(brain::FType));
+                const CUdeviceptr turnA = pool.get(1, count * plan.widest * sizeof(brain::FType));
+                const CUdeviceptr turnB = pool.get(2, count * plan.widest * sizeof(brain::FType));
+
+                flat.resize(count * plan.input);
+                for (brain::UIType i = 0; i < count; ++i) std::copy(inputs[begin + i].begin(), inputs[begin + i].end(), flat.begin() + static_cast<std::ptrdiff_t>(i * plan.input));
+                check(driver.store(input, flat.data(), flat.size() * sizeof(brain::FType)), "cuMemcpyHtoD");
+                const CUdeviceptr last = forwardPass(driver, *functions, plan, static_cast<CUdeviceptr>(neurons), static_cast<CUdeviceptr>(weights), static_cast<int>(activation), input, count, 0, 0, turnA, turnB);
+
+                result.resize(count * layers.back());
+                check(driver.fetch(result.data(), last, result.size() * sizeof(brain::FType)), "cuMemcpyDtoH"); // waits for the kernels
+                for (brain::UIType i = 0; i < count; ++i)
+                    outputs.emplace_back(result.begin() + static_cast<std::ptrdiff_t>(i * layers.back()), result.begin() + static_cast<std::ptrdiff_t>((i + 1) * layers.back()));
+            }
+        } catch (const utils::exception::IException& e) {outputs.clear(); return false;} // computed on the host instead
+        return true;
+    }
+
+    _hot bool brain::tools::gpu::layersTrain(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, brain::tools::gpu::Batch& batch, const brain::Dataset& inputs, brain::Dataset& outputs, const std::size_t budget)
+    {
+        // nothing to compute on the gpu
+        if (!brain::tools::gpu::available(handler) || neurons == 0 || weights == 0 || layers.empty() || inputs.empty() || inputs.front().empty()) return false;
+        const Api& driver = *api();
+        const Plan plan = planOf(layers, inputs.front().size());
+        const brain::UIType count = inputs.size();
+
+        for (const brain::Values& sample: inputs)
+            if (sample.size() != plan.input) return false;
+        if (count * (plan.input + 2 * plan.total + 2 * plan.widest + layers.back()) * sizeof(brain::FType) + (plan.weights + plan.total) * sizeof(brain::FType) > budget) return false;
+        try {
+            const CUcontext context = contextOf(driver, neurons);
+            const Module* functions = compiled(driver, context);
+            if (functions == nullptr) return false;
+            const Bind bind(driver, context);
+
+            if (batch.state && (batch.state->context != context || batch.state->plan.weights != plan.weights || batch.state->plan.total != plan.total)) batch.state.reset(); // another network: its buffers are not these ones
+            if (!batch.state) {
+                batch.state = std::make_unique<brain::tools::gpu::Batch::State>(driver, context);
+                batch.state->plan = plan;
+            }
+            brain::tools::gpu::Batch::State& state = *batch.state;
+            using Slot = brain::tools::gpu::Batch::State;
+            brain::Values flat(count * plan.input);
+            brain::Values result(count * layers.back());
+
+            const_cast<utils::system::IGpu*>(handler)->join(); // the transfers of the memories are done
+            state.get(Slot::GradWeights, plan.weights * sizeof(brain::FType), true);
+            state.get(Slot::GradBias, plan.total * sizeof(brain::FType), true);
+            const CUdeviceptr input = state.get(Slot::Input, flat.size() * sizeof(brain::FType));
+            const CUdeviceptr sums = state.get(Slot::Sums, count * plan.total * sizeof(brain::FType));
+            const CUdeviceptr kept = state.get(Slot::Outputs, count * plan.total * sizeof(brain::FType));
+            state.get(Slot::SlopeA, count * plan.widest * sizeof(brain::FType));
+            state.get(Slot::SlopeB, count * plan.widest * sizeof(brain::FType));
+            state.get(Slot::Errors, result.size() * sizeof(brain::FType));
+            state.count = 0;
+
+            for (brain::UIType i = 0; i < count; ++i) std::copy(inputs[i].begin(), inputs[i].end(), flat.begin() + static_cast<std::ptrdiff_t>(i * plan.input));
+            check(driver.store(input, flat.data(), flat.size() * sizeof(brain::FType)), "cuMemcpyHtoD");
+            const CUdeviceptr last = forwardPass(driver, *functions, plan, static_cast<CUdeviceptr>(neurons), static_cast<CUdeviceptr>(weights), static_cast<int>(activation), input, count, sums, kept, 0, 0);
+
+            check(driver.fetch(result.data(), last, result.size() * sizeof(brain::FType)), "cuMemcpyDtoH"); // waits for the kernels
+            outputs.clear();
+            outputs.reserve(count);
+            for (brain::UIType i = 0; i < count; ++i)
+                outputs.emplace_back(result.begin() + static_cast<std::ptrdiff_t>(i * layers.back()), result.begin() + static_cast<std::ptrdiff_t>((i + 1) * layers.back()));
+            state.count = count;
+        } catch (const utils::exception::IException& e) {outputs.clear(); return false;} // computed on the host instead
+        return true;
+    }
+
+    _hot bool brain::tools::gpu::layersGradient(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, brain::tools::gpu::Batch& batch, const brain::Dataset& errors)
+    {
+        // the errors of the samples of the last layersTrain()
+        if (!brain::tools::gpu::available(handler) || neurons == 0 || weights == 0 || layers.empty() || !batch.state || batch.state->count == 0 || errors.size() != batch.state->count) return false;
+        const Api& driver = *api();
+
+        for (const brain::Values& sample: errors)
+            if (sample.size() != layers.back()) return false;
+        try {
+            brain::tools::gpu::Batch::State& state = *batch.state;
+            using Slot = brain::tools::gpu::Batch::State;
+            const Module* functions = compiled(driver, state.context);
+            if (functions == nullptr) return false;
+            const Bind bind(driver, state.context);
+            const Plan& plan = state.plan;
+            const brain::UIType count = state.count;
+            const int mode = static_cast<int>(activation);
+            brain::Values flat(count * layers.back());
+
+            for (brain::UIType i = 0; i < count; ++i) std::copy(errors[i].begin(), errors[i].end(), flat.begin() + static_cast<std::ptrdiff_t>(i * layers.back()));
+            const CUdeviceptr errorsPtr = state.buffers[Slot::Errors].first;
+            const CUdeviceptr sums = state.buffers[Slot::Sums].first;
+            const CUdeviceptr outputs = state.buffers[Slot::Outputs].first;
+            const CUdeviceptr gradWeights = state.buffers[Slot::GradWeights].first;
+            const CUdeviceptr gradBias = state.buffers[Slot::GradBias].first;
+            CUdeviceptr slope = state.buffers[Slot::SlopeA].first;
+            CUdeviceptr below = state.buffers[Slot::SlopeB].first;
+            const CUdeviceptr input = state.buffers[Slot::Input].first;
+            const CUdeviceptr weightsPtr = static_cast<CUdeviceptr>(weights);
+
+            check(driver.store(errorsPtr, flat.data(), flat.size() * sizeof(brain::FType)), "cuMemcpyHtoD");
+
+            // the slope of the last layer, then layer after layer: the gradient of the weights and of the biases, the slope of the layer below
+            {
+                const Shape& shape = plan.shapes.back();
+                CUdeviceptr errorsArg = errorsPtr;
+                CUdeviceptr sumsArg = sums + count * shape.first * sizeof(brain::FType);
+                CUdeviceptr outputsArg = outputs + count * shape.first * sizeof(brain::FType);
+                brain::UIType size = count * shape.out;
+                int modeArg = mode;
+                void* arguments[] = {&errorsArg, &sumsArg, &outputsArg, &slope, &size, &modeArg};
+
+                launch(driver, functions->slopeAll, size, arguments);
+            }
+            for (std::size_t l = plan.shapes.size(); l-- > 0;) {
+                const Shape& shape = plan.shapes[l];
+                Product product;
+
+                // weights: gradient[k][j] += sum over the samples of slope[b][k] * previous[b][j]
+                product.a = slope;
+                product.sam = 1;
+                product.sap = shape.out;
+                product.b = l == 0 ? input : outputs + count * plan.shapes[l - 1].first * sizeof(brain::FType);
+                product.sbp = shape.in;
+                product.sbn = 1;
+                product.c = gradWeights + shape.weights * sizeof(brain::FType);
+                product.ldc = shape.in;
+                product.m = shape.out;
+                product.n = shape.in;
+                product.k = count;
+                product.epilogue = 2;
+                multiply(driver, *functions, product);
+
+                // biases
+                CUdeviceptr slopeArg = slope;
+                CUdeviceptr gradientArg = gradBias + shape.first * sizeof(brain::FType);
+                brain::UIType size = shape.out;
+                brain::UIType samples = count;
+                void* arguments[] = {&slopeArg, &gradientArg, &size, &samples};
+
+                launch(driver, functions->biasGrad, size, arguments);
+
+                // the slope of the layer below: slope * weights, times the derivative of the activation of that layer (with the weights before they change)
+                if (l == 0) continue;
+                Product down;
+
+                down.a = slope;
+                down.sam = shape.out;
+                down.sap = 1;
+                down.b = weightsPtr + shape.weights * sizeof(brain::FType);
+                down.sbp = shape.in;
+                down.sbn = 1;
+                down.c = below;
+                down.ldc = shape.in;
+                down.m = count;
+                down.n = shape.in;
+                down.k = shape.out;
+                down.epilogue = 1;
+                down.sumsBelow = sums + count * plan.shapes[l - 1].first * sizeof(brain::FType);
+                down.outputsBelow = outputs + count * plan.shapes[l - 1].first * sizeof(brain::FType);
+                down.mode = mode;
+                multiply(driver, *functions, down);
+                std::swap(slope, below);
+            }
+        } catch (const utils::exception::IException& e) {return false;}
+        return true;
+    }
+
+    _hot bool brain::tools::gpu::layersApply(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, brain::tools::gpu::Batch& batch, const brain::UIType weightCount, const brain::UIType neuronCount, const brain::FType divisor)
+    {
+        // nothing kept: nothing to apply
+        if (!batch.state) return true;
+        if (!brain::tools::gpu::available(handler) || neurons == 0 || weights == 0 || !(divisor > 0)) return false;
+        const Api& driver = *api();
+
+        try {
+            brain::tools::gpu::Batch::State& state = *batch.state;
+            using Slot = brain::tools::gpu::Batch::State;
+            if (state.buffers[Slot::GradWeights].second < weightCount * sizeof(brain::FType) || state.buffers[Slot::GradBias].second < neuronCount * sizeof(brain::FType)) return false;
+            const Module* functions = compiled(driver, state.context);
+            if (functions == nullptr) return false;
+            const Bind bind(driver, state.context);
+            CUdeviceptr weightsPtr = static_cast<CUdeviceptr>(weights);
+            CUdeviceptr neuronsPtr = static_cast<CUdeviceptr>(neurons);
+            CUdeviceptr gradWeights = state.buffers[Slot::GradWeights].first;
+            CUdeviceptr gradBias = state.buffers[Slot::GradBias].first;
+            brain::UIType weightSize = weightCount;
+            brain::UIType neuronSize = neuronCount;
+            brain::FType inverse = static_cast<brain::FType>(1.0) / divisor;
+            void* weightArguments[] = {&weightsPtr, &gradWeights, &weightSize, &inverse};
+            void* biasArguments[] = {&neuronsPtr, &gradBias, &neuronSize, &inverse};
+
+            const_cast<utils::system::IGpu*>(handler)->join(); // the transfers of the memories are done
+            launch(driver, functions->applyWeights, weightCount, weightArguments);
+            launch(driver, functions->applyBias, neuronCount, biasArguments);
+        } catch (const utils::exception::IException& e) {return false;}
+        return true;
+    }
+
+    _hot void brain::tools::gpu::layersClear(brain::tools::gpu::Batch& batch)
+    {
+        if (!batch.state) return;
+        try {
+            brain::tools::gpu::Batch::State& state = *batch.state;
+            using Slot = brain::tools::gpu::Batch::State;
+            const Bind bind(*state.driver, state.context);
+
+            for (const Slot::Slot slot: {Slot::GradWeights, Slot::GradBias}) {
+                const std::pair<CUdeviceptr, std::size_t>& entry = state.buffers[slot];
+
+                if (entry.first != 0) check(state.driver->zero(entry.first, 0, entry.second), "cuMemsetD8");
+            }
+        } catch (const utils::exception::IException& e) {batch.state.reset();} // the gradient is lost with the buffers
+    }
+
     _hot bool brain::tools::gpu::stepsBack(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::ActivationFunction activation, const std::vector<brain::Values>& states, const brain::Values& rewards, const utils::system::GpuBuffer clones)
     {
         // nothing to compute on the gpu
@@ -894,6 +1397,41 @@ File Description:
         (void)handler; (void)neurons; (void)weights; (void)layers; (void)activation; (void)inputs; (void)sums; (void)outputs; (void)errors;
         return false;
     }
+
+    _hot bool brain::tools::gpu::layersAll(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, const brain::Dataset& inputs, brain::Dataset& outputs, const std::size_t budget)
+    {
+        (void)handler; (void)neurons; (void)weights; (void)layers; (void)activation; (void)inputs; (void)outputs; (void)budget;
+        return false;
+    }
+
+    _hot bool brain::tools::gpu::layersTrain(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, brain::tools::gpu::Batch& batch, const brain::Dataset& inputs, brain::Dataset& outputs, const std::size_t budget)
+    {
+        (void)handler; (void)neurons; (void)weights; (void)layers; (void)activation; (void)batch; (void)inputs; (void)outputs; (void)budget;
+        return false;
+    }
+
+    _hot bool brain::tools::gpu::layersGradient(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, const brain::Layers& layers, const brain::ActivationFunction activation, brain::tools::gpu::Batch& batch, const brain::Dataset& errors)
+    {
+        (void)handler; (void)neurons; (void)weights; (void)layers; (void)activation; (void)batch; (void)errors;
+        return false;
+    }
+
+    _hot bool brain::tools::gpu::layersApply(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer weights, brain::tools::gpu::Batch& batch, const brain::UIType weightCount, const brain::UIType neuronCount, const brain::FType divisor)
+    {
+        (void)handler; (void)neurons; (void)weights; (void)batch; (void)weightCount; (void)neuronCount; (void)divisor;
+        return false;
+    }
+
+    _hot void brain::tools::gpu::layersClear(brain::tools::gpu::Batch& batch)
+    {
+        (void)batch;
+        return;
+    }
+
+    struct brain::tools::gpu::Batch::State { /* Nothing */ };
+    brain::tools::gpu::Batch::Batch() = default;
+    brain::tools::gpu::Batch::~Batch() = default;
+    std::size_t brain::tools::gpu::Batch::bytes(void) const {return 0;}
 
     _hot bool brain::tools::gpu::stepsBack(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::ActivationFunction activation, const std::vector<brain::Values>& states, const brain::Values& rewards, const utils::system::GpuBuffer clones)
     {

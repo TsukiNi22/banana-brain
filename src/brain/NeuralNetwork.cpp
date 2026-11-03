@@ -253,6 +253,23 @@ _cold void brain::NeuralNetwork::learningRate(const brain::FType learning_rate, 
     }
 }
 
+_cold void brain::NeuralNetwork::gpuProfile(const brain::GpuProfile profile)
+{
+    this->requireUnfrozen();
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    this->_network->gpuProfile(profile);
+}
+
+_cold brain::GpuProfile brain::NeuralNetwork::gpuProfile(void) const
+{
+    if (!this->_network) _unlikely {
+        throw utils::exception::ErrorException(utils::exception::ExternalCode::NoNetwork);
+    }
+    return this->_network->gpuProfile();
+}
+
 _cold void brain::NeuralNetwork::resetLearningRate(void)
 {
     this->requireUnfrozen();
@@ -260,17 +277,26 @@ _cold void brain::NeuralNetwork::resetLearningRate(void)
     this->_steps = 0;
 }
 
-// The signed error of each output times the learning rate: (output - expected) to descend for a layered network, (expected - output) as a score for a brain one (mean: one coefficient, their mean)
-template<bool mean>
-_hot void brain::NeuralNetwork::learn_(const brain::Values& outputs, const brain::Values& expected)
+// The score of each output (the score function of the network and its score rate) times the learning rate
+_hot brain::Values brain::NeuralNetwork::rates_(const brain::Values& outputs, const brain::Values& expected, brain::FType& total) const
 {
-    brain::Values coefs = this->_network->scores(outputs, expected); // the score function of the network and its score rate
-    brain::FType total = 0.0;
+    brain::Values coefs = this->_network->scores(outputs, expected);
 
+    total = 0.0;
     for (brain::FType& coef: coefs) {
         coef *= this->_learningRateDecayed;
         total += coef;
     }
+    return coefs;
+}
+
+// The signed error of each output times the learning rate: (output - expected) to descend for a layered network, (expected - output) as a score for a brain one (mean: one coefficient, their mean)
+template<bool mean>
+_hot void brain::NeuralNetwork::learn_(const brain::Values& outputs, const brain::Values& expected)
+{
+    brain::FType total = 0.0;
+    brain::Values coefs = this->rates_(outputs, expected, total);
+
     if constexpr (mean) {
         this->backpropagation(outputs.empty() ? 0.0 : total / static_cast<brain::FType>(outputs.size()));
     } else {
@@ -316,6 +342,9 @@ _hot brain::TrainResult brain::NeuralNetwork::train(const brain::Dataset& inputs
 
     std::iota(order.begin(), order.end(), 0);
     this->_network->batch(grouped);
+    const bool together = grouped && this->_network->batchTraining(); // the samples of a mini-batch are computed together (the gpu)
+    const std::vector<std::size_t> nothing;
+    const std::vector<std::size_t>& walk = together ? nothing : order; // the samples seen one by one
     try {
         for (brain::UIType epoch = 0; options.epochs == 0 || epoch < options.epochs; ++epoch) {
             brain::FType total = 0.0;
@@ -324,7 +353,36 @@ _hot brain::TrainResult brain::NeuralNetwork::train(const brain::Dataset& inputs
 
             // one pass over the samples: the weights change after each one, or after each group of batchSize (their mean gradient)
             if (options.shuffle) std::shuffle(order.begin(), order.end(), engine);
-            for (const std::size_t i: order) {
+            if (together) {
+                brain::Dataset batchInputs;
+                brain::Dataset batchCoefs;
+
+                // a mini-batch at a time: its outputs, then the coefficients of each sample (the decay of the learning rate goes sample after sample, as one by one), then the mean gradient
+                for (std::size_t begin = 0; begin < size; begin += batchSize) {
+                    const std::size_t end = std::min<std::size_t>(begin + batchSize, size);
+
+                    batchInputs.clear();
+                    batchCoefs.clear();
+                    for (std::size_t k = begin; k < end; ++k) batchInputs.push_back(inputs[order[k]]);
+                    const brain::Dataset batchOutputs = this->_network->applyTrain(batchInputs);
+
+                    for (std::size_t k = begin; k < end; ++k) {
+                        const brain::Values& outputs = batchOutputs[k - begin];
+                        const brain::Values& expected = expected_outputs[order[k]];
+                        brain::FType sum = 0.0;
+                        brain::Values coefs = this->rates_(outputs, expected, sum);
+
+                        total += this->loss(outputs, expected).second;
+                        if (options.mean) coefs.assign(outputs.size(), outputs.empty() ? 0.0 : sum / static_cast<brain::FType>(outputs.size()));
+                        batchCoefs.push_back(std::move(coefs));
+                        this->decay_();
+                    }
+                    this->_network->backpropagationAll(batchCoefs);
+                    this->_network->applyBatch();
+                    ++state.updates;
+                }
+            }
+            for (const std::size_t i: walk) {
                 this->inputs(inputs[i]);
                 const brain::Values outputs = this->apply();
 
@@ -345,9 +403,10 @@ _hot brain::TrainResult brain::NeuralNetwork::train(const brain::Dataset& inputs
             state.loss = total / static_cast<brain::FType>(size);
             if (validation) {
                 brain::FType validationLoss = 0.0;
+                const brain::Dataset validationOutputs = this->_network->applyAll(options.validationIn); // together when the network can
 
                 for (std::size_t i = 0; i < options.validationIn.size(); ++i)
-                    validationLoss += this->loss(this->_network->apply(options.validationIn[i]), options.validationOut[i]).second;
+                    validationLoss += this->loss(validationOutputs[i], options.validationOut[i]).second;
                 state.validationLoss = validationLoss / static_cast<brain::FType>(options.validationIn.size());
                 if (epoch == 0 || state.validationLoss < state.bestValidation) {
                     state.bestValidation = state.validationLoss;

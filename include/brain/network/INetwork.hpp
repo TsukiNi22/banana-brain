@@ -54,6 +54,11 @@ class INetwork {
         virtual void batch(const bool enable) = 0; // true: backpropagation() only adds its gradient to the pending one, applyBatch() applies their mean (the pending gradients are dropped when it changes)
         virtual bool batch(void) const = 0; // the mini-batch mode
         virtual void applyBatch(void) = 0; // mini-batch: apply the mean of the gradients given since the last call (nothing pending: nothing done)
+        virtual bool batchTraining(void) const = 0; // true: applyTrain() and backpropagationAll() compute the samples of a mini-batch together (faster than one apply() and one backpropagation() each), else they only do the same one after the other
+        virtual brain::Dataset applyTrain(const brain::Dataset& inputs) = 0; // training of a mini-batch: the outputs of each sample, as apply() gives them, keeps what backpropagationAll() needs (it replaces the samples kept by the last call)
+        virtual void backpropagationAll(const brain::Dataset& coefs) = 0; // training of a mini-batch: the coefs of each output of each sample of the last applyTrain() (as backpropagation() takes them), added to the pending gradient in the mini-batch mode
+        virtual void gpuProfile(const brain::GpuProfile profile) = 0; // what the network may take on the gpu: Fast (everything it needs to go as fast as it can, the default) or Light (the smallest use of the device)
+        virtual brain::GpuProfile gpuProfile(void) const = 0; // the profile of the gpu use
 
         /* setup */
         virtual void weightInit(const brain::FType fallback = 0.01) = 0; // weights at 1.0 by default (not init -> dead network), fallback used on a result that falls on 0

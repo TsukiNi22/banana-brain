@@ -58,6 +58,7 @@ class NeuralNetwork: public utils::type::Freezable {
         template<bool mean>
         void learn_(const brain::Values& outputs, const brain::Values& expected); // backpropagation of the signed errors times the learning rate (a score for a brain network), then the decay
         void decay_(void); // decay the learning rate
+        brain::Values rates_(const brain::Values& outputs, const brain::Values& expected, brain::FType& total) const; // the scores of the network times the learning rate (decayed), total = their sum
         void checkDataset_(const brain::Dataset& inputs, const brain::Dataset& expected_outputs) const; // same number of samples, not empty, each sample of the size set (the size of the network, 0 = not set: not checked)
 
     public:
@@ -89,6 +90,8 @@ class NeuralNetwork: public utils::type::Freezable {
         void internalLossFunction(const brain::LossFunction fn); // internal, more optimized than an external one (train only uses it to measure and to stop: the coefficients are the signed errors)
         void learningRate(const brain::FType learning_rate, const brain::UIType learning_rate_decay = 0, const std::pair<bool, brain::FType>& coef = {true, 1.0}); // decay 0 = none, otherwise the learning rate is multiplied by the coef every n steps, <smooth, coef>: smooth decay or by step
         void resetLearningRate(void);
+        void gpuProfile(const brain::GpuProfile profile); // what the network may take on the gpu: Fast (the default, the training and the execution go as fast as the device allows, with more of its memory) or Light (the smallest use of it), applied to the network
+        _nodiscard brain::GpuProfile gpuProfile(void) const; // the profile of the network
 
         /* training (auto): the one entry of every training, the options are optional (one epoch, one sample at a time) */
         brain::TrainResult train(const brain::Dataset& inputs, const brain::Dataset& expected_outputs, const brain::TrainOptions& options = {}); // epochs over the samples, in mini-batches of options.batchSize, in another order each epoch with options.shuffle, until the epochs are done or a stop rule says stop (options.stop, options.onEpoch)
