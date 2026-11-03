@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.1.0-pre] - 2026-11-03
+### Added
+- `brain::GpuProfile` (`NeuralNetwork::gpuProfile`, `INetwork::gpuProfile`): `Fast` (the default) takes what the gpu needs to go as fast as it can, `Light` keeps the smallest use of its memory. A layered network on a CUDA gpu trains a whole mini-batch there (`INetwork::applyTrain` / `backpropagationAll`, used by `train`): products of matrices for the forward pass, the gradient and the slope of each layer, the gradient added on the device, the mean applied by `applyBatch` without the weights leaving it. `applyAll` (`execAll`, the validation of `train`) also computes its samples together by groups that fit `BRAIN_GPU_FAST_EXEC_BYTES` (256 MiB, `Fast`) or `BRAIN_GPU_LIGHT_EXEC_BYTES` (8 MiB, `Light`). Measured on an RTX 3050 laptop shared with two other trainings (`2048,1024,256,64` layers, 768 inputs, mini-batches of 256): about 10,000 samples/s of training in `Fast` (26 MiB more than the 15 MiB of weights) against 47 to 103 with the gradient on the host (`Light`), and 17,000 to 30,000 samples/s of execution (the host path, a sample at a time, was a few hundred). `LayerNetwork::trainingMemory()` gives the bytes the mini-batches hold on the device. The results follow the host path up to the float rounding of the sums
+- `LayerNetwork::applyAll` computes its samples together on a CUDA gpu, `NeuralNetwork::train` measures its validation set with it, and `INetwork::batchTraining()` tells when the mini-batches are trained together. A network that does not compute them together (a brain network, the host) goes through the same calls one sample after the other, with the results it had
+- Unit tests of the batched execution and of the mini-batch training against the host (`Gpu.LayersAllMatchTheHost`, `Gpu.MiniBatchTrainingMatchesTheHost`, the `Light` profile)
+
 ## v1.0.0 - 2026-10-30
 ### In Progress
 - `-ffast-math` (`Optimized` mode) lets the compiler remove the finite checks (`std::isfinite`): a NaN coefficient, range or limit is not refused in this mode (its clang warning `-Wnan-infinity-disabled` is disabled, 3 unit tests fail there); `-fno-finite-math-only` would keep them
@@ -101,5 +107,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Static library `libbrain.a` (`_debug`, `_asan`) with `find_package(brain)` / `brain::brain`, RPM/DEB packages like libutils (`libbrain`, `-dev`, `-dev-op` / `-dev-db` / `-dev-as`, `-op` / `-db` / `-as`, `-pre` channel) and the Windows ones (`mingw64-libbrain*`, MinGW-w64 cross compilation)
 - Unit tests (GoogleTest, `tests/`) of the default states, the types and the compile time checks of `train`
 
+[v1.1.0-pre]: https://github.com/TsukiNi22/banana-brain/releases/tag/v1.1.0-pre
 [v1.0.0]: https://github.com/TsukiNi22/banana-brain/releases/tag/v1.0.0
 [v0.0.0]: https://github.com/TsukiNi22/banana-brain/releases/tag/v0.0.0
