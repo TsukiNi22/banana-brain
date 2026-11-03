@@ -441,7 +441,7 @@ sudo pacman -S libbrain-db libbrain-as</code></pre>
 sudo cmake --build build --target install_release --parallel $(nproc)   # Debug, Asan & Optimized (install: Optimized only)</code></pre>
   </div>
   <h3><span data-lang="en">2.2 CMake</span><span data-lang="fr">2.2 CMake</span></h3>
-<pre data-title="CMakeLists.txt"><code>find_package(brain 1.0.0 CONFIG REQUIRED)                    # finds libutils (utils::utils) too
+<pre data-title="CMakeLists.txt"><code>find_package(brain 1.1.0 CONFIG REQUIRED)                    # finds libutils (utils::utils) too
 target_link_libraries(${TARGET} PRIVATE brain::brain)</code></pre>
   <p><span data-lang="en">The library follows the <code>CMAKE_BUILD_TYPE</code> of the project: <code>Debug</code> → <code>libbrain_debug.a</code>, <code>Asan</code> → <code>libbrain_asan.a</code>, anything else → <code>libbrain.a</code>. The installed configuration stops with the name of the missing package. On Windows the same CMake works with a MinGW toolchain (<code>cmake/toolchain/mingw-w64.cmake</code>, or <code>mingw64-cmake</code> on Fedora) and the <code>mingw64-libbrain*</code> packages of the MinGW sysroot (no Asan with MinGW).</span><span data-lang="fr">La bibliothèque suit le <code>CMAKE_BUILD_TYPE</code> du projet : <code>Debug</code> → <code>libbrain_debug.a</code>, <code>Asan</code> → <code>libbrain_asan.a</code>, autre → <code>libbrain.a</code>. La configuration installée s'arrête avec le nom du paquet manquant. Sous Windows le même CMake fonctionne avec une toolchain MinGW (<code>cmake/toolchain/mingw-w64.cmake</code>, ou <code>mingw64-cmake</code> sur Fedora) et les paquets <code>mingw64-libbrain*</code> du sysroot MinGW (pas d'Asan avec MinGW).</span></p>
 <pre data-title="main.cpp"><code>#define _Exception

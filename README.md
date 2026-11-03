@@ -7,7 +7,7 @@ C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling se
 Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB/Arch (pacman) packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
 
 > [!NOTE]
-> The library is complete in its first release (`v1.0.0`): the layered network and the brain network (execution, backpropagation, links that change with the weights, the rules as flags, sequences), the one training entry `NeuralNetwork::train` (epochs, mini-batch, shuffle, validation and stop rules), the execution on several samples and threads, the GPU (CUDA) for the execution and the plain gradient, the serialization (`save` / `load`) and the dataset tools.
+> The library is complete in its first release (`v1.0.0`; `v1.1.0-pre` adds the mini-batches on the gpu): the layered network and the brain network (execution, backpropagation, links that change with the weights, the rules as flags, sequences), the one training entry `NeuralNetwork::train` (epochs, mini-batch, shuffle, validation and stop rules), the execution on several samples and threads, the GPU (CUDA) for the execution and the plain gradient, the serialization (`save` / `load`) and the dataset tools.
 
 ### Table of Contents
  - [Dependencies](#dependencies)
@@ -155,7 +155,7 @@ cmake --build $BUILD_DIR --target package_release               # mingw64-libbra
 ## Usage
 
 ```cmake
-find_package(brain 1.0.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
+find_package(brain 1.1.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
 target_link_libraries(${TARGET} PRIVATE brain::brain)  # includes, utils::utils & library
 ```
 
@@ -222,6 +222,15 @@ The random generator of the library (`brain::tools::generator`, used by every ra
 - The on / off rules of a `RawBrainNetwork` are flags, as the flags of the cli of libutils: `brain::Rule` (`ORPHANS`, `LEFT_TO_RIGHT`, `CLAMP_WEIGHTS`, `LOW_NEW_LINKS`, `DIRECT_OUTPUT`, `KEEP_PATHS`, `BATCH`, `RANDOM_LINKS`, `INVERTED_LINKS`, `INPUT_PATHS`, `MOVE_LAST_LINK`) with `addRules(flags)`, `subRules(flags)`, `setRules(flags)`, `resetRules()` (the defaults: `brain::rules::DEFAULT` = `RANDOM_LINKS`), `clearRules()` (every rule off, `brain::rules::NONE`) and `getRules()`; `brain::rules::LAB` is the set of the lab (`ORPHANS | LOW_NEW_LINKS | KEEP_PATHS | DIRECT_OUTPUT | BATCH`) and `brain::rules::ALL` every rule. The single setters (`allowOrphans()`, `keepPaths(bool)`...) are the same bits. Two rules are off by default: `INPUT_PATHS` (every input keeps a path to at least one output: built at the init, a removal that would cut the last one is put back; the weights stay free to go to 0) and `MOVE_LAST_LINK` (the last link of a neuron that would be removed under `weightMin` is moved to the nearest free neuron instead of being kept, its new weight follows the rule of the new links, 5 % of the limits or random).
 
 The weights and biases are updated on the gpu when the memories are stored there (CUDA, activation not external); the links that change with the weights are then read back and rebuilt on the host.
+
+**Mini-batches on the gpu (`LayerNetwork`).** With `batchSize` above 1, a CUDA gpu and an internal activation function, `train` computes the samples of a mini-batch together: the forward pass is one product of matrices per layer, the gradient of the weights, of the biases and the slope of each layer are made on the device and added to the gradient kept there, and `applyBatch()` applies their mean without the weights leaving the device. By hand: `applyTrain(inputs)` (the outputs of the mini-batch, what the gradient needs stays on the device) then `backpropagationAll(coefs)` (the coefficients of each output of each sample) in the mini-batch mode. `applyAll` / `execAll` also compute their samples together. What it takes on the device is the `brain::GpuProfile` of the network (`NeuralNetwork::gpuProfile`):
+
+| Profile | Training | Execution (`applyAll`) | Device memory (network `2048,1024,256,64`, 3.95 M weights) |
+| ------- | -------- | ---------------------- | ----------------------------------------------------------- |
+| `Fast` (default) | the whole mini-batch on the gpu | groups up to 256 MiB (`BRAIN_GPU_FAST_EXEC_BYTES`) | the weights (15 MiB) + the gradient (15 MiB) + the sums and outputs of the batch (11 MiB at 256 samples), 1 GiB at most per mini-batch (`BRAIN_GPU_FAST_TRAIN_BYTES`, over it the host trains) + the groups of the execution |
+| `Light` | the gradient is made by the host, one sample at a time | groups up to 8 MiB (`BRAIN_GPU_LIGHT_EXEC_BYTES`) | the weights only + 8 MiB for the execution |
+
+Anything the gpu cannot do (no CUDA, an external activation function, a `.ln` file whose weights do not follow each other) is computed by the host as before, with the same results up to the float rounding of the sums.
 
 ### Save / load
 `save(path)` / `load(path)` write and read the network (`NeuralNetwork`), `serialize()` / `deserialize(bytes)` do it in memory (each network).
