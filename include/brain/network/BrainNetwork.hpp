@@ -71,7 +71,7 @@ class BrainNetwork: public brain::ANetwork {
 
         /* execution */
         using brain::ANetwork::apply;
-        brain::Dataset applyAll(const brain::Dataset& inputs) const override; // the samples together on the host: the states of every sample side by side, the links read once per step for all of them (the same outputs as apply() for each one; a gpu network executes them one by one)
+        brain::Dataset applyAll(const brain::Dataset& inputs) const override; // on a gpu the samples together by products on the device (by groups that fit the profile), else the samples together on the host: the states of every sample side by side, the links read once per step for all of them (the same outputs as apply() for each one; a gpu network executes them one by one)
         void threshold(const brain::FType threshold); // a signal under it (absolute value) is cancelled at each time step, to stop the signals that are too weak to matter (>= 0, 0 = none)
 
         // ------------ Function ---------- //

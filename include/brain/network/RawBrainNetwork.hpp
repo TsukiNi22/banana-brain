@@ -28,6 +28,7 @@ File Description:
     #define _System
     #include <utils/utils.hpp>      // _cold, _nodiscard, utils::system::HybridMemory
     #include "../NetworkDefine.hpp" // BRAIN_LINKS_CAP_PERCENTAGE, BRAIN_LINKS_CAP_COMPUTING
+    #include "../tools/compute.hpp" // brain::tools::gpu::Batch
     #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::RawBrainNeuron, brain::RawBrainLink, brain::LinksCapFn
     #include "BrainNetwork.hpp"     // brain::BrainNetwork
     #include <utility>              // std::pair
@@ -103,6 +104,10 @@ class RawBrainNetwork: public brain::BrainNetwork {
         std::vector<brain::Values> _states; // state of every neuron at each time step (the first one is the start)
         std::vector<brain::Values> _sums; // sum of every neuron at each step (host only: the backpropagation reads them)
 
+        /* mini-batch (several samples together) */
+        std::unique_ptr<brain::tools::gpu::Batch> _device; // the states of the last applyTrain() on the gpu (created when needed)
+        bool _deviceKept = false; // the last applyTrain() kept its samples on the device: backpropagationAll() makes their gradient there
+
         // ---------- Pre-Function -------- //
         void init_(void) final; // set the memories up: the input neurons on the left edge and the output ones on the right edge (evenly spread), the others placed randomly, each one linked to as many of its nearest neurons as its cap allows (weights at 1.0, bias at 0.0)
         void resized_(void) final; // the first neurons are the inputs and the last ones the outputs: set the neurons up again when their number changes
@@ -111,6 +116,12 @@ class RawBrainNetwork: public brain::BrainNetwork {
         void learn_(const brain::Values& rewards); // backpropagation through the time steps of the last apply(): the scores reinforce (positive) or weaken (negative) the links that made the outputs, then the links are changed (relink_)
         bool relink_(const std::vector<brain::RawBrainNeuron>& neurons, std::vector<brain::RawBrainLink>& links); // each link of a neuron is removed when its weight is too small, the nearest free neuron is linked when it is too big (false: nothing changed)
         void update_(std::vector<brain::RawBrainNeuron>& neurons, std::vector<brain::RawBrainLink>& links, const brain::Values& biasGrad, const brain::Values& weightGrad); // apply a gradient: momentum, step limit and clamp of the weights (the clone of a link keeps the same weight)
+        void backward_(const std::vector<brain::Values>& states, const std::vector<brain::Values>* sums, const brain::Values& rewards, const brain::RawBrainNeuron* neurons, const brain::RawBrainLink* links, brain::Values& biasGrad, brain::Values& weightGrad) const; // the gradient of one sample from its states (and sums, nullptr = computed again): the scores of the outputs go back in time through the inward links, added to biasGrad and weightGrad (by inward slot)
+        template<typename Activation>
+        void sampleForward_(const Activation& activation, const brain::RawBrainNeuron* neurons, const brain::RawBrainLink* links, const brain::Values& inputs, std::vector<brain::Values>& states, std::vector<brain::Values>& sums) const; // the time steps of one sample on one thread, every state and sum kept (the buffers are reused when their shape is the same)
+        template<typename Activation>
+        void gradientAll_(const Activation& activation, const brain::Dataset& inputs, const brain::Dataset& rewards); // the gradient of every sample, shared between threads (a gradient of its own for each thread, added in the order of the threads), added to the pending one
+        void watchAll_(const brain::Values& last, const brain::UIType count); // revive: the last state of each neuron of each sample ([neuron * count + sample]) widens its <min, max>
         template<typename Activation>
         void forward_(const Activation& activation, const brain::RawBrainNeuron* neurons, const brain::RawBrainLink* links); // the time steps of apply() on the host with this activation function, every state and sum kept (apply() chooses the function once)
         void watch_(void); // revive: the last state of each neuron widens its <min, max> since the last revive()
@@ -119,7 +130,7 @@ class RawBrainNetwork: public brain::BrainNetwork {
         void ensurePaths_(const std::vector<brain::RawBrainNeuron>& neurons, std::vector<brain::RawBrainLink>& links, const bool every) const; // init: a path of at most _pathHops links from every input to every output (the smallest squared distances, a full neuron gives its farthest link up)
         void near_(const std::vector<brain::RawBrainNeuron>& neurons); // fill _near: the first candidates of each neuron (every other one, or the ones strictly on its left in left to right mode), the nearest first
         std::vector<brain::UIType> candidates_(const brain::UIType owner, const std::vector<brain::RawBrainNeuron>& neurons) const; // every candidate of a neuron, the nearest first (the id breaks the ties)
-        bool nearest_(const brain::UIType owner, const std::vector<brain::RawBrainNeuron>& neurons, const std::function<bool(const brain::UIType)>& visit) const; // the candidates in order until visit returns true (then true)
+        bool nearest_(const brain::UIType owner, const std::vector<brain::RawBrainNeuron>& neurons, const std::function<bool(const brain::UIType)>& visit, const std::vector<brain::UIType>* used = nullptr) const; // the candidates in order until visit returns true (then true); used = the slots taken of each neuron: a full neuron is never visited and not sorted (the order of the others is the same)
         void sync_(const std::vector<brain::RawBrainNeuron>& rawNeurons, const std::vector<brain::RawBrainLink>& rawLinks); // from the raw memories already read // rebuild the reduced memories (biases and inward links) from the raw ones
 
         // ------------ Function ---------- //
@@ -140,6 +151,8 @@ class RawBrainNetwork: public brain::BrainNetwork {
         void inputs(const brain::Values& inputs) final; // the same inputs at every step (cancels a sequence)
         void sequence(const brain::Dataset& steps); // the inputs of each time step: step t reads steps[t], the inputs are 0 after the last one (a memory: the network keeps what it saw); runs on the host
         brain::Values apply(void) final;
+        brain::Dataset applyTrain(const brain::Dataset& inputs) override; // mini-batch: the outputs of the samples together (the gpu keeps their states there in the Fast profile)
+        void backpropagationAll(const brain::Dataset& coefs) override; // mini-batch: the gradient of the samples of the last applyTrain() (a sample per thread on the host, or all together on the gpu), added to the pending one
         brain::Values applySequence(const brain::Dataset& steps) const; // execution of a sequence, nothing kept (the outputs after the last step)
         void backpropagation(const brain::FType coef) final;
         void backpropagation(const brain::Values& coefs) final;
@@ -188,19 +201,21 @@ class RawBrainNetwork: public brain::BrainNetwork {
         _cold _nodiscard inline brain::UIType pathInit(void) const {return this->_pathHops;}; // 0 = off, else the max links of the path of every input to every output at the init
 
         /* getter (training) */
-        _cold _nodiscard inline brain::FType momentum(void) const  {return this->_momentum;}; // step = momentum * last step + gradient
-        _cold _nodiscard inline brain::FType rateDecay(void) const {return this->_rateDecay;}; // decay of the steps of the weights (0 = none)
-        _cold _nodiscard inline bool invertedLinks(void) const     {return this->_invertedLinks;}; // true: removed at weightMax, grown at weightMin
-        _cold _nodiscard inline bool randomLinks(void) const       {return this->_randomLinks;}; // true: a random number of links per neuron at the init
-        _cold _nodiscard inline brain::UIType minLinks(void) const {return this->_minLinks;}; // links a neuron keeps at least
-        _cold _nodiscard inline brain::FType adam(void) const      {return this->_adam;}; // 0 = off, else the rate of Adam
-        _cold _nodiscard inline brain::FType stepLimit(void) const {return this->_stepLimit;}; // each change of a weight or a bias in [-limit, limit] (0 = none)
-        _cold _nodiscard inline bool clampWeights(void) const      {return this->_clampWeights;}; // true: |weight| and |bias| never above weightMax
-        _cold _nodiscard inline bool lowNewLinks(void) const       {return this->_lowNewLinks;}; // true: a link added at weightMax starts at 5 % of the limits
-        _cold _nodiscard inline bool directOutput(void) const      {return this->_directOutput;}; // true: the score reaches the sum of an output without the slope of its activation
-        _cold _nodiscard inline bool keepPaths(void) const         {return this->_keepPaths;}; // true: the last path of an input to an output is never cut
-        _cold _nodiscard inline bool batch(void) const override    {return this->_batch;}; // true: backpropagation() accumulates, applyBatch() applies
-        _cold _nodiscard inline brain::UIType pending(void) const  {return this->_pendingCount;}; // mini-batch: gradients given since the last applyBatch()
+        _cold _nodiscard inline brain::FType momentum(void) const      {return this->_momentum;}; // step = momentum * last step + gradient
+        _cold _nodiscard inline brain::FType rateDecay(void) const     {return this->_rateDecay;}; // decay of the steps of the weights (0 = none)
+        _cold _nodiscard inline bool invertedLinks(void) const         {return this->_invertedLinks;}; // true: removed at weightMax, grown at weightMin
+        _cold _nodiscard inline bool randomLinks(void) const           {return this->_randomLinks;}; // true: a random number of links per neuron at the init
+        _cold _nodiscard inline brain::UIType minLinks(void) const     {return this->_minLinks;}; // links a neuron keeps at least
+        _cold _nodiscard inline brain::FType adam(void) const          {return this->_adam;}; // 0 = off, else the rate of Adam
+        _cold _nodiscard inline brain::FType stepLimit(void) const     {return this->_stepLimit;}; // each change of a weight or a bias in [-limit, limit] (0 = none)
+        _cold _nodiscard inline bool clampWeights(void) const          {return this->_clampWeights;}; // true: |weight| and |bias| never above weightMax
+        _cold _nodiscard inline bool lowNewLinks(void) const           {return this->_lowNewLinks;}; // true: a link added at weightMax starts at 5 % of the limits
+        _cold _nodiscard inline bool directOutput(void) const          {return this->_directOutput;}; // true: the score reaches the sum of an output without the slope of its activation
+        _cold _nodiscard inline bool keepPaths(void) const             {return this->_keepPaths;}; // true: the last path of an input to an output is never cut
+        _cold _nodiscard inline std::size_t trainingMemory(void) const {return this->_device ? this->_device->bytes() : 0;}; // bytes the mini-batches hold on the device (the states of the last applyTrain())
+        _cold _nodiscard bool batchTraining(void) const override       {return this->_batch && this->_sequence.empty() && !this->_activationFunction.second && !this->_rawNeurons.empty() && this->_ioSize.first != 0 && this->_ioSize.second != 0;}; // the samples of a mini-batch are computed together (threads, or the gpu)
+        _cold _nodiscard inline bool batch(void) const override        {return this->_batch;}; // true: backpropagation() accumulates, applyBatch() applies
+        _cold _nodiscard inline brain::UIType pending(void) const      {return this->_pendingCount;}; // mini-batch: gradients given since the last applyBatch()
 
         /* setter (training) */
         _cold inline void clampWeights(const bool enable)          {this->_clampWeights = enable;}; // true: |weight| and |bias| kept under weightMax

@@ -304,8 +304,11 @@ _hot brain::Dataset brain::BrainNetwork::applyAll(const brain::Dataset& inputs) 
         }
     }
 
-    // a gpu memory: one sample after the other on the device (its kernels run one sample at a time)
-    if (this->_neurons.isOnGpu() && !this->_activationFunction.second) return this->brain::ANetwork::applyAll(inputs);
+    // a gpu memory: the samples together on the device, by groups that fit the profile (else one sample after the other, its kernels run one sample at a time)
+    if (this->_neurons.isOnGpu() && !this->_activationFunction.second) {
+        if (brain::tools::gpu::stepsBatch(this->_gpu.get(), this->_neurons.native(), this->_links.native(), false, this->_neuron, this->_cap, input, output, this->_steps, this->_activationFunction.first, this->_threshold, inputs, outputs, this->_profile == brain::GpuProfile::Fast ? BRAIN_GPU_FAST_EXEC_BYTES : BRAIN_GPU_LIGHT_EXEC_BYTES)) return outputs;
+        return this->brain::ANetwork::applyAll(inputs);
+    }
 
     // the memories are read on the host (a gpu memory is fetched once)
     std::vector<brain::BrainNeuron> fetchedNeurons;

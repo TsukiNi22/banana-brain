@@ -349,6 +349,92 @@ File Description:
         gradient[k] += sum;
     }
 
+    // ---- Brain networks, a whole set of samples at once (the state of the neuron i for the sample b is state[i * count + b]: the samples are the fastest index) ----
+    // One time step: a thread per neuron and sample, the links of a neuron are read by all its samples (the same address for a warp), the states of the senders are grouped
+    extern "C" __global__ void brain_forward(const char* neurons, const ul nstride, const ul boff, const char* links, const ul lstride, const ul idoff, const ul woff, const long long ioff, const ul cap, const ft* state, ft* next, ft* sums, const ul n, const ul input, const ul count, const int mode, const ft threshold)
+    {
+        const ul t = (ul)blockIdx.x * blockDim.x + threadIdx.x;
+        if (t >= n * count) return;
+        const ul i = t / count;
+        const ul b = t - i * count;
+
+        if (i < input) {
+            next[t] = state[t];
+            if (sums != 0) sums[t] = 0;
+            return;
+        }
+        ft sum = *(const ft*)(neurons + i * nstride + boff);
+
+        for (ul slot = 0; slot < cap; ++slot) {
+            const char* link = links + (i * cap + slot) * lstride;
+            if (ioff >= 0 && !*(const unsigned char*)(link + ioff)) continue;
+            sum += *(const ft*)(link + woff) * state[*(const ul*)(link + idoff) * count + b];
+        }
+        if (sums != 0) sums[t] = sum;
+        ft value = activate(sum, mode);
+        if (fabs(value) < threshold) value = 0;
+        next[t] = value;
+    }
+
+    // The slope of every neuron at one step: the gain of its output times the derivative of its activation (direct: the score as it is on the sum of an output)
+    extern "C" __global__ void brain_slope(const ft* grad, const ft* sums, const ft* states, ft* slope, const ul n, const ul input, const ul output, const ul count, const int mode, const int direct)
+    {
+        const ul t = (ul)blockIdx.x * blockDim.x + threadIdx.x;
+        if (t >= n * count) return;
+        const ul i = t / count;
+        const ft gain = grad[t];
+
+        if (i < input || gain == 0) {slope[t] = 0; return;}
+        if (direct && i >= n - output) {slope[t] = gain; return;}
+        const ft sum = sums[t];
+        const ft stored = states[t];
+
+        slope[t] = gain * derive(sum, stored != 0 ? stored : activate(sum, mode), mode);
+    }
+
+    // The gradient of the weights (by slot of inward link) and of the biases: the sum over the samples, added to the one of the earlier steps
+    extern "C" __global__ void brain_gradient(const char* links, const ul lstride, const ul idoff, const ul woff, const ul ioff, const ul cap, const ft* slope, const ft* before, ft* weightGrad, ft* biasGrad, const ul n, const ul input, const ul count)
+    {
+        const ul t = (ul)blockIdx.x * blockDim.x + threadIdx.x;
+        if (t >= n * (cap + 1)) return;
+        const ul i = t / (cap + 1);
+        const ul slot = t - i * (cap + 1);
+        if (i < input) return;
+        const ft* mine = slope + i * count;
+        ft sum = 0;
+
+        if (slot == cap) {
+            for (ul b = 0; b < count; ++b) sum += mine[b];
+            biasGrad[i] += sum;
+            return;
+        }
+        const char* link = links + (i * cap + slot) * lstride;
+        if (!*(const unsigned char*)(link + ioff)) return;
+        const ft* source = before + *(const ul*)(link + idoff) * count;
+
+        for (ul b = 0; b < count; ++b) sum += mine[b] * source[b];
+        weightGrad[i * cap + slot] += sum;
+    }
+
+    // The gain given to the step before: for a neuron, the slopes of the neurons it sends to times the weight (read on its outward links, the clones, with no atomic)
+    extern "C" __global__ void brain_below(const char* links, const ul lstride, const ul idoff, const ul woff, const ul ioff, const ul cap, const ft* slope, ft* below, const ul n, const ul count)
+    {
+        const ul t = (ul)blockIdx.x * blockDim.x + threadIdx.x;
+        if (t >= n * count) return;
+        const ul j = t / count;
+        const ul b = t - j * count;
+        ft sum = 0;
+
+        for (ul slot = 0; slot < cap; ++slot) {
+            const char* link = links + (j * cap + slot) * lstride;
+            if (*(const unsigned char*)(link + ioff)) continue;
+            const ft weight = *(const ft*)(link + woff);
+            if (weight == 0) continue;
+            sum += slope[*(const ul*)(link + idoff) * count + b] * weight;
+        }
+        below[t] = sum;
+    }
+
     // The weights go down the mean of the gradients (the gradient goes back to 0)
     extern "C" __global__ void apply_weights(ft* weights, ft* gradient, const ul count, const ft inverse)
     {
@@ -414,6 +500,10 @@ File Description:
         CUfunction biasGrad = nullptr;
         CUfunction applyWeights = nullptr;
         CUfunction applyBias = nullptr;
+        CUfunction brainForward = nullptr; // a set of samples of a brain network
+        CUfunction brainSlope = nullptr;
+        CUfunction brainGradient = nullptr;
+        CUfunction brainBelow = nullptr;
     };
 
     constexpr unsigned int BLOCK = 256; // threads per block
@@ -598,6 +688,10 @@ File Description:
                 check(api.function(&built->biasGrad, loaded, "bias_grad"), "cuModuleGetFunction");
                 check(api.function(&built->applyWeights, loaded, "apply_weights"), "cuModuleGetFunction");
                 check(api.function(&built->applyBias, loaded, "apply_bias"), "cuModuleGetFunction");
+                check(api.function(&built->brainForward, loaded, "brain_forward"), "cuModuleGetFunction");
+                check(api.function(&built->brainSlope, loaded, "brain_slope"), "cuModuleGetFunction");
+                check(api.function(&built->brainGradient, loaded, "brain_gradient"), "cuModuleGetFunction");
+                check(api.function(&built->brainBelow, loaded, "brain_below"), "cuModuleGetFunction");
             } catch (const utils::exception::IException& e) {
                 (void)api.destroy(&program);
                 throw;
@@ -953,12 +1047,15 @@ File Description:
 
     // The buffers of the device kept for the mini-batches of a network
     struct brain::tools::gpu::Batch::State {
-        enum Slot {Input, Sums, Outputs, SlopeA, SlopeB, Errors, GradWeights, GradBias, SlotCount};
+        enum Slot {Input, Sums, Outputs, SlopeA, SlopeB, Errors, GradWeights, GradBias, StepStates, StepSums, StepGrad, StepBelow, StepSlope, StepRewards, StepWeightGrad, StepBiasGrad, SlotCount};
 
         const Api* driver = nullptr;
         CUcontext context = nullptr;
         std::pair<CUdeviceptr, std::size_t> buffers[SlotCount] = {}; // <buffer, bytes>
         brain::UIType count = 0; // samples of the last forward pass kept in the buffers
+        brain::UIType steps = 0; // brain network: time steps of that pass
+        brain::UIType neuron = 0; // brain network: neurons of that pass
+        brain::UIType cap = 0; // brain network: slots of links of each neuron
         Plan plan; // the geometry of the network they were made for
 
         // The buffer of a slot with at least bytes (an older one is released, not copied; zero: filled with 0)
@@ -1240,6 +1337,254 @@ File Description:
         } catch (const utils::exception::IException& e) {batch.state.reset();} // the gradient is lost with the buffers
     }
 
+    namespace {
+
+    // Layout of the structs of the memories of a brain network (the reduced one, or the raw one with the flag of its inward links)
+    struct Layout {
+        brain::UIType neuronStride = sizeof(brain::BrainNeuron);
+        brain::UIType biasOffset = 0;
+        brain::UIType linkStride = sizeof(brain::BrainLink);
+        brain::UIType idOffset = offsetof(brain::BrainLink, id);
+        brain::UIType weightOffset = offsetof(brain::BrainLink, weight);
+        long long inwardOffset = -1;
+    };
+
+    _cold Layout layoutOf(const bool raw)
+    {
+        Layout layout;
+
+        if (raw) {
+            const brain::RawBrainNeuron sample{};
+
+            layout.neuronStride = sizeof(brain::RawBrainNeuron);
+            layout.biasOffset = static_cast<brain::UIType>(reinterpret_cast<const char*>(&sample.bias) - reinterpret_cast<const char*>(&sample));
+            layout.linkStride = sizeof(brain::RawBrainLink);
+            layout.idOffset = offsetof(brain::RawBrainLink, id);
+            layout.weightOffset = offsetof(brain::RawBrainLink, weight);
+            layout.inwardOffset = static_cast<long long>(offsetof(brain::RawBrainLink, inward));
+        }
+        return layout;
+    }
+
+    // One time step of count samples: state -> next (sums: kept when not 0)
+    _hot void forwardStep(const Api& api, const Module& functions, const Layout& layout, const CUdeviceptr neurons, const CUdeviceptr links, const brain::UIType cap, const CUdeviceptr state, const CUdeviceptr next, const CUdeviceptr sums, const brain::UIType n, const brain::UIType input, const brain::UIType count, const int mode, const brain::FType threshold)
+    {
+        CUdeviceptr neuronsPtr = neurons;
+        CUdeviceptr linksPtr = links;
+        CUdeviceptr statePtr = state;
+        CUdeviceptr nextPtr = next;
+        CUdeviceptr sumsPtr = sums;
+        brain::UIType neuronStride = layout.neuronStride;
+        brain::UIType biasOffset = layout.biasOffset;
+        brain::UIType linkStride = layout.linkStride;
+        brain::UIType idOffset = layout.idOffset;
+        brain::UIType weightOffset = layout.weightOffset;
+        long long inwardOffset = layout.inwardOffset;
+        brain::UIType capacity = cap;
+        brain::UIType neuronCount = n;
+        brain::UIType inputCount = input;
+        brain::UIType sampleCount = count;
+        int activationMode = mode;
+        brain::FType limit = threshold;
+        void* arguments[] = {&neuronsPtr, &neuronStride, &biasOffset, &linksPtr, &linkStride, &idOffset, &weightOffset, &inwardOffset, &capacity, &statePtr, &nextPtr, &sumsPtr, &neuronCount, &inputCount, &sampleCount, &activationMode, &limit};
+
+        launch(api, functions.brainForward, n * count, arguments);
+    }
+
+    } // namespace
+
+    _hot bool brain::tools::gpu::stepsBatch(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const bool raw, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::UIType output, const brain::UIType steps, const brain::ActivationFunction activation, const brain::FType threshold, const brain::Dataset& inputs, brain::Dataset& outputs, const std::size_t budget)
+    {
+        // nothing to compute on the gpu
+        if (!brain::tools::gpu::available(handler) || neurons == 0 || neuron == 0 || steps == 0 || output == 0 || input + output > neuron || inputs.empty()) return false;
+        if (cap > 0 && links == 0) return false;
+        for (const brain::Values& sample: inputs)
+            if (sample.size() != input) return false;
+        const Api& driver = *api();
+
+        try {
+            const CUcontext context = contextOf(driver, neurons);
+            const Module* functions = compiled(driver, context);
+            if (functions == nullptr) return false;
+            const Bind bind(driver, context);
+            Scratch& pool = scratch(driver, context);
+            const Layout layout = layoutOf(raw);
+            const brain::UIType perSample = (2 * neuron + output) * sizeof(brain::FType);
+            const brain::UIType group = std::clamp<brain::UIType>(budget / perSample, 1, std::min<brain::UIType>(inputs.size(), 65536));
+            brain::Values flat;
+
+            const_cast<utils::system::IGpu*>(handler)->join(); // the transfers of the memories are done
+            outputs.clear();
+            outputs.reserve(inputs.size());
+            for (brain::UIType begin = 0; begin < inputs.size(); begin += group) {
+                const brain::UIType count = std::min(group, inputs.size() - begin);
+                const CUdeviceptr turnA = pool.get(0, neuron * count * sizeof(brain::FType));
+                const CUdeviceptr turnB = pool.get(1, neuron * count * sizeof(brain::FType));
+                CUdeviceptr from = turnA;
+                CUdeviceptr to = turnB;
+
+                // the inputs are the first rows, the other neurons start at 0 (cleared on the device: only the inputs travel)
+                flat.resize(input * count);
+                for (brain::UIType b = 0; b < count; ++b)
+                    for (brain::UIType i = 0; i < input; ++i) flat[i * count + b] = inputs[begin + b][i];
+                check(driver.zero(from, 0, neuron * count * sizeof(brain::FType)), "cuMemsetD8");
+                check(driver.store(from, flat.data(), flat.size() * sizeof(brain::FType)), "cuMemcpyHtoD");
+                for (brain::UIType step = 0; step < steps; ++step) {
+                    forwardStep(driver, *functions, layout, static_cast<CUdeviceptr>(neurons), static_cast<CUdeviceptr>(links), cap, from, to, 0, neuron, input, count, static_cast<int>(activation), threshold);
+                    std::swap(from, to);
+                }
+                brain::Values result(output * count);
+
+                check(driver.fetch(result.data(), from + (neuron - output) * count * sizeof(brain::FType), result.size() * sizeof(brain::FType)), "cuMemcpyDtoH"); // waits for the kernels
+                for (brain::UIType b = 0; b < count; ++b) {
+                    brain::Values row(output);
+
+                    for (brain::UIType o = 0; o < output; ++o) row[o] = result[o * count + b];
+                    outputs.push_back(std::move(row));
+                }
+            }
+        } catch (const utils::exception::IException& e) {outputs.clear(); return false;} // computed on the host instead
+        return true;
+    }
+
+    _hot bool brain::tools::gpu::stepsTrain(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::UIType output, const brain::UIType steps, const brain::ActivationFunction activation, const brain::FType threshold, brain::tools::gpu::Batch& batch, const brain::Dataset& inputs, brain::Dataset& outputs, brain::Values& last, const std::size_t budget)
+    {
+        // nothing to compute on the gpu
+        if (!brain::tools::gpu::available(handler) || neurons == 0 || links == 0 || neuron == 0 || cap == 0 || steps == 0 || output == 0 || input + output > neuron || inputs.empty()) return false;
+        for (const brain::Values& sample: inputs)
+            if (sample.size() != input) return false;
+        const brain::UIType count = inputs.size();
+        const std::size_t states = (steps + 1) * neuron * count * sizeof(brain::FType);
+
+        if (2 * states + (3 * neuron * count + output * count + neuron * cap + neuron) * sizeof(brain::FType) > budget) return false;
+        const Api& driver = *api();
+
+        try {
+            const CUcontext context = contextOf(driver, neurons);
+            const Module* functions = compiled(driver, context);
+            if (functions == nullptr) return false;
+            const Bind bind(driver, context);
+
+            if (batch.state && batch.state->context != context) batch.state.reset(); // another network: its buffers are not these ones
+            if (!batch.state) batch.state = std::make_unique<brain::tools::gpu::Batch::State>(driver, context);
+            brain::tools::gpu::Batch::State& state = *batch.state;
+            using Slot = brain::tools::gpu::Batch::State;
+            const Layout layout = layoutOf(true);
+
+            const_cast<utils::system::IGpu*>(handler)->join(); // the transfers of the memories are done
+            state.count = 0;
+            const CUdeviceptr stepStates = state.get(Slot::StepStates, states);
+            const CUdeviceptr stepSums = state.get(Slot::StepSums, states);
+            state.get(Slot::StepGrad, neuron * count * sizeof(brain::FType));
+            state.get(Slot::StepBelow, neuron * count * sizeof(brain::FType));
+            state.get(Slot::StepSlope, neuron * count * sizeof(brain::FType));
+            state.get(Slot::StepRewards, output * count * sizeof(brain::FType));
+            state.get(Slot::StepWeightGrad, neuron * cap * sizeof(brain::FType));
+            state.get(Slot::StepBiasGrad, neuron * sizeof(brain::FType));
+            const std::size_t row = neuron * count * sizeof(brain::FType);
+            brain::Values flat(input * count);
+
+            for (brain::UIType b = 0; b < count; ++b)
+                for (brain::UIType i = 0; i < input; ++i) flat[i * count + b] = inputs[b][i];
+            check(driver.zero(stepStates, 0, row), "cuMemsetD8"); // the other neurons start at 0: only the inputs travel
+            check(driver.store(stepStates, flat.data(), flat.size() * sizeof(brain::FType)), "cuMemcpyHtoD");
+            for (brain::UIType step = 0; step < steps; ++step)
+                forwardStep(driver, *functions, layout, static_cast<CUdeviceptr>(neurons), static_cast<CUdeviceptr>(links), cap, stepStates + step * row, stepStates + (step + 1) * row, stepSums + (step + 1) * row, neuron, input, count, static_cast<int>(activation), threshold);
+            last.resize(neuron * count);
+            check(driver.fetch(last.data(), stepStates + steps * row, row), "cuMemcpyDtoH"); // waits for the kernels
+            outputs.assign(count, brain::Values(output));
+            for (brain::UIType b = 0; b < count; ++b)
+                for (brain::UIType o = 0; o < output; ++o) outputs[b][o] = last[(neuron - output + o) * count + b];
+            state.count = count;
+            state.steps = steps;
+            state.neuron = neuron;
+            state.cap = cap;
+            state.plan.input = input;
+            state.plan.total = output; // brain network: the outputs
+        } catch (const utils::exception::IException& e) {outputs.clear(); return false;} // computed on the host instead
+        return true;
+    }
+
+    _hot bool brain::tools::gpu::stepsGradient(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::ActivationFunction activation, const bool direct, brain::tools::gpu::Batch& batch, const brain::Dataset& rewards, brain::Values& gradient)
+    {
+        // the scores of the samples of the last stepsTrain()
+        if (!brain::tools::gpu::available(handler) || neurons == 0 || links == 0 || !batch.state || batch.state->count == 0 || rewards.size() != batch.state->count) return false;
+        const Api& driver = *api();
+
+        try {
+            brain::tools::gpu::Batch::State& state = *batch.state;
+            using Slot = brain::tools::gpu::Batch::State;
+            const brain::UIType count = state.count;
+            const brain::UIType neuron = state.neuron;
+            const brain::UIType cap = state.cap;
+            const brain::UIType input = state.plan.input;
+            const brain::UIType output = state.plan.total;
+
+            for (const brain::Values& sample: rewards)
+                if (sample.size() != output) return false;
+            const Module* functions = compiled(driver, state.context);
+            if (functions == nullptr) return false;
+            const Bind bind(driver, state.context);
+            const Layout layout = layoutOf(true);
+            const std::size_t row = neuron * count * sizeof(brain::FType);
+            const CUdeviceptr stepStates = state.buffers[Slot::StepStates].first;
+            const CUdeviceptr stepSums = state.buffers[Slot::StepSums].first;
+            CUdeviceptr grad = state.buffers[Slot::StepGrad].first;
+            CUdeviceptr below = state.buffers[Slot::StepBelow].first;
+            const CUdeviceptr slope = state.buffers[Slot::StepSlope].first;
+            const CUdeviceptr weightGrad = state.buffers[Slot::StepWeightGrad].first;
+            const CUdeviceptr biasGrad = state.buffers[Slot::StepBiasGrad].first;
+            const CUdeviceptr linksPtr = static_cast<CUdeviceptr>(links);
+            const int mode = static_cast<int>(activation);
+            brain::Values flat(output * count);
+
+            // the scores are the gain of the outputs of the last step
+            for (brain::UIType b = 0; b < count; ++b)
+                for (brain::UIType o = 0; o < output; ++o) flat[o * count + b] = rewards[b][o];
+            check(driver.zero(weightGrad, 0, neuron * cap * sizeof(brain::FType)), "cuMemsetD8");
+            check(driver.zero(biasGrad, 0, neuron * sizeof(brain::FType)), "cuMemsetD8");
+            check(driver.zero(grad, 0, row), "cuMemsetD8");
+            check(driver.store(grad + (neuron - output) * count * sizeof(brain::FType), flat.data(), flat.size() * sizeof(brain::FType)), "cuMemcpyHtoD");
+            for (brain::UIType step = state.steps; step > 0; --step) {
+                brain::UIType neuronCount = neuron;
+                brain::UIType inputCount = input;
+                brain::UIType outputCount = output;
+                brain::UIType sampleCount = count;
+                brain::UIType capacity = cap;
+                brain::UIType linkStride = layout.linkStride;
+                brain::UIType idOffset = layout.idOffset;
+                brain::UIType weightOffset = layout.weightOffset;
+                brain::UIType inwardOffset = static_cast<brain::UIType>(layout.inwardOffset);
+                CUdeviceptr gradPtr = grad;
+                CUdeviceptr belowPtr = below;
+                CUdeviceptr slopePtr = slope;
+                CUdeviceptr sumsPtr = stepSums + step * row;
+                CUdeviceptr statesPtr = stepStates + step * row;
+                CUdeviceptr beforePtr = stepStates + (step - 1) * row;
+                CUdeviceptr weightGradPtr = weightGrad;
+                CUdeviceptr biasGradPtr = biasGrad;
+                CUdeviceptr linksArg = linksPtr;
+                int modeArg = mode;
+                int directArg = direct && step == state.steps ? 1 : 0;
+                void* slopeArguments[] = {&gradPtr, &sumsPtr, &statesPtr, &slopePtr, &neuronCount, &inputCount, &outputCount, &sampleCount, &modeArg, &directArg};
+                void* gradientArguments[] = {&linksArg, &linkStride, &idOffset, &weightOffset, &inwardOffset, &capacity, &slopePtr, &beforePtr, &weightGradPtr, &biasGradPtr, &neuronCount, &inputCount, &sampleCount};
+                void* belowArguments[] = {&linksArg, &linkStride, &idOffset, &weightOffset, &inwardOffset, &capacity, &slopePtr, &belowPtr, &neuronCount, &sampleCount};
+
+                launch(driver, functions->brainSlope, neuron * count, slopeArguments);
+                launch(driver, functions->brainGradient, neuron * (cap + 1), gradientArguments);
+                if (step == 1) continue;
+                launch(driver, functions->brainBelow, neuron * count, belowArguments);
+                std::swap(grad, below);
+            }
+
+            // the slots first, then the biases (the layout of the pending gradient of the network)
+            gradient.resize(neuron * cap + neuron);
+            check(driver.fetch(gradient.data(), weightGrad, neuron * cap * sizeof(brain::FType)), "cuMemcpyDtoH");
+            check(driver.fetch(gradient.data() + neuron * cap, biasGrad, neuron * sizeof(brain::FType)), "cuMemcpyDtoH");
+        } catch (const utils::exception::IException& e) {gradient.clear(); return false;}
+        return true;
+    }
+
     _hot bool brain::tools::gpu::stepsBack(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::ActivationFunction activation, const std::vector<brain::Values>& states, const brain::Values& rewards, const utils::system::GpuBuffer clones)
     {
         // nothing to compute on the gpu
@@ -1432,6 +1777,24 @@ File Description:
     brain::tools::gpu::Batch::Batch() = default;
     brain::tools::gpu::Batch::~Batch() = default;
     std::size_t brain::tools::gpu::Batch::bytes(void) const {return 0;}
+
+    _hot bool brain::tools::gpu::stepsBatch(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const bool raw, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::UIType output, const brain::UIType steps, const brain::ActivationFunction activation, const brain::FType threshold, const brain::Dataset& inputs, brain::Dataset& outputs, const std::size_t budget)
+    {
+        (void)handler; (void)neurons; (void)links; (void)raw; (void)neuron; (void)cap; (void)input; (void)output; (void)steps; (void)activation; (void)threshold; (void)inputs; (void)outputs; (void)budget;
+        return false;
+    }
+
+    _hot bool brain::tools::gpu::stepsTrain(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::UIType output, const brain::UIType steps, const brain::ActivationFunction activation, const brain::FType threshold, brain::tools::gpu::Batch& batch, const brain::Dataset& inputs, brain::Dataset& outputs, brain::Values& last, const std::size_t budget)
+    {
+        (void)handler; (void)neurons; (void)links; (void)neuron; (void)cap; (void)input; (void)output; (void)steps; (void)activation; (void)threshold; (void)batch; (void)inputs; (void)outputs; (void)last; (void)budget;
+        return false;
+    }
+
+    _hot bool brain::tools::gpu::stepsGradient(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::ActivationFunction activation, const bool direct, brain::tools::gpu::Batch& batch, const brain::Dataset& rewards, brain::Values& gradient)
+    {
+        (void)handler; (void)neurons; (void)links; (void)activation; (void)direct; (void)batch; (void)rewards; (void)gradient;
+        return false;
+    }
 
     _hot bool brain::tools::gpu::stepsBack(const utils::system::IGpu* handler, const utils::system::GpuBuffer neurons, const utils::system::GpuBuffer links, const brain::UIType neuron, const brain::UIType cap, const brain::UIType input, const brain::ActivationFunction activation, const std::vector<brain::Values>& states, const brain::Values& rewards, const utils::system::GpuBuffer clones)
     {

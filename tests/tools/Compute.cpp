@@ -180,6 +180,85 @@ TEST(Gpu, BatchBackpropagationNeedsTheSamplesOfTheLastApplyTrain) {
     EXPECT_ANY_THROW(ram.backpropagationAll(samples(2, 3, 1))); // nothing applied yet
 }
 
+TEST(Gpu, BrainApplyAllMatchesTheHost) {
+    REQUIRE_CUDA();
+    for (const brain::ActivationFunction fn: {brain::ActivationFunction::Sigmoid, brain::ActivationFunction::ReLU, brain::ActivationFunction::None}) {
+        for (const brain::GpuProfile profile: {brain::GpuProfile::Fast, brain::GpuProfile::Light}) {
+            brain::RawBrainNetwork raw(60, {10.0, 10.0}, utils::system::MemoryMode::Ram);
+
+            raw.linksCap(0.1);
+            raw.size(5, 3);
+            raw.rand(-1.0, 1.0);
+            raw.weightInit();
+            raw.biasInit();
+            raw.internalActivationFunction(fn);
+            brain::BrainNetwork gpu(1, 1, utils::system::MemoryMode::Cuda);
+            brain::BrainNetwork ram(1, 1, utils::system::MemoryMode::Ram);
+            const brain::Bytes data = raw.reduce()->serialize();
+
+            gpu.deserialize(data);
+            ram.deserialize(data);
+            gpu.gpuProfile(profile);
+            ASSERT_TRUE(gpu.onGpu());
+            const brain::Dataset inputs = samples(70, 5, 4);
+            const brain::Dataset got = gpu.applyAll(inputs);
+            const brain::Dataset expected = ram.applyAll(inputs);
+
+            ASSERT_EQ(got.size(), expected.size());
+            for (std::size_t i = 0; i < got.size(); ++i) expectNear(got[i], expected[i]);
+        }
+    }
+}
+
+TEST(Gpu, BrainMiniBatchTrainingMatchesTheHost) {
+    REQUIRE_CUDA();
+    for (const brain::ActivationFunction fn: {brain::ActivationFunction::Sigmoid, brain::ActivationFunction::ReLU, brain::ActivationFunction::None}) {
+        for (const bool direct: {false, true}) {
+            brain::RawBrainNetwork gpu(40, {10.0, 10.0}, utils::system::MemoryMode::Cuda);
+            brain::RawBrainNetwork ram(40, {10.0, 10.0}, utils::system::MemoryMode::Ram);
+
+            gpu.linksCap(0.1); // without activation a dense network grows past the floats over the steps
+            gpu.size(4, 2);
+            gpu.rand(-1.0, 1.0);
+            gpu.weightInit();
+            gpu.biasInit();
+            gpu.internalActivationFunction(fn);
+            gpu.weightLimits(1e-9, 1e9); // the links stay: only the weights are compared
+            gpu.directOutput(direct);
+            gpu.batch(true);
+            ram.deserialize(gpu.serialize());
+            ram.internalActivationFunction(fn);
+            ram.directOutput(direct);
+            ram.batch(true);
+            ASSERT_TRUE(gpu.onGpu());
+            ASSERT_TRUE(gpu.batchTraining());
+            for (brain::UIType round = 0; round < 3; ++round) {
+                const brain::Dataset inputs = samples(9, 4, round);
+                brain::Dataset coefs = samples(9, 2, round + 40);
+                const brain::Dataset outputs = gpu.applyTrain(inputs);
+
+                for (brain::Values& sample: coefs) for (brain::FType& coef: sample) coef *= 0.05f;
+                ASSERT_EQ(outputs.size(), inputs.size());
+                for (std::size_t i = 0; i < inputs.size(); ++i) {
+                    ram.inputs(inputs[i]);
+                    expectNear(outputs[i], ram.apply());
+                    ram.backpropagation(coefs[i]);
+                }
+                gpu.backpropagationAll(coefs);
+                EXPECT_EQ(gpu.pending(), inputs.size());
+                gpu.applyBatch();
+                ram.applyBatch();
+            }
+
+            // the same weights after three mini-batches (up to the float rounding of the sums)
+            const brain::Dataset check = samples(6, 4, 77);
+
+            for (std::size_t i = 0; i < check.size(); ++i) expectNear(gpu.apply(check[i]), ram.apply(check[i]));
+            EXPECT_GT(gpu.trainingMemory(), 0u) << "the states of the batch are kept on the device";
+        }
+    }
+}
+
 TEST(Gpu, BrainStepsMatchTheHost) {
     REQUIRE_CUDA();
     brain::BrainNetwork gpu(20, 4, utils::system::MemoryMode::Cuda);

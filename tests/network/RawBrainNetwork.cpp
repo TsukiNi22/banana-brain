@@ -1769,3 +1769,81 @@ TEST(RawBrainNetwork, ThreadsGiveTheSameStatesAsOneThread) {
     network.inputs(inputs);
     EXPECT_EQ(network.apply().size(), 2u);
 }
+
+/* ---------------------- mini-batch (samples together) ---------------------- */
+static brain::Dataset batchSamples(const brain::UIType count, const brain::UIType size, const brain::UIType seed)
+{
+    brain::Dataset out(count, brain::Values(size));
+
+    for (brain::UIType i = 0; i < count; ++i)
+        for (brain::UIType j = 0; j < size; ++j) out[i][j] = std::sin(static_cast<brain::FType>(seed + i * 17 + j * 5)); // varied, in [-1, 1]
+    return out;
+}
+
+static void nearValues(const brain::Values& a, const brain::Values& b)
+{
+    ASSERT_EQ(a.size(), b.size());
+    for (std::size_t i = 0; i < a.size(); ++i) EXPECT_NEAR(a[i], b[i], 2e-4 + 2e-4 * std::abs(b[i])) << "value " << i; // float rounding: the sums are not made in the same order
+}
+
+TEST(RawBrainBatch, TheThreadsOfTheHostMatchOneSampleAtATime)
+{
+    for (const brain::ActivationFunction fn: {brain::ActivationFunction::Sigmoid, brain::ActivationFunction::ReLU, brain::ActivationFunction::None}) {
+        for (const brain::UIType threads: {1u, 3u}) {
+            brain::RawBrainNetwork together(40, {10.0, 10.0}, utils::system::MemoryMode::Ram);
+            brain::RawBrainNetwork one(40, {10.0, 10.0}, utils::system::MemoryMode::Ram);
+
+            together.linksCap(0.1);
+            together.size(4, 2);
+            together.rand(-1.0, 1.0);
+            together.weightInit();
+            together.biasInit();
+            together.internalActivationFunction(fn);
+            together.weightLimits(1e-9, 1e9); // the links stay: only the weights are compared
+            together.threads(threads);
+            together.batch(true);
+            one.deserialize(together.serialize());
+            one.internalActivationFunction(fn);
+            one.batch(true);
+            ASSERT_TRUE(together.batchTraining());
+            for (brain::UIType round = 0; round < 3; ++round) {
+                const brain::Dataset inputs = batchSamples(11, 4, round);
+                brain::Dataset coefs = batchSamples(11, 2, round + 40);
+                const brain::Dataset outputs = together.applyTrain(inputs);
+
+                for (brain::Values& sample: coefs) for (brain::FType& coef: sample) coef *= 0.05f;
+                ASSERT_EQ(outputs.size(), inputs.size());
+                for (std::size_t i = 0; i < inputs.size(); ++i) {
+                    one.inputs(inputs[i]);
+                    nearValues(outputs[i], one.apply());
+                    one.backpropagation(coefs[i]);
+                }
+                together.backpropagationAll(coefs);
+                EXPECT_EQ(together.pending(), inputs.size());
+                together.applyBatch();
+                one.applyBatch();
+            }
+
+            // the same weights after three mini-batches
+            const brain::Dataset check = batchSamples(5, 4, 99);
+            const brain::Dataset got = together.applyAll(check);
+            const brain::Dataset expected = one.applyAll(check);
+
+            for (std::size_t i = 0; i < check.size(); ++i) nearValues(got[i], expected[i]);
+        }
+    }
+}
+
+TEST(RawBrainBatch, ThePendingGradientNeedsTheSamplesOfTheLastApplyTrain)
+{
+    brain::RawBrainNetwork network(20, {10.0, 10.0}, utils::system::MemoryMode::Ram);
+
+    network.size(3, 2);
+    network.rand(-1.0, 1.0);
+    network.weightInit();
+    network.biasInit();
+    network.batch(true);
+    (void)network.applyTrain(batchSamples(4, 3, 1));
+    EXPECT_ANY_THROW(network.backpropagationAll(batchSamples(3, 2, 1))); // 4 samples were applied
+    EXPECT_ANY_THROW(network.backpropagationAll(batchSamples(4, 3, 1))); // 3 coefficients for 2 outputs
+}
