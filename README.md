@@ -7,7 +7,7 @@ C++20 neural network library (`brain::`): one `brain::NeuralNetwork` handling se
 Built as a static library on top of [libutils](https://github.com/TsukiNi22/libutils) and distributed as RPM/DEB/Arch (pacman) packages (optimized, debug and asan variants, plus the `mingw64-libbrain*` packages for Windows), or installed from the sources with CMake.
 
 > [!NOTE]
-> The library is complete in its first release (`v1.0.0`; `v1.1.0-pre` adds the mini-batches on the gpu): the layered network and the brain network (execution, backpropagation, links that change with the weights, the rules as flags, sequences), the one training entry `NeuralNetwork::train` (epochs, mini-batch, shuffle, validation and stop rules), the execution on several samples and threads, the GPU (CUDA) for the execution and the plain gradient, the serialization (`save` / `load`) and the dataset tools.
+> The library is complete in its first release (`v1.0.0`; `v1.1.0-pre` adds the mini-batches of the layered network on the gpu, `v1.2.0-pre` those of the brain network): the layered network and the brain network (execution, backpropagation, links that change with the weights, the rules as flags, sequences), the one training entry `NeuralNetwork::train` (epochs, mini-batch, shuffle, validation and stop rules), the execution on several samples and threads, the GPU (CUDA) for the execution and the plain gradient, the serialization (`save` / `load`) and the dataset tools.
 
 ### Table of Contents
  - [Dependencies](#dependencies)
@@ -155,7 +155,7 @@ cmake --build $BUILD_DIR --target package_release               # mingw64-libbra
 ## Usage
 
 ```cmake
-find_package(brain 1.1.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
+find_package(brain 1.2.0 REQUIRED)                            # installed CMake configuration (finds libutils too)
 target_link_libraries(${TARGET} PRIVATE brain::brain)  # includes, utils::utils & library
 ```
 
@@ -231,6 +231,15 @@ The weights and biases are updated on the gpu when the memories are stored there
 | `Light` | the gradient is made by the host, one sample at a time | groups up to 8 MiB (`BRAIN_GPU_LIGHT_EXEC_BYTES`) | the weights only + 8 MiB for the execution |
 
 Anything the gpu cannot do (no CUDA, an external activation function, a `.ln` file whose weights do not follow each other) is computed by the host as before, with the same results up to the float rounding of the sums.
+
+**Mini-batches of a brain network (`RawBrainNetwork`).** In the mini-batch mode (`batch(true)`, the `BATCH` rule) with an internal activation function, `train` and `applyTrain(inputs)` / `backpropagationAll(coefs)` compute the samples of a mini-batch together, and the gradients are added to the pending one that `applyBatch()` applies (Adam, momentum, the links that change at the limits stay on the host):
+
+| Where | `Fast` (default) | `Light` |
+| ----- | ---------------- | ------- |
+| Forward and backward of the samples | on the gpu when the memories are there (CUDA): one kernel per time step, the states of every step and their sums stay on the device (`2 × (steps + 1) × neurons × samples` floats), 1 GiB at most (`BRAIN_GPU_FAST_TRAIN_BYTES`) | on the host, a sample per thread (`threads(n)`, all the cores by default) |
+| Execution (`execAll`, the validation) | on the gpu, groups up to 256 MiB | on the gpu, groups up to 8 MiB |
+
+The update of a mini-batch (`applyBatch`) changes the links that reach a limit of the weights: it searches the nearest neuron with a free slot for each of them, and it was the whole time of a training on a network of a few hundred neurons. It now refuses a full neuron at once, marks the neurons a neuron is linked to once and sorts the candidates by chunks; the `keep-paths` and `input-paths` rules, which count the paths of the inputs to the outputs before and after each removal, search backwards from each output (3 searches) instead of from each input (768 for 768 inputs), and a link that has a detour (a neuron its sender sends to that sends to its receiver) is removed without counting them: it cannot cut a path. The results are the same to the bit.
 
 ### Save / load
 `save(path)` / `load(path)` write and read the network (`NeuralNetwork`), `serialize()` / `deserialize(bytes)` do it in memory (each network).
