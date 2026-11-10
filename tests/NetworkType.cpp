@@ -22,7 +22,6 @@ File Description:
 #include <gtest/gtest.h>
 #include <type_traits>
 #include <utility>
-#include <new>
 
 /* ------------------------------- Types ------------------------------- */
 // The value types keep the constraints of their static_assert
@@ -81,10 +80,3 @@ TEST(RawBrainNeuron, SquaredDistanceOperator) {
     EXPECT_EQ(a | b, a.distance2(b));
     EXPECT_FLOAT_EQ(a | b, 25.0); // squared: 25, never 5
 }
-
-// The neurons and the links are stored in a utils::system::HybridMemory: bytes copied to the gpu
-static_assert(std::is_trivially_copyable_v<brain::LayerNeuron>);
-static_assert(std::is_trivially_copyable_v<brain::BrainNeuron>);
-static_assert(std::is_trivially_copyable_v<brain::BrainLink>);
-static_assert(std::is_trivially_copyable_v<brain::RawBrainNeuron>);
-static_assert(std::is_trivially_copyable_v<brain::RawBrainLink>);

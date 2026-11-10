@@ -3,7 +3,7 @@ set(TARGET brain)
 if(NOT CMAKE_TOOLCHAIN_FILE AND NOT DEFINED CMAKE_CXX_COMPILER)
     set(CMAKE_CXX_COMPILER clang++) # A toolchain (ex: cmake/toolchain/mingw-w64.cmake) or -DCMAKE_CXX_COMPILER wins
 endif()
-project(${TARGET} VERSION 1.2.0 LANGUAGES CXX)
+project(${TARGET} VERSION 1.0.0 LANGUAGES CXX)
 
 # =========================
 # Options
@@ -67,26 +67,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON) # Moderne compilation -fPIE
 # =========================
 # Requirement
 # =========================
-set(LIBUTILS_VERSION 4.3.0) # Minimal libutils: the first one with utils::system::HybridMemory (v4.3.0-pre, the stable channel gets it later)
+set(LIBUTILS_VERSION 4.3.0) # Minimal libutils (the tools are written against v4.3.0)
 find_package(utils ${LIBUTILS_VERSION} CONFIG REQUIRED) # Check utils dependencies existance
 find_package(PkgConfig REQUIRED)
 find_package(Python3 REQUIRED) # Used for the special dependencie
 find_program(CCACHE_PROGRAM ccache) # Used for cache during compilation
 if (CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
-endif()
-
-# Headers of the CUDA toolkit (optional): without them the networks always compute on the host (see src/brain/tools/compute.cpp)
-set(BRAIN_CUDA_HINTS /usr/local/cuda/include /usr/local/cuda/targets/x86_64-linux/include /opt/cuda/include)
-find_path(BRAIN_CUDA_INCLUDE cuda.h HINTS ${BRAIN_CUDA_HINTS})
-find_path(BRAIN_NVRTC_INCLUDE nvrtc.h HINTS ${BRAIN_CUDA_HINTS})
-set(BRAIN_CUDA_INCLUDES "")
-if(BRAIN_CUDA_INCLUDE AND BRAIN_NVRTC_INCLUDE)
-    set(BRAIN_CUDA_INCLUDES ${BRAIN_CUDA_INCLUDE} ${BRAIN_NVRTC_INCLUDE})
-    list(REMOVE_DUPLICATES BRAIN_CUDA_INCLUDES)
-    message(STATUS "CUDA headers found (${BRAIN_CUDA_INCLUDE}): the networks can compute on a CUDA gpu")
-else()
-    message(STATUS "CUDA headers not found: the networks compute on the host")
 endif()
 
 # =========================
@@ -128,7 +115,6 @@ set(SRC_SHARED
     src/brain/tools/neuron.cpp
     src/brain/tools/loss.cpp
     src/brain/tools/activation.cpp
-    src/brain/tools/compute.cpp
 )
 
 # Library: compiled (.a / .so), or INTERFACE when only the headers are shipped (header-only)
@@ -284,7 +270,6 @@ endif()
 # =========================
 if(BRAIN_PACKAGE_BIN)
     target_include_directories(${TARGET} PRIVATE include)
-    target_include_directories(${TARGET} SYSTEM PRIVATE ${BRAIN_CUDA_INCLUDES})
 endif()
 if(TARGET ${TARGET_LIB})
     if(BRAIN_PACKAGE_LIB)
@@ -292,7 +277,6 @@ if(TARGET ${TARGET_LIB})
     else()
         set(INCLUDE_SCOPE INTERFACE)
     endif()
-    target_include_directories(${TARGET_LIB} SYSTEM PRIVATE ${BRAIN_CUDA_INCLUDES})
     target_include_directories(${TARGET_LIB} ${INCLUDE_SCOPE}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/brain/exception> # found by libutils with __has_include
@@ -560,7 +544,7 @@ else() # 0 is impossible for github.run_number
     set(CPACK_ARCH_PACKAGE_RELEASE "0")
 endif()
 
-# The packages need libutils of the stable channel OR of the pre-release one (at least LIBUTILS_VERSION, the first one with HybridMemory): <package>[-pre]
+# The packages need libutils of the stable channel OR of the pre-release one (at least LIBUTILS_VERSION): <package>[-pre]
 # RPM: a boolean dependency, DEB: an alternative (a | b), Arch has no "or" in its depends: the stable package only
 function(libutils_requires OUT SUFFIX)
     set(NAME "${LIBUTILS_PACKAGE}${SUFFIX}")
