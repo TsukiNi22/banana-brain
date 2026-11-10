@@ -34,6 +34,23 @@ Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
 Description: C++20 neural network library (asan)
 
+Package: libbrain-as-pre
+Version: 1.1.0-4
+Maintainer: TsukiNi22
+Installed-Size: 21346
+Depends: libbrain-dev-pre (= 1.1.0-4), libbrain-dev-as-pre (= 1.1.0-4), libutils-as (>= 4.3.0) | libutils-as-pre (>= 4.3.0)
+Conflicts: libbrain-as
+Breaks: libbrain-as
+Filename: pool/main/libbrain-as-pre-1.1.0-Linux-lib.deb
+Size: 3692030
+MD5sum: 215dc6d33df6c1a229833c2c1ad78394
+SHA1: a1ff56888ce8e4c49b351f4c7d2c7becb554c68d
+SHA256: 2ee8c2483f2fdf17b9299274c4d28c09fdea2e1022163afa7932658491a43682
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (asan)
+
 Package: libbrain-db
 Version: 1.0.0-1
 Maintainer: TsukiNi22
@@ -48,6 +65,24 @@ Size: 2963116
 MD5sum: ed4ed6ca1604d2903f6ca32237468220
 SHA1: cee64804a0ad331be6eda0dbee02c3eca1bb5f45
 SHA256: 97dac9d10a9810441c8d19898d1480ab914aaa658cc3229bd81588f9230270b4
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (debug)
+
+Package: libbrain-db-pre
+Version: 1.1.0-4
+Maintainer: TsukiNi22
+Installed-Size: 17363
+Depends: libbrain-dev-pre (= 1.1.0-4), libbrain-dev-db-pre (= 1.1.0-4), libutils-db (>= 4.3.0) | libutils-db-pre (>= 4.3.0)
+Suggests: gdb
+Conflicts: libbrain-db
+Breaks: libbrain-db
+Filename: pool/main/libbrain-db-pre-1.1.0-Linux-lib.deb
+Size: 3008474
+MD5sum: 3ed459799b3acd235404a18c6c64ccb2
+SHA1: 00da0ae00435085b0ea8e9bd9c6aaffbcfc0da41
+SHA256: d3425786efe34dd0409d73ac5b306164f1cec117e85824d7867c79ef62d03a71
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -89,6 +124,23 @@ Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
 Description: C++20 neural network library (headers/cmake)
 
+Package: libbrain-dev-as-pre
+Version: 1.1.0-4
+Maintainer: TsukiNi22
+Installed-Size: 17
+Depends: libutils-as (>= 4.3.0) | libutils-as-pre (>= 4.3.0)
+Conflicts: libbrain-dev-as
+Breaks: libbrain-dev-as
+Filename: pool/main/libbrain-dev-pre-1.1.0-Linux-headers-as.deb
+Size: 1162
+MD5sum: 6678cd5a869997f7a357e0ce86578901
+SHA1: b4a73c2e29a639f634b1f96032898f4c558b210f
+SHA256: d469da2a9232750c2afca9d25736889fcdf65fda95713f87a9b4c7820ac68ab0
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (headers/cmake)
+
 Package: libbrain-dev-db
 Version: 1.0.0-1
 Maintainer: TsukiNi22
@@ -102,6 +154,23 @@ Size: 1182
 MD5sum: 8aeb7a8f930e95f51548d9590d6368a3
 SHA1: 2f74fbc89a2d661db9790917cb9be12af691c6d3
 SHA256: e1f95e7eeb65fe095a11cb49e24d1cd97c972729bdab277477bd7f1f11754016
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (headers/cmake)
+
+Package: libbrain-dev-db-pre
+Version: 1.1.0-4
+Maintainer: TsukiNi22
+Installed-Size: 17
+Depends: libutils-db (>= 4.3.0) | libutils-db-pre (>= 4.3.0)
+Conflicts: libbrain-dev-db
+Breaks: libbrain-dev-db
+Filename: pool/main/libbrain-dev-pre-1.1.0-Linux-headers-db.deb
+Size: 1168
+MD5sum: d53dcc20e3e3070ba0d16b4a98ad6d7a
+SHA1: 476fe73a98840b8ee1768475dc18b295c9a3a1e2
+SHA256: 25c5c77a16175c01bd36b38d65dc9271da0436f12e36642d5666bef7027f9bc1
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -125,6 +194,40 @@ Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
 Description: C++20 neural network library (headers/cmake)
 
+Package: libbrain-dev-op-pre
+Version: 1.1.0-4
+Maintainer: TsukiNi22
+Installed-Size: 18
+Depends: libutils-op (>= 4.3.0) | libutils-op-pre (>= 4.3.0)
+Conflicts: libbrain-dev-op
+Breaks: libbrain-dev-op
+Filename: pool/main/libbrain-dev-pre-1.1.0-Linux-headers-op.deb
+Size: 1266
+MD5sum: f8e29ec4661c61ff978631707cf3e5b4
+SHA1: 485d9aea19b78c8c3a78d534296f2d86bf4e6b1e
+SHA256: 0361f8c485d9f04cbba0d3cf8295385db6560319275ba854cedc9578a727e00e
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (headers/cmake)
+
+Package: libbrain-dev-pre
+Version: 1.1.0-4
+Maintainer: TsukiNi22
+Installed-Size: 221
+Depends: libutils-dev (>= 4.3.0) | libutils-dev-pre (>= 4.3.0)
+Conflicts: libbrain-dev
+Breaks: libbrain-dev
+Filename: pool/main/libbrain-dev-pre-1.1.0-Linux-headers.deb
+Size: 39026
+MD5sum: fec13a2033e2dfb78277b6ee4f95a55d
+SHA1: 77ec9f10bb2704f6d71da81d35da1d7ba3aa0b79
+SHA256: 6d44befce9fe132c17af2dedd9bb680d3fae7e3d2d75364f9acf936670bbe3fd
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (headers/cmake)
+
 Package: libbrain-op
 Version: 1.0.0-1
 Maintainer: TsukiNi22
@@ -142,6 +245,40 @@ Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
 Description: C++20 neural network library (optimized)
+
+Package: libbrain-op-pre
+Version: 1.1.0-4
+Maintainer: TsukiNi22
+Installed-Size: 1650
+Depends: libbrain-dev-pre (= 1.1.0-4), libbrain-dev-op-pre (= 1.1.0-4), libutils-op (>= 4.3.0) | libutils-op-pre (>= 4.3.0)
+Conflicts: libbrain-op
+Breaks: libbrain-op
+Filename: pool/main/libbrain-op-pre-1.1.0-Linux-lib.deb
+Size: 364620
+MD5sum: f7961160281d6c7e87fe7ef23a914469
+SHA1: 637cd6209742ced099863a13983da25b32cd3716
+SHA256: 06900e2b985aa5e707e6f16eb254b8d5aafc97f0865d032456035690fdce875b
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (optimized)
+
+Package: libbrain-pre
+Version: 1.1.0-4
+Maintainer: TsukiNi22
+Installed-Size: 4
+Depends: libbrain-op-pre (= 1.1.0-4)
+Conflicts: libbrain
+Breaks: libbrain
+Filename: pool/main/libbrain-pre-1.1.0-Linux.deb
+Size: 618
+MD5sum: 59e495c05b2b600ab1ee94e1fd56e213
+SHA1: aaea2e7e0d00f3403b499afc8fb8d13e6a269bac
+SHA256: fe5e6aa2790b7ade7653f25f6efaa1baf1f15c3d5993362b24c774051cb816b9
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (global)
 
 Package: mingw64-libbrain
 Version: 1.0.0-1
@@ -176,6 +313,24 @@ Size: 4887212
 MD5sum: a5f00f61e8b9dde5d15de9b47aa7ec30
 SHA1: 29a4f1a3194c202cc39c8a1f2e7f4dda4c8a6042
 SHA256: a65a0755a9f549d1ad8351d955d66867060e3706b2482be5abea4ccbada5fb8d
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (debug)
+
+Package: mingw64-libbrain-db-pre
+Version: 1.1.0-4
+Architecture: all
+Maintainer: TsukiNi22
+Installed-Size: 35870
+Depends: mingw64-libbrain-dev-pre (= 1.1.0-4), mingw64-libbrain-dev-db-pre (= 1.1.0-4), mingw64-libutils-db (>= 4.3.0) | mingw64-libutils-db-pre (>= 4.3.0)
+Conflicts: mingw64-libbrain-db
+Breaks: mingw64-libbrain-db
+Filename: pool/main/mingw64-libbrain-db-pre-1.1.0-win64-lib.deb
+Size: 4963972
+MD5sum: b0ac4859db5aed421f1d3c387b30d7b9
+SHA1: 01b35084bd0b0b2fbb84813088ca114d6a357dd1
+SHA256: 1399cb22cb37d12e194a7e65e6bc4425a7e2af85168d104eecb8a9fcdf151d78
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -219,6 +374,24 @@ Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
 Description: C++20 neural network library (headers/cmake)
 
+Package: mingw64-libbrain-dev-db-pre
+Version: 1.1.0-4
+Architecture: all
+Maintainer: TsukiNi22
+Installed-Size: 21
+Depends: mingw64-libutils-db (>= 4.3.0) | mingw64-libutils-db-pre (>= 4.3.0)
+Conflicts: mingw64-libbrain-dev-db
+Breaks: mingw64-libbrain-dev-db
+Filename: pool/main/mingw64-libbrain-dev-pre-1.1.0-win64-headers-db.deb
+Size: 1216
+MD5sum: d65b3485cf74b26363f823a6f8bf67f8
+SHA1: 88a2549d3e1cd907d87f9e4aceff1267502efac7
+SHA256: 7ad09fc9635419b605b87eefe9d8c4c41670ed440562092883fee2788190944d
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (headers/cmake)
+
 Package: mingw64-libbrain-dev-op
 Version: 1.0.0-1
 Architecture: all
@@ -233,6 +406,42 @@ Size: 1336
 MD5sum: db218f127ac6a49b5210b4ecebbb8168
 SHA1: 48d65c0df0e807984cf0f3b4304c4679e02db000
 SHA256: 71e43d2c2e536454eaa8656c9b6d58c6f69126e66c241c0aa1c81c3711c83868
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (headers/cmake)
+
+Package: mingw64-libbrain-dev-op-pre
+Version: 1.1.0-4
+Architecture: all
+Maintainer: TsukiNi22
+Installed-Size: 22
+Depends: mingw64-libutils-op (>= 4.3.0) | mingw64-libutils-op-pre (>= 4.3.0)
+Conflicts: mingw64-libbrain-dev-op
+Breaks: mingw64-libbrain-dev-op
+Filename: pool/main/mingw64-libbrain-dev-pre-1.1.0-win64-headers-op.deb
+Size: 1324
+MD5sum: 49bf2a22069c39097557efa62eb92fdb
+SHA1: 8d7469d56aa79afa7576f72f9d595828eac2be27
+SHA256: 297d5b4b7342ff4f9154eada75ae5e5e9cc4c0a3699c8c9cd9c7be3ab8203d0a
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (headers/cmake)
+
+Package: mingw64-libbrain-dev-pre
+Version: 1.1.0-4
+Architecture: all
+Maintainer: TsukiNi22
+Installed-Size: 225
+Depends: mingw64-libutils-dev (>= 4.3.0) | mingw64-libutils-dev-pre (>= 4.3.0)
+Conflicts: mingw64-libbrain-dev
+Breaks: mingw64-libbrain-dev
+Filename: pool/main/mingw64-libbrain-dev-pre-1.1.0-win64-headers.deb
+Size: 39098
+MD5sum: af36f762c6b9509d88f5660170007a24
+SHA1: 60cf9d44fd7ab1e970dd1561645151aec8db0d9d
+SHA256: a63df95624b2e888a9530554936fe05efc160a3693bfe444a194b65d6fd6a243
 Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
@@ -256,4 +465,40 @@ Section: devel
 Priority: optional
 Homepage: https://github.com/TsukiNi22/banana-brain
 Description: C++20 neural network library (optimized)
+
+Package: mingw64-libbrain-op-pre
+Version: 1.1.0-4
+Architecture: all
+Maintainer: TsukiNi22
+Installed-Size: 1565
+Depends: mingw64-libbrain-dev-pre (= 1.1.0-4), mingw64-libbrain-dev-op-pre (= 1.1.0-4), mingw64-libutils-op (>= 4.3.0) | mingw64-libutils-op-pre (>= 4.3.0)
+Conflicts: mingw64-libbrain-op
+Breaks: mingw64-libbrain-op
+Filename: pool/main/mingw64-libbrain-op-pre-1.1.0-win64-lib.deb
+Size: 404422
+MD5sum: 219af582c4ec3c37228504856bb8935c
+SHA1: 9f51743b846f028c75b750c4d9325ebf631c019e
+SHA256: 8c87a9f1713ac2c2acffff5979252a80fc70e94289e08ec498cb9a882a32cf76
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (optimized)
+
+Package: mingw64-libbrain-pre
+Version: 1.1.0-4
+Architecture: all
+Maintainer: TsukiNi22
+Installed-Size: 8
+Depends: mingw64-libbrain-op-pre (= 1.1.0-4)
+Conflicts: mingw64-libbrain
+Breaks: mingw64-libbrain
+Filename: pool/main/mingw64-libbrain-pre-1.1.0-win64.deb
+Size: 664
+MD5sum: 1bacc19bce7d8be26d684e6fd695608b
+SHA1: f828211f93f97b146db672be1c397315ab208caa
+SHA256: a753b1c70a97af83be42b9e089ac09f69b5c2886249818ffc7f8030674e18e6b
+Section: devel
+Priority: optional
+Homepage: https://github.com/TsukiNi22/banana-brain
+Description: C++20 neural network library (global)
 
