@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 10/11/2026 by @author Tsukini
+##  @date 12/11/2026 by @author Tsukini
 
 File Name:
 ##  @file RawBrainNetwork.cpp
@@ -21,11 +21,12 @@ File Description:
 #define _Attribute
 #include <utils/utils.hpp>
 #include "brain/network/RawBrainNetwork.hpp"
-#include <utility>
+#include <cstdint>
 #include <memory>
+#include <vector>
 
-brain::RawBrainNetwork::RawBrainNetwork(const brain::UIType neuron, const std::pair<brain::FType, brain::FType>& size)
-: brain::BrainNetwork(neuron), _space{size}
+brain::RawBrainNetwork::RawBrainNetwork(const brain::UIType neuron, const brain::BrainOptions& options)
+: brain::BrainNetwork(neuron, options)
 {
     /* Nothing */
 }
@@ -72,8 +73,54 @@ _cold void brain::RawBrainNetwork::biasInit(const brain::FType fallback)
     /* Nothing */
 }
 
+_hot void brain::RawBrainNetwork::applyGradients(void)
+{
+    /* Nothing */
+}
+
+_cold void brain::RawBrainNetwork::dimension(const std::uint16_t dimension)
+{
+    /* Nothing */
+}
+
+_cold void brain::RawBrainNetwork::space(const std::vector<brain::FType>& space)
+{
+    /* Nothing */
+}
+
 _cold std::unique_ptr<brain::BrainNetwork> brain::RawBrainNetwork::reduce(void) const
 {
     /* Nothing */
     return {};
+}
+
+_cold void brain::RawBrainNetwork::relink(void)
+{
+    /* Nothing */
+}
+
+_cold void brain::RawBrainNetwork::revive(void)
+{
+    /* Nothing */
+}
+
+_cold void brain::RawBrainNetwork::grow(const brain::UIType count)
+{
+    /* Nothing */
+}
+
+_cold void brain::RawBrainNetwork::prune(const brain::FType influence, const brain::PruneTarget target)
+{
+    /* Nothing */
+}
+
+_cold std::unique_ptr<brain::INetwork> brain::RawBrainNetwork::clone(void) const
+{
+    /* Nothing */
+    return {};
+}
+
+_cold void brain::RawBrainNetwork::reset(void)
+{
+    /* Nothing */
 }

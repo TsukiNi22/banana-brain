@@ -63,20 +63,8 @@ TEST(RawBrainNeuron, DefaultState) {
     brain::RawBrainLink link;
 
     EXPECT_EQ(neuron.bias, 0.0);
+    EXPECT_TRUE(neuron.pos.empty()); // 0D until the network places it (one value per axis)
     EXPECT_EQ(link.id, 0u);
     EXPECT_EQ(link.weight, 0.0);
     EXPECT_FALSE(link.inward);
-}
-
-// The squared distance is exposed by distance2() and by operator| (same result, an FType)
-static_assert(std::is_same_v<decltype(std::declval<const brain::RawBrainNeuron&>() | std::declval<const brain::RawBrainNeuron&>()), brain::FType>);
-static_assert(std::is_same_v<decltype(std::declval<const brain::RawBrainNeuron&>().distance2(std::declval<const brain::RawBrainNeuron&>())), brain::FType>);
-
-TEST(RawBrainNeuron, SquaredDistanceOperator) {
-    brain::RawBrainNeuron a;
-    brain::RawBrainNeuron b;
-    a.pos = {0.0, 0.0};
-    b.pos = {3.0, 4.0};
-    EXPECT_EQ(a | b, a.distance2(b));
-    EXPECT_FLOAT_EQ(a | b, 25.0); // squared: 25, never 5
 }

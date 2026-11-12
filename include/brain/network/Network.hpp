@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 12/11/2026 by @author Tsukini
 
 File Name:
 ##  @file Network.hpp
@@ -24,14 +24,14 @@ File Description:
     /* INCLUDE */
 
     /* interface */
-    #include "INetwork.hpp"       // brain::INetwork
+    #include "INetwork.hpp"          // brain::INetwork
 
     /* abstract */
-    #include "ANetwork.hpp"       // brain::ANetwork
+    #include "ANetwork.hpp"          // brain::ANetwork
 
     /* network */
-    #include "RawBrainNetwork.hpp" // brain::RawBrainNetwork (execution and training)
-    #include "LayerNetwork.hpp"    // brain::LayerNetwork
-    #include "BrainNetwork.hpp"    // brain::BrainNetwork (reduced, execution only)
+    #include "RawBrainNetwork.hpp"   // brain::RawBrainNetwork (execution and training)
+    #include "LayerNetwork.hpp"      // brain::LayerNetwork
+    #include "BrainNetwork.hpp"      // brain::BrainNetwork (reduced, execution only)
 
 #endif /* NETWORK_H */

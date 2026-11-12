@@ -8,35 +8,32 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 12/11/2026 by @author Tsukini
 
 File Name:
-##  @file neuron.hpp
+##  @file CsvHook.cpp
 
 File Description:
-##  Tools of the brain neurons: distance ordering of the neurons of a network
+##  You know, I don t think there are good or bad descriptions,
+##  for me, life is all about functions...
 \**************************************************************/
 
-#ifndef NEURON_H
-    #define NEURON_H
+#define _Attribute
+#include <utils/utils.hpp>
+#include "brain/hook/CsvHook.hpp"
 
-    //----------------------------------------------------------------//
-    /* INCLUDE */
+_cold void brain::CsvHook::onStart(const brain::TrainOptions& options, const brain::UIType training, const brain::UIType validation)
+{
+    /* Nothing */
+}
 
-    /* type */
-    #define _Attribute
-    #include <utils/utils.hpp>      // _cold
-    #include "../NetworkType.hpp"   // brain::UIType, brain::RawBrainNeuron
-    #include <vector>               // std::vector
-    #include <span>                 // std::span
+_cold void brain::CsvHook::onStop(const brain::TrainState& state, const brain::StopReason reason)
+{
+    /* Nothing */
+}
 
-namespace brain::tools { // namespace start
-//----------------------------------------------------------------//
-/* PROTOTYPE */
-
-/* brain neuron */
-// The distances are computed again at each call (done once, at the init of the network): nothing stored
-_cold _nodiscard std::vector<brain::UIType> sort(const brain::UIType index, std::span<const brain::RawBrainNeuron> neurons, const brain::UIType cap); // the ids of the cap nearest neurons of the neuron index (never itself), closest first (cap above the other neurons: all of them)
-
-} // namespace end
-#endif /* NEURON_H */
+_hot bool brain::CsvHook::onEpoch(const brain::TrainState& state)
+{
+    /* Nothing */
+    return true;
+}

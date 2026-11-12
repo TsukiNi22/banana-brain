@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 10/11/2026 by @author Tsukini
+##  @date 12/11/2026 by @author Tsukini
 
 File Name:
 ##  @file ANetwork.cpp
@@ -22,6 +22,7 @@ File Description:
 #include <utils/utils.hpp>
 #include "brain/network/ANetwork.hpp"
 #include <cstdint>
+#include <memory>
 
 _cold void brain::ANetwork::serializeHeader_(brain::Bytes& out, const std::uint8_t kind) const
 {
@@ -34,16 +35,39 @@ _cold brain::UIType brain::ANetwork::deserializeHeader_(const brain::Bytes& data
     return {};
 }
 
-_hot brain::FType brain::ANetwork::activate_(const brain::FType value) const
+_hot brain::Value brain::ANetwork::activate_(const brain::Value value) const
 {
     /* Nothing */
     return {};
 }
 
-_cold brain::FType brain::ANetwork::random_(const brain::FType fallback) const
+_hot brain::Values brain::ANetwork::activate_(const brain::Values& values) const
 {
     /* Nothing */
     return {};
+}
+
+_hot brain::FType brain::ANetwork::derivative_(const brain::Value output) const
+{
+    /* Nothing */
+    return {};
+}
+
+_hot brain::Values brain::ANetwork::derivative_(const brain::Values& outputs) const
+{
+    /* Nothing */
+    return {};
+}
+
+_cold brain::FType brain::ANetwork::random_(const brain::FType fallback, const brain::UIType fan_in, const brain::UIType fan_out) const
+{
+    /* Nothing */
+    return {};
+}
+
+_hot void brain::ANetwork::update_(brain::FType& weight, const brain::UIType index, const brain::FType gradient)
+{
+    /* Nothing */
 }
 
 _cold void brain::ANetwork::init_(void)
@@ -88,17 +112,17 @@ _cold void brain::ANetwork::rand(const brain::FType min, const brain::FType max)
     /* Nothing */
 }
 
-_cold void brain::ANetwork::rand(const brain::RandFn& fn)
+_cold void brain::ANetwork::rand(const brain::Rand& rand)
 {
     /* Nothing */
 }
 
-_cold void brain::ANetwork::activationFunction(const brain::ActivationFn& fn)
+_cold void brain::ANetwork::activation(const brain::Activation& fn)
 {
     /* Nothing */
 }
 
-_cold void brain::ANetwork::internalActivationFunction(const brain::ActivationFunction fn)
+_cold void brain::ANetwork::backend(std::shared_ptr<brain::IBackend> backend)
 {
     /* Nothing */
 }

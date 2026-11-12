@@ -8,13 +8,13 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 10/11/2026 by @author Tsukini
+##  @date 12/11/2026 by @author Tsukini
 
 File Name:
 ##  @file RawBrainNetwork.hpp
 
 File Description:
-##  Raw custom network (more like a brain): neurons placed in a 2d space, executes and trains (reduced in a brain::BrainNetwork)
+##  Raw custom network (more like a brain): neurons placed in a space of n dimensions, executes and trains (reduced in a brain::BrainNetwork)
 \**************************************************************/
 
 #ifndef RAWBRAINNETWORK_H
@@ -24,24 +24,31 @@ File Description:
     /* INCLUDE */
 
     /* type */
-    #include "../NetworkType.hpp"   // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::RawBrainNeuron, brain::RawBrainLink
-    #include "BrainNetwork.hpp"     // brain::BrainNetwork
-    #include <utility>              // std::pair
-    #include <memory>               // std::unique_ptr
-    #include <vector>               // std::vector
+    #include "../NetworkDefine.hpp"   // brain::PruneTarget, BRAIN_DEFAULT_FALLBACK, BRAIN_DEFAULT_PRUNE
+    #include "../NetworkType.hpp"     // brain::UIType, brain::FType, brain::Values, brain::Bytes, brain::Buffer, brain::RawBrainNeurons, brain::RawBrainLink, brain::BrainOptions
+    #include "BrainNetwork.hpp"       // brain::BrainNetwork
+    #include "INetwork.hpp"           // brain::INetwork
+    #include <cstdint>                // std::uint16_t
+    #include <memory>                 // std::unique_ptr
+    #include <vector>                 // std::vector
 
 namespace brain { // namespace start
 //----------------------------------------------------------------//
 /* CLASS */
 
+// The time steps go through _backend->propagate (links), the gradients through _backend->axpy
 class RawBrainNetwork: public brain::BrainNetwork {
     private:
-        std::vector<brain::RawBrainNeuron> _rawNeurons; // every neuron of the 2d space
+        /* structure */
+        brain::RawBrainNeurons _rawNeurons; // every neuron of the space, pos.size() == _options.dimension (no space of its own: _options.space of BrainNetwork)
         std::vector<brain::RawBrainLink> _rawLinks; // the links of every neuron (inward and their clones), _cap slots each
-        std::pair<brain::FType, brain::FType> _space = {1.0, 1.0}; // <width, height> of the 2d space
+
+        /* training */
+        std::vector<brain::Buffer> _gradients; // mini-batch, one per worker of the backend (summed by applyGradients)
+        std::vector<brain::UIType> _stuck; // neurons stuck at 0 or 1 (REVIVE)
 
         // ---------- Pre-Function -------- //
-        void init_(void) final; // place _neuron neurons in the _space and link them
+        void init_(void) final; // place _neuron neurons in the space and link them
 
     public:
         // ---------- Pre-Function -------- //
@@ -52,22 +59,41 @@ class RawBrainNetwork: public brain::BrainNetwork {
         /* execution */
         using brain::BrainNetwork::apply;
         brain::Values apply(void) final;
+
+        /* training */
         void backpropagation(const brain::FType coef) final; // a score (positive = good, the links that made the output are strengthened, negative = weakened)
         void backpropagation(const brain::Values& coefs) final;
+        void applyGradients(void); // mean of the batch through the optimizer, called by the train at the end of each batch
 
-        /* setup */
-        void weightInit(const brain::FType fallback = 0.01) final;
-        void biasInit(const brain::FType fallback = 0.01) final;
+        /* init */
+        void weightInit(const brain::FType fallback = BRAIN_DEFAULT_FALLBACK) final;
+        void biasInit(const brain::FType fallback = BRAIN_DEFAULT_FALLBACK) final;
 
-        /* reduce */
+        /* options */
+        using brain::BrainNetwork::dimension;
+        using brain::BrainNetwork::space;
+        void dimension(const std::uint16_t dimension) final; // the neurons placed again in the new space (links kept)
+        void space(const std::vector<brain::FType>& space) final; // the positions scaled to the new space (links kept)
+
+        /* conversion */
         std::unique_ptr<brain::BrainNetwork> reduce(void) const; // the reduced network (execution only), from the inward links and the biases
+
+        /* shape */
+        void relink(void); // links under weightMin moved to another close neuron (a random one in 0D), new link at BRAIN_DEFAULT_NEW_LINK of the limits with LOW_NEW_LINKS
+        void revive(void); // the stuck neurons get another chance (REVIVE)
+        void grow(const brain::UIType count); // add neurons close to the most used / strongest ones (GROW), 0D: a random position in the creation order, next to the strongest ones
+        void prune(const brain::FType influence = BRAIN_DEFAULT_PRUNE, const brain::PruneTarget target = brain::PruneTarget::Both) final; // neurons (GROW) / links
+
+        /* state */
+        std::unique_ptr<brain::INetwork> clone(void) const final;
+        void reset(void) final;
 
         // ------------ Operator ---------- //
         RawBrainNetwork& operator=(const RawBrainNetwork& other) = delete;
         RawBrainNetwork& operator=(RawBrainNetwork&& other) = delete;
 
         // ---------- Constructor --------- //
-        RawBrainNetwork(const brain::UIType neuron, const std::pair<brain::FType, brain::FType>& size = {1.0, 1.0}); // size = 2d space of the neurons, calls init_ at the end
+        RawBrainNetwork(const brain::UIType neuron, const brain::BrainOptions& options = {}); // the shape of the space in the options (dimension / space), calls init_ at the end
         RawBrainNetwork(const RawBrainNetwork& other) = delete;
         RawBrainNetwork(RawBrainNetwork&& other) = delete;
 

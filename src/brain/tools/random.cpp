@@ -8,7 +8,7 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 12/11/2026 by @author Tsukini
 
 File Name:
 ##  @file random.cpp
@@ -22,5 +22,5 @@ File Description:
 #include <random>
 
 #ifdef BRAIN_SEED_GLOBAL
-    std::mt19937_64 brain::tools::generator; // the single generator of the program (BRAIN_SEED_LOCAL: each translation unit has its own, nothing to define)
+    thread_local std::mt19937_64 brain::tools::generator; // the generator of each thread of the program (BRAIN_SEED_LOCAL: each translation unit has its own, nothing to define)
 #endif

@@ -8,28 +8,28 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 12/11/2026 by @author Tsukini
 
 File Name:
-##  @file Bytes.cpp
+##  @file Convertor.cpp
 
 File Description:
-##  Unit tests of the brain neuron tools
+##  Unit tests of the convertor tools
 \**************************************************************/
 
-#include "brain/tools/bytes.hpp"
+#include "brain/tools/convertor.hpp"
 #include <gtest/gtest.h>
 #include <cstdint>
 
 /* ------------------------------- bytes ------------------------------- */
-TEST(Bytes, WrittenLittleEndian) {
+TEST(Convertor, WrittenLittleEndian) {
     brain::Bytes data;
 
     brain::tools::put<std::uint32_t>(data, 0x01020304u);
     EXPECT_EQ(data, (brain::Bytes{0x04, 0x03, 0x02, 0x01}));
 }
 
-TEST(Bytes, RoundTripOfEveryKind) {
+TEST(Convertor, RoundTripOfEveryKind) {
     brain::Bytes data;
     brain::UIType offset = 0;
 
@@ -44,7 +44,7 @@ TEST(Bytes, RoundTripOfEveryKind) {
     EXPECT_EQ(offset, data.size());
 }
 
-TEST(Bytes, ReadingTooFarThrows) {
+TEST(Convertor, ReadingTooFarThrows) {
     brain::Bytes data = {1, 2, 3};
     brain::UIType offset = 0;
 

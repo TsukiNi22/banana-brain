@@ -8,17 +8,17 @@
  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
 
 Edition:
-##  @date 17/10/2026 by @author Tsukini
+##  @date 12/11/2026 by @author Tsukini
 
 File Name:
-##  @file Neuron.cpp
+##  @file Space.cpp
 
 File Description:
-##  Unit tests of the brain neuron tools
+##  Unit tests of the space tools
 \**************************************************************/
 
 #define _Exception
-#include "brain/tools/neuron.hpp"
+#include "brain/tools/space.hpp"
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -31,31 +31,31 @@ static std::vector<brain::RawBrainNeuron> line(const std::vector<brain::FType>& 
     return neurons;
 }
 
-/* ------------------------------- neuron ------------------------------- */
-TEST(Neuron, SortReturnsTheNearestClosestFirst) {
+/* ------------------------------- space ------------------------------- */
+TEST(Space, ClosestReturnsTheNearestClosestFirst) {
     const std::vector<brain::RawBrainNeuron> neurons = line({0.0, 5.0, 1.0, 3.0});
-    const std::vector<brain::UIType> nearest = brain::tools::sort(0, neurons, 2);
+    const std::vector<brain::UIType> nearest = brain::tools::closest(neurons, 0, 2);
 
     ASSERT_EQ(nearest.size(), 2u);
     EXPECT_EQ(nearest[0], 2u); // squared distance 1
-    EXPECT_EQ(nearest[1], 3u); // 9 (the neuron 1 at 25 is over the cap)
+    EXPECT_EQ(nearest[1], 3u); // 9 (the neuron 1 at 25 is over the count)
 }
 
-TEST(Neuron, SortNeverReturnsTheNeuronItself) {
+TEST(Space, ClosestNeverReturnsTheNeuronItself) {
     const std::vector<brain::RawBrainNeuron> neurons = line({0.0, 1.0, 2.0});
-    const std::vector<brain::UIType> nearest = brain::tools::sort(1, neurons, 10); // cap above the other neurons: all of them
+    const std::vector<brain::UIType> nearest = brain::tools::closest(neurons, 1, 10); // count above the other neurons: all of them
 
     ASSERT_EQ(nearest.size(), 2u);
     EXPECT_EQ(nearest[0], 0u); // tie (1 and 1): the lower id first
     EXPECT_EQ(nearest[1], 2u);
 }
 
-TEST(Neuron, SortWithoutCapOrNeighbours) {
-    EXPECT_TRUE(brain::tools::sort(0, line({0.0, 1.0}), 0).empty());
-    EXPECT_TRUE(brain::tools::sort(0, line({0.0}), 5).empty());
+TEST(Space, ClosestWithoutCapOrNeighbours) {
+    EXPECT_TRUE(brain::tools::closest(line({0.0, 1.0}), 0, 0).empty());
+    EXPECT_TRUE(brain::tools::closest(line({0.0}), 0, 5).empty());
 }
 
-TEST(Neuron, SortRejectsABadIndex) {
-    EXPECT_THROW((void)brain::tools::sort(3, line({0.0, 1.0, 2.0}), 1), utils::exception::IException);
-    EXPECT_THROW((void)brain::tools::sort(0, std::vector<brain::RawBrainNeuron>{}, 1), utils::exception::IException);
+TEST(Space, ClosestRejectsABadIndex) {
+    EXPECT_THROW((void)brain::tools::closest(line({0.0, 1.0, 2.0}), 3, 1), utils::exception::IException);
+    EXPECT_THROW((void)brain::tools::closest(std::vector<brain::RawBrainNeuron>{}, 0, 1), utils::exception::IException);
 }

@@ -17,6 +17,7 @@ File Description:
 ##  Unit tests of the dataset tools
 \**************************************************************/
 
+#include "brain/tools/convertor.hpp"
 #include "brain/tools/dataset.hpp"
 #include <gtest/gtest.h>
 #include <string>

@@ -43,8 +43,8 @@ set(SRC
     tools/Random.cpp
     tools/RandomScope.cpp
     tools/Dataset.cpp
-    tools/Neuron.cpp
-    tools/Bytes.cpp
+    tools/Space.cpp
+    tools/Convertor.cpp
 )
 add_executable(${TARGET} ${SRC} ${SRC_PROJECT})
 

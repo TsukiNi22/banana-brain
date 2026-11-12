@@ -102,19 +102,38 @@ set(SRC
 set(SRC_SHARED
     ## Brain
     src/brain/NeuralNetwork.cpp
+    src/brain/Metrics.cpp
 
     ## Brain (sub-part: network)
+    src/brain/network/INetwork.cpp
     src/brain/network/ANetwork.cpp
     src/brain/network/LayerNetwork.cpp
     src/brain/network/BrainNetwork.cpp
     src/brain/network/RawBrainNetwork.cpp
 
+    ## Brain (sub-part: backend)
+    src/brain/backend/ABackend.cpp
+    src/brain/backend/CpuBackend.cpp
+    src/brain/backend/ThreadBackend.cpp
+
+    ## Brain (sub-part: optimizer)
+    src/brain/optimizer/SGD.cpp
+    src/brain/optimizer/Momentum.cpp
+    src/brain/optimizer/Adam.cpp
+
+    ## Brain (sub-part: hook)
+    src/brain/hook/ProgressHook.cpp
+    src/brain/hook/LogHook.cpp
+    src/brain/hook/CsvHook.cpp
+    src/brain/hook/MultiHook.cpp
+
     ## Brain (sub-part: tools)
     src/brain/tools/dataset.cpp
     src/brain/tools/random.cpp
-    src/brain/tools/neuron.cpp
+    src/brain/tools/space.cpp
     src/brain/tools/loss.cpp
     src/brain/tools/activation.cpp
+    src/brain/tools/convertor.cpp
 )
 
 # Library: compiled (.a / .so), or INTERFACE when only the headers are shipped (header-only)
